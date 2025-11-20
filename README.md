@@ -113,7 +113,7 @@ K_batched = batched_kernel(X_batched, X_batched)  # Shape: (batch_size, n_points
 
 ## Architecture
 
-Kernax uses a dual-class pattern for each kernel type:
+Kernax uses a dual-class pattern (separating _state_ and _structure_) for each kernel type:
 
 1. **Static Class** (e.g., `StaticRBFKernel`): Contains JIT-compiled computation logic
 2. **Instance Class** (e.g., `RBFKernel`): Holds hyperparameters as PyTree nodes
@@ -141,19 +141,40 @@ See `benchmarks/` directory for detailed performance comparisons.
 ### Working
 
 ✅ Core kernel implementations (RBF, Linear, Matern, Periodic, etc.)
+
 ✅ Kernel composition via operators
+
 ✅ Automatic dimension handling
+
 ✅ NaN-aware computations
+
 ✅ Batched operations with distinct hyperparameters
+
 ✅ JAX PyTree integration
+
 
 ### In Progress / Planned
 
+🚧 Make Kernels extend Equinox's Module for better compatibility
+
+🚧 Use Equinox's feature for automatic jax.arrays conversions and parameter freezing
+
+🚧 Create Batch_Kernel and ARD_Kernel wrappers instead of handling batch in base kernels
+
+🚧 Add a static `active_dims` argument to kernels for dimension selection
+
+🚧 Rewrite inheritance to have StationaryKernel and IsotropicKernel base classes
+
+🚧 Write various computation engines for scenarios where e.g. only a diagonal is needed
+
 🚧 Comprehensive test suite
+
 🚧 Documentation and tutorials
+
 🚧 PyPI package distribution
-🚧 Additional kernel types
-🚧 Performance optimizations for large-scale operations
+
+🚧 Benchmarks against other libraries (GPJax, ...)
+
 
 ## Contributing
 
@@ -161,7 +182,7 @@ This project is in early development. Contributions, bug reports, and feature re
 
 ## Related Projects
 
-Kernax is developed alongside [MagmaClust](../MagmaClust), a clustering and Gaussian Process library.
+Kernax is developed alongside [MagmaClust](https://github.com/SimLej18/MagmaClustPy), a clustering and Gaussian Process library.
 
 ## License
 
