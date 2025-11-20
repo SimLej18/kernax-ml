@@ -1,0 +1,25 @@
+# Include documentation files
+include README.md
+include CLAUDE.md
+include LICENSE
+
+# Include configuration files
+include pyproject.toml
+include setup.py
+
+# Exclude development and temporary files
+exclude .gitignore
+exclude .DS_Store
+
+# Exclude test files from distribution
+prune tests
+prune benchmarks
+
+# Exclude IDE and editor files
+prune .idea
+prune .vscode
+
+# Exclude build artifacts
+prune build
+prune dist
+prune *.egg-info

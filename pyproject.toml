@@ -1,0 +1,115 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kernax"
+version = "0.1.0"
+description = "A JAX-based kernel library for Gaussian Processes with automatic differentiation and composable operations"
+readme = "README.md"
+requires-python = ">=3.14"
+license = {text = "MIT"}
+authors = [
+    {name = "S. Lejoly", email = "simon.lejoly@unamur.be"}
+]
+maintainers = [
+    {name = "S. Lejoly", email = "simon.lejoly@unamur.be"}
+]
+keywords = [
+    "gaussian-processes",
+    "kernels",
+    "jax",
+    "machine-learning",
+    "covariance-functions",
+    "bayesian-optimization"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = [
+    "jax>=0.8.0",
+    "jaxlib>=0.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "black>=22.0",
+    "flake8>=5.0",
+    "mypy>=0.990",
+    "isort>=5.10",
+]
+docs = [
+    "sphinx>=5.0",
+    "sphinx-rtd-theme>=1.0",
+    "nbsphinx>=0.8",
+]
+benchmarks = [
+    "pandas>=1.5.0",
+    "matplotlib>=3.5.0",
+    "jupyter>=1.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/SimLej18/Kernax"
+Repository = "https://github.com/SimLej18/Kernax"
+Documentation = "https://kernax.readthedocs.io"
+"Bug Tracker" = "https://github.com/SimLej18/Kernax/issues"
+
+[tool.setuptools]
+packages = ["kernax"]
+
+[tool.setuptools.package-data]
+kernax = ["py.typed"]
+
+[tool.black]
+line-length = 100
+target-version = ['py314']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | \.eggs
+  | \.tox
+  | build
+  | dist
+  | __pycache__
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_gitignore = true
+
+[tool.mypy]
+python_version = "3.14"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = [
+    "--verbose",
+    "--cov=kernax",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+]
