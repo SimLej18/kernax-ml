@@ -186,21 +186,21 @@ class AbstractKernel:
 		return cls(*children)
 
 	def __add__(self, other):
-		from Kernax.OperatorKernels import SumKernel
+		from kernax.OperatorKernels import SumKernel
 		return SumKernel(self, other)
 
 	def __radd__(self, other):
-		from Kernax.OperatorKernels import SumKernel
+		from kernax.OperatorKernels import SumKernel
 		return SumKernel(other, self)
 
 	def __neg__(self):
-		from Kernax.WrapperKernels import NegKernel
+		from kernax.WrapperKernels import NegKernel
 		return NegKernel(self)
 
 	def __mul__(self, other):
-		from Kernax.OperatorKernels import ProductKernel
+		from kernax.OperatorKernels import ProductKernel
 		return ProductKernel(self, other)
 
 	def __rmul__(self, other):
-		from Kernax.OperatorKernels import ProductKernel
+		from kernax.OperatorKernels import ProductKernel
 		return ProductKernel(other, self)

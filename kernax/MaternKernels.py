@@ -5,7 +5,7 @@ from jax import numpy as jnp
 from functools import partial
 
 # Assuming Kernax is a module in your project that defines these base classes
-from Kernax import StaticAbstractKernel, AbstractKernel
+from kernax import StaticAbstractKernel, AbstractKernel
 
 
 # Matern 1/2 (Exponential) Kernel defined in Rasmussen and Williams (2006), section 4.2

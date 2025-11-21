@@ -5,7 +5,7 @@ from jax.lax import cond
 
 from functools import partial
 
-from Kernax import StaticAbstractKernel, AbstractKernel, ConstantKernel
+from kernax import StaticAbstractKernel, AbstractKernel, ConstantKernel
 
 
 @register_pytree_node_class

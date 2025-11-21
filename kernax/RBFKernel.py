@@ -4,7 +4,7 @@ from jax import numpy as jnp
 
 from functools import partial
 
-from Kernax import StaticAbstractKernel, AbstractKernel
+from kernax import StaticAbstractKernel, AbstractKernel
 
 
 class StaticRBFKernel(StaticAbstractKernel):

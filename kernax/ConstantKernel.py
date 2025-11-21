@@ -4,7 +4,7 @@ from jax.tree_util import register_pytree_node_class
 
 from functools import partial
 
-from Kernax import StaticAbstractKernel, AbstractKernel
+from kernax import StaticAbstractKernel, AbstractKernel
 
 
 class StaticConstantKernel(StaticAbstractKernel):
