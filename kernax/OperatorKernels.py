@@ -1,11 +1,9 @@
 import jax.numpy as jnp
 from jax import jit
-from jax.tree_util import register_pytree_node_class
 
 from kernax import AbstractKernel, ConstantKernel
 
 
-@register_pytree_node_class
 class OperatorKernel(AbstractKernel):
 	""" Class for kernels that apply some operation on the output of two kernels."""
 	def __init__(self, left_kernel, right_kernel):
@@ -23,7 +21,7 @@ class OperatorKernel(AbstractKernel):
 
 		super().__init__(left_kernel=left_kernel, right_kernel=right_kernel)
 
-@register_pytree_node_class
+
 class SumKernel(OperatorKernel):
 	""" Sum kernel that sums the outputs of two kernels."""
 	@jit
@@ -34,7 +32,6 @@ class SumKernel(OperatorKernel):
 		return self.left_kernel(x1, x2) + self.right_kernel(x1, x2)
 
 
-@register_pytree_node_class
 class ProductKernel(OperatorKernel):
 	""" Product kernel that multiplies the outputs of two kernels. """
 

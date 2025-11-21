@@ -1,10 +1,8 @@
-from jax import jit
-from jax.tree_util import register_pytree_node_class
-from jax import numpy as jnp
-
 from functools import partial
 
-# Assuming Kernax is a module in your project that defines these base classes
+from jax import jit
+from jax import numpy as jnp
+
 from kernax import StaticAbstractKernel, AbstractKernel
 
 
@@ -25,7 +23,6 @@ class StaticMatern12Kernel(StaticAbstractKernel):
         return jnp.exp(-r / kern.length_scale)
 
 
-@register_pytree_node_class
 class Matern12Kernel(AbstractKernel):
     def __init__(self, length_scale=None):
         super().__init__(length_scale=length_scale)
@@ -50,7 +47,6 @@ class StaticMatern32Kernel(StaticAbstractKernel):
         return (1.0 + sqrt3_r_div_l) * jnp.exp(-sqrt3_r_div_l)
 
 
-@register_pytree_node_class
 class Matern32Kernel(AbstractKernel):
     def __init__(self, length_scale=None):
         super().__init__(length_scale=length_scale)
@@ -75,7 +71,6 @@ class StaticMatern52Kernel(StaticAbstractKernel):
         return (1.0 + sqrt5_r_div_l + (5.0 / 3.0) * (r / kern.length_scale)**2) * jnp.exp(-sqrt5_r_div_l)
 
 
-@register_pytree_node_class
 class Matern52Kernel(AbstractKernel):
     def __init__(self, length_scale=None):
         super().__init__(length_scale=length_scale)

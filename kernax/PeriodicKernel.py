@@ -1,8 +1,7 @@
-from jax import jit
-from jax.tree_util import register_pytree_node_class
-from jax import numpy as jnp
-
 from functools import partial
+
+from jax import jit
+from jax import numpy as jnp
 
 from kernax import StaticAbstractKernel, AbstractKernel
 
@@ -23,7 +22,7 @@ class StaticPeriodicKernel(StaticAbstractKernel):
 
 		return kern.variance * jnp.exp(-2 * jnp.sin(jnp.pi * dist / kern.period)**2 / kern.length_scale**2)
 
-@register_pytree_node_class
+
 class PeriodicKernel(AbstractKernel):
 	def __init__(self, length_scale=None, variance=None, period=None):
 		"""

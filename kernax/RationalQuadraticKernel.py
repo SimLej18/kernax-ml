@@ -1,8 +1,7 @@
-from jax import jit
-from jax.tree_util import register_pytree_node_class
-from jax import numpy as jnp
-
 from functools import partial
+
+from jax import jit
+from jax import numpy as jnp
 
 from kernax import StaticAbstractKernel, AbstractKernel
 
@@ -25,7 +24,7 @@ class StaticRationalQuadraticKernel(StaticAbstractKernel):
 		
 		return kern.variance * jnp.power(base, -kern.alpha)
 
-@register_pytree_node_class
+
 class RationalQuadraticKernel(AbstractKernel):
 	def __init__(self, length_scale=None, variance=None, alpha=None, **kwargs):
 		"""

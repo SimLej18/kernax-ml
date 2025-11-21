@@ -12,12 +12,11 @@ __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"
 
 from .AbstractKernel import StaticAbstractKernel, AbstractKernel
-from .RBFKernel import StaticRBFKernel, RBFKernel
+from .SEKernel import StaticSEKernel, SEKernel
 from .LinearKernel import StaticLinearKernel, LinearKernel
 from .MaternKernels import StaticMatern12Kernel, Matern12Kernel
 from .MaternKernels import StaticMatern32Kernel, Matern32Kernel
 from .MaternKernels import StaticMatern52Kernel, Matern52Kernel
-from .SEMagmaKernel import StaticSEMagmaKernel, SEMagmaKernel
 from .PeriodicKernel import StaticPeriodicKernel, PeriodicKernel
 from .RationalQuadraticKernel import StaticRationalQuadraticKernel, RationalQuadraticKernel
 from .ConstantKernel import StaticConstantKernel, ConstantKernel
@@ -34,10 +33,8 @@ __all__ = [
     "StaticAbstractKernel",
     "AbstractKernel",
     # Base kernels
-    "StaticRBFKernel",
-    "RBFKernel",
-    "StaticSEMagmaKernel",
-    "SEMagmaKernel",
+    "StaticSEKernel",
+    "SEKernel",
     "StaticConstantKernel",
     "ConstantKernel",
     "StaticLinearKernel",

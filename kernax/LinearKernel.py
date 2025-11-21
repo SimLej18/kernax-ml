@@ -1,10 +1,9 @@
-from jax import jit
-from jax.tree_util import register_pytree_node_class
-from jax import numpy as jnp
-
 from functools import partial
 
-from .AbstractKernel import StaticAbstractKernel, AbstractKernel
+from jax import jit
+from jax import numpy as jnp
+
+from kernax import StaticAbstractKernel, AbstractKernel
 
 
 class StaticLinearKernel(StaticAbstractKernel):
@@ -28,7 +27,6 @@ class StaticLinearKernel(StaticAbstractKernel):
         return kern.variance_b + kern.variance_v * dot_product
 
 
-@register_pytree_node_class
 class LinearKernel(AbstractKernel):
     def __init__(self, variance_b=None, variance_v=None, offset_c=None, **kwargs):
         """

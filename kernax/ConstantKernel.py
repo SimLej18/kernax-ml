@@ -1,8 +1,7 @@
+from functools import partial
+
 import jax.numpy as jnp
 from jax import jit
-from jax.tree_util import register_pytree_node_class
-
-from functools import partial
 
 from kernax import StaticAbstractKernel, AbstractKernel
 
@@ -22,7 +21,6 @@ class StaticConstantKernel(StaticAbstractKernel):
 		return kern.value  # The constant value is returned regardless of the inputs
 
 
-@register_pytree_node_class
 class ConstantKernel(AbstractKernel):
 	def __init__(self, value=1.):
 		"""

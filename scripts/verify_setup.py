@@ -76,7 +76,7 @@ def main():
     all_good &= check_file("kernax/__init__.py", "Package init")
     all_good &= check_file("kernax/py.typed", "Type hints marker")
     all_good &= check_file("kernax/AbstractKernel.py", "Abstract kernel")
-    all_good &= check_file("kernax/RBFKernel.py", "RBF kernel")
+    all_good &= check_file("kernax/SEKernel.py", "RBF kernel")
     all_good &= check_file("kernax/OperatorKernels.py", "Operator kernels")
     all_good &= check_file("kernax/WrapperKernels.py", "Wrapper kernels")
     print()

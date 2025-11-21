@@ -1,10 +1,9 @@
+from functools import partial
+
 import jax.numpy as jnp
 from jax import jit, vmap
-from jax.tree_util import register_pytree_node_class, tree_map
-from jax.tree import reduce
 from jax.lax import cond
-
-from functools import partial
+import equinox as eqx
 
 
 class StaticAbstractKernel:
@@ -79,52 +78,16 @@ class StaticAbstractKernel:
 		"""
 		return vmap(lambda x: cls.cross_cov_vector_if_not_nan(kern, x2, x), in_axes=0)(x1)
 
-	@classmethod
-	@partial(jit, static_argnums=(0,))
-	def cross_cov_batch(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
-		"""
-		Compute the kernel covariance matrix between two batched vector arrays.
 
-		:param x1: vector array (B, N)
-		:param x2: vector array (B, M)
-		:return: tensor array (B, N, M)
-		"""
-		hp_vmap = cls.get_hp_vmap_in_axes(kern, len(x1))
-
-		return vmap(lambda k, x, y: cls.cross_cov_matrix(k, x, y), in_axes=(hp_vmap, 0, 0))(kern, x1, x2)
-
-	@classmethod
-	def get_hp_vmap_in_axes(cls, kern, input_dim:int) -> jnp.ndarray:
-		has_input_dim = lambda param: hasattr(param, 'shape') and len(param.shape) > 0 and param.shape[0] == input_dim
-		return tree_map(lambda param: 0 if has_input_dim(param) else None, kern)
-
-
-@register_pytree_node_class
-class AbstractKernel:
-	def __init__(self, **kwargs):
-		"""
-		Instatiates a kernel with the given hyperparameters.
-		https://docs.jax.dev/en/latest/pytrees.html#custom-pytrees-and-initialization
-		:param kwargs: the hyperparameters of the kernel, as keyword arguments.
-		"""
-
-		# Register hyperparameters in *kwargs* as instance attributes
-		self.__dict__.update(kwargs)
-
-		# This check allows the user to assign a static class before and after calling super().__init__()
-		if not hasattr(self, 'static_class'):
-			self.static_class = StaticAbstractKernel
-
-		if not hasattr(self, 'static_attributes'):
-			self.static_attributes = {"static_class", "static_attributes"}
-		else:
-			self.static_attributes.union({"static_class", "static_attributes"})
-
+class AbstractKernel(eqx.Module):
+	"""
+	# TODO: check Equinox __str__ and __repr__ methods and adapt if needed
 	def __str__(self):
 		return f"{self.__class__.__name__}({', '.join([f'{key}={value}' for key, value in self.__dict__.items() if key not in self.static_attributes])})"
 
 	def __repr__(self):
 		return str(self)
+	"""
 
 	@jit
 	def __call__(self, x1, x2=None):
@@ -135,10 +98,6 @@ class AbstractKernel:
 		# Turn scalar inputs into vectors
 		x1, x2 = jnp.atleast_1d(x1), jnp.atleast_1d(x2)
 
-		# Check for distinct hyperparameters
-		if self.has_distinct_hyperparameters(x1.shape[0]) and (x1.ndim != 3 or x2.ndim != 3):
-			raise ValueError("Kernel with distinct hyperparameters was called on unbatched inputs. It cannot know which hyperparameter value to use for this element")
-
 		# Call the appropriate method
 		if jnp.ndim(x1) == 1 and jnp.ndim(x2) == 1:
 			return self.static_class.pairwise_cov_if_not_nan(self, x1, x2)
@@ -148,42 +107,11 @@ class AbstractKernel:
 			return self.static_class.cross_cov_vector_if_not_nan(self, x2, x1)
 		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 2:
 			return self.static_class.cross_cov_matrix(self, x1, x2)
-		elif jnp.ndim(x1) == 3 and jnp.ndim(x2) == 3:
-			if x1.shape[0] != x2.shape[0]:
-				raise ValueError(f"Batch dimension mismatch: x1 has shape {x1.shape}, x2 has shape {x2.shape}.")
-			return self.static_class.cross_cov_batch(self, x1, x2)
 		else:
 			raise ValueError(
 				f"Invalid input dimensions: x1 has shape {x1.shape}, x2 has shape {x2.shape}. "
 				"Expected 1D, 2D arrays or 3D arrays for batched inputs."
 			)
-
-	def get_hp_vmap_in_axes(self, input_dim: int):
-		# Compute the vmap in_axes for the kernel based on the input dimension
-		return self.static_class.get_hp_vmap_in_axes(self, input_dim)
-
-	def has_distinct_hyperparameters(self, inputs_first_dim) -> bool:
-		"""
-		Checks if the kernel has distinct hyperparameters based on the first dimension of the inputs.
-
-		:param inputs_first_dim: The first dimension of the inputs to check against the hyperparameters.
-		:return: True if the kernel has distinct hyperparameters, False otherwise.
-		"""
-		return reduce(
-			lambda acc, param: acc or (hasattr(param, 'shape') and len(param.shape) > 0 and param.shape[0] == inputs_first_dim)
-			, self, False)
-
-	# Methods to use Kernel as a PyTree
-	def tree_flatten(self):
-		return tuple(val for key, val in self.__dict__.items() if key not in self.static_attributes), None  # No static values
-
-	@classmethod
-	def tree_unflatten(cls, _, children):
-		# This class being abstract, this function fails when called on an "abstract instance",
-		# as we don't know the number of parameters the constructor expects, yet we send it children.
-		# On a subclass, this will work as expected as long as the constructor has a clear number of
-		# kwargs as parameters.
-		return cls(*children)
 
 	def __add__(self, other):
 		from kernax.OperatorKernels import SumKernel
