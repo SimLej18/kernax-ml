@@ -1,24 +1,26 @@
 from functools import partial
 
-from jax import jit, Array
+from jax import Array
 from jax import numpy as jnp
 import equinox as eqx
+from equinox import filter_jit
 
 from kernax import StaticAbstractKernel, AbstractKernel
 
 
 class StaticSEKernel(StaticAbstractKernel):
 	@classmethod
-	@partial(jit, static_argnums=(0,))
+	@filter_jit
 	def pairwise_cov(cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
 		"""
 		Compute the kernel covariance value between two vectors.
 
-		:param kern: the kernel to use, containing a `length_scale` parameters
+		:param kern: kernel instance containing the hyperparameters
 		:param x1: scalar array
 		:param x2: scalar array
 		:return: scalar array
 		"""
+		kern = eqx.combine(kern)
 		return jnp.exp(-0.5 * ((x1 - x2) @ (x1 - x2)) / kern.length_scale ** 2)
 
 

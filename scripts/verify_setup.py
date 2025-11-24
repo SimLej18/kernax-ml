@@ -98,8 +98,8 @@ def main():
     all_good &= check_file(".editorconfig", "Editor config")
     all_good &= check_file(".python-version", "Python version")
     all_good &= check_file("Makefile", "Make commands")
-    all_good &= check_file(".github/workflows/tests.yml", "Test workflow")
-    all_good &= check_file(".github/workflows/lint.yml", "Lint workflow")
+    all_good &= check_file(".github/workflows_tmp/tests.yml", "Test workflow")
+    all_good &= check_file(".github/workflows_tmp/lint.yml", "Lint workflow")
     print()
 
     # Check for placeholders

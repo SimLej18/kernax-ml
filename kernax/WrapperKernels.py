@@ -26,62 +26,6 @@ class WrapperKernel(AbstractKernel):
 		self.inner_kernel = inner_kernel
 
 
-class StaticDiagKernel(StaticAbstractKernel):
-	"""
-	Static kernel that returns a value only if the inputs are equal, otherwise returns 0.
-	This results in a diagonal cross-covariance matrix.
-	"""
-	@classmethod
-	@partial(jit, static_argnums=(0,))
-	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
-		return cond(jnp.all(x1 == x2),
-		            lambda _: kern.inner_kernel(x1, x2),
-		            lambda _: jnp.array(0.0),
-		            None)
-
-
-class DiagKernel(WrapperKernel):
-	"""
-	Kernel that returns a value only if the inputs are equal, otherwise returns 0.
-	This results in a diagonal cross-covariance matrix.
-	"""
-	def __init__(self, inner_kernel=None):
-		super().__init__(inner_kernel=inner_kernel)
-		self.static_class = StaticDiagKernel
-
-
-class ExpKernel(WrapperKernel):
-	"""
-	Kernel that applies the exponential operator to the output of another kernel.
-	"""
-	@jit
-	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
-		if x2 is None:
-			x2 = x1
-
-		return jnp.exp(self.inner_kernel(x1, x2))
-
-
-class LogKernel(WrapperKernel):
-	"""
-	Kernel that applies the logarithm operator to the output of another kernel.
-	"""
-	@jit
-	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
-		if x2 is None:
-			x2 = x1
-
-		return jnp.log(self.inner_kernel(x1, x2))
-
-
-class NegKernel(WrapperKernel):
-	@jit
-	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
-		if x2 is None:
-			x2 = x1
-
-		return - self.inner_kernel(x1, x2)
-
 
 class BatchKernel(WrapperKernel):
 	"""
@@ -137,6 +81,7 @@ class BatchKernel(WrapperKernel):
 			self.batch_in_axes
 		)
 
+	@jit
 	def __call__(self, x1, x2=None):
 		"""
 		Compute the kernel over batched inputs using vmap.
@@ -154,3 +99,56 @@ class BatchKernel(WrapperKernel):
 			lambda kernel, x1, x2: kernel(x1, x2),
 			in_axes=(self.batch_in_axes, self.batch_over_inputs, self.batch_over_inputs if x2 is not None else None)
 		)(self.inner_kernel, x1, x2)
+
+
+class ActiveDimsKernel(WrapperKernel):
+	"""
+	Wrapper kernel to select active dimensions from the inputs before passing them to the inner kernel.
+	"""
+	active_dims: jnp.ndarray = eqx.field(static=True, converter=jnp.array)
+
+	def __init__(self, inner_kernel, active_dims):
+		"""
+		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel
+		:param active_dims: the indices of the active dimensions to select from the inputs (1D array of integers)
+		"""
+		super().__init__(inner_kernel=inner_kernel)
+		self.active_dims = active_dims
+
+	@jit
+	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
+		# TODO: add runtime error if active_dims doesn't match input dimensions
+		if x2 is None:
+			x2 = x1
+
+		return self.inner_kernel(x1[..., self.active_dims], x2[..., self.active_dims])
+
+
+class ARDKernel(WrapperKernel):
+	"""
+	Wrapper kernel to apply Automatic Relevance Determination (ARD) to the inputs before passing them to the inner kernel.
+	Each input dimension is scaled by a separate length scale hyperparameter.
+	"""
+	length_scales: jnp.ndarray = eqx.field(converter=jnp.array)
+
+	def __init__(self, inner_kernel, length_scales):
+		"""
+		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel
+		:param length_scales: the length scales for each input dimension (1D array of floats)
+		"""
+		# TODO: for now, this kernel only works as the direct child of an Isotropic kernel, as it modifies the inner kernel length_scale directly
+		#  It would be nice if it could work on combinations of Isotropic kernels, modifying every "length_scale" parameter it finds in the inner kernel tree
+		#  It's hard to implement this behavior at the instance-level. Maybe we should make the user do it, or have a utility function to do it for them.
+		#  (It's not as simple as turning length_scale to a static attribute, see https://github.com/patrick-kidger/equinox/issues/154)
+		#  (It's also not as simple as setting `length_scale` to 1 during initialization, because the value could still be optimized to other values)
+		super().__init__(inner_kernel=inner_kernel)
+		self.length_scales = length_scales
+
+	@jit
+	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
+		if x2 is None:
+			x2 = x1
+
+		self.inner_kernel.length_scale = jnp.ones_like(self.inner_kernel.length_scale)  # Ensure inner kernel length_scale is 1
+
+		return self.inner_kernel(x1 / self.length_scales, x2 / self.length_scales)
