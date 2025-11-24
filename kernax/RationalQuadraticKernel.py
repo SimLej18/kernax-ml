@@ -1,15 +1,14 @@
-from functools import partial
-
-from jax import jit, Array
-from jax import numpy as jnp
 import equinox as eqx
+from equinox import filter_jit
+from jax import Array
+from jax import numpy as jnp
 
-from kernax import StaticAbstractKernel, AbstractKernel
+from kernax import AbstractKernel, StaticAbstractKernel
 
 
 class StaticRationalQuadraticKernel(StaticAbstractKernel):
 	@classmethod
-	@partial(jit, static_argnums=(0,))
+	@filter_jit
 	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
 		"""
 		Compute the Rational Quadratic kernel covariance value between two vectors.
@@ -20,9 +19,9 @@ class StaticRationalQuadraticKernel(StaticAbstractKernel):
 		:return: covariance value (scalar)
 		"""
 		squared_dist = jnp.sum((x1 - x2) ** 2)
-		
-		base = 1 + squared_dist / (2 * kern.alpha * kern.length_scale ** 2)
-		
+
+		base = 1 + squared_dist / (2 * kern.alpha * kern.length_scale**2)
+
 		return kern.variance * jnp.power(base, -kern.alpha)
 
 

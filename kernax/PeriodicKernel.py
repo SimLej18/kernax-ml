@@ -1,27 +1,28 @@
-from functools import partial
-
-from jax import jit, Array
-from jax import numpy as jnp
 import equinox as eqx
+from equinox import filter_jit
+from jax import Array
+from jax import numpy as jnp
 
-from kernax import StaticAbstractKernel, AbstractKernel
+from kernax import AbstractKernel, StaticAbstractKernel
 
 
 class StaticPeriodicKernel(StaticAbstractKernel):
 	@classmethod
-	@partial(jit, static_argnums=(0,))
+	@filter_jit
 	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
 		"""
-        Compute the periodic kernel covariance value between two vectors.
+		Compute the periodic kernel covariance value between two vectors.
 
-		:param kern: the kernel to use, containing hyperparameters (length_scale, variance, period).
-		:param x1: scalar array
-		:param x2: scalar array
-		:return: covariance value (scalar)
+				:param kern: the kernel to use, containing hyperparameters (length_scale, variance, period).
+				:param x1: scalar array
+				:param x2: scalar array
+				:return: covariance value (scalar)
 		"""
 		dist = jnp.linalg.norm(x1 - x2)
 
-		return kern.variance * jnp.exp(-2 * jnp.sin(jnp.pi * dist / kern.period)**2 / kern.length_scale**2)
+		return kern.variance * jnp.exp(
+			-2 * jnp.sin(jnp.pi * dist / kern.period) ** 2 / kern.length_scale**2
+		)
 
 
 class PeriodicKernel(AbstractKernel):

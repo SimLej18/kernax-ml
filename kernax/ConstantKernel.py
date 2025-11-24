@@ -1,15 +1,14 @@
-from functools import partial
-
-import jax.numpy as jnp
-from jax import jit, Array
 import equinox as eqx
+import jax.numpy as jnp
+from equinox import filter_jit
+from jax import Array
 
-from kernax import StaticAbstractKernel, AbstractKernel
+from kernax import AbstractKernel, StaticAbstractKernel
 
 
 class StaticConstantKernel(StaticAbstractKernel):
 	@classmethod
-	@partial(jit, static_argnums=(0,))
+	@filter_jit
 	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
 		"""
 		Compute the kernel covariance value between two vectors.
@@ -26,7 +25,7 @@ class ConstantKernel(AbstractKernel):
 	value: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticConstantKernel
 
-	def __init__(self, value=1.):
+	def __init__(self, value=1.0):
 		"""
 		Instantiates a constant kernel with the given value.
 

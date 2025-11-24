@@ -6,8 +6,8 @@ help:
 	@echo "  make install-dev   - Install package with development dependencies"
 	@echo "  make test          - Run tests"
 	@echo "  make test-cov      - Run tests with coverage report"
-	@echo "  make lint          - Run linters (flake8, mypy)"
-	@echo "  make format        - Format code (black, isort)"
+	@echo "  make lint          - Run linters (ruff, mypy)"
+	@echo "  make format        - Format code with tabs (ruff)"
 	@echo "  make clean         - Remove build artifacts"
 	@echo "  make build         - Build distribution packages"
 	@echo "  make upload        - Upload package to PyPI (requires credentials)"
@@ -27,12 +27,12 @@ test-cov:
 	pytest --cov=kernax --cov-report=html --cov-report=term
 
 lint:
-	flake8 kernax tests
+	ruff check kernax tests
 	mypy kernax --ignore-missing-imports
 
 format:
-	black kernax tests
-	isort kernax tests
+	ruff format kernax tests
+	ruff check --fix kernax tests
 
 clean:
 	rm -rf build/

@@ -1,27 +1,26 @@
-from functools import partial
-
+import equinox as eqx
 import jax.numpy as jnp
+from equinox import filter_jit
 from jax import vmap
 from jax.lax import cond
-import equinox as eqx
-from equinox import filter_jit
 
 
 class AbstractKernel(eqx.Module):
 	"""
 	# TODO: check Equinox __str__ and __repr__ methods and adapt if needed
 	def __str__(self):
-		return f"{self.__class__.__name__}({', '.join([f'{key}={value}' for key, value in self.__dict__.items() if key not in self.static_attributes])})"
+		return f"{self.__class__.__name__}({', '.join([f'{key}={value}' for key, value in self.__dict__.items() \
+		if key not in self.static_attributes])})"
 
 	def __repr__(self):
 		return str(self)
 	"""
+
 	@filter_jit
 	def __call__(self, x1, x2=None):
 		# If no x2 is provided, we compute the covariance between x1 and itself
 		if x2 is None:
 			x2 = x1
-
 
 		# Turn scalar inputs into vectors
 		x1, x2 = jnp.atleast_1d(x1), jnp.atleast_1d(x2)
@@ -43,22 +42,27 @@ class AbstractKernel(eqx.Module):
 
 	def __add__(self, other):
 		from kernax.OperatorKernels import SumKernel
+
 		return SumKernel(self, other)
 
 	def __radd__(self, other):
 		from kernax.OperatorKernels import SumKernel
+
 		return SumKernel(other, self)
 
 	def __neg__(self):
 		from kernax.WrapperKernels import NegKernel
+
 		return NegKernel(self)
 
 	def __mul__(self, other):
 		from kernax.OperatorKernels import ProductKernel
+
 		return ProductKernel(self, other)
 
 	def __rmul__(self, other):
 		from kernax.OperatorKernels import ProductKernel
+
 		return ProductKernel(other, self)
 
 
@@ -78,7 +82,9 @@ class StaticAbstractKernel:
 
 	@classmethod
 	@filter_jit
-	def pairwise_cov_if_not_nan(cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov_if_not_nan(
+		cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray
+	) -> jnp.ndarray:
 		"""
 		Returns NaN if either x1 or x2 is NaN, otherwise calls the compute_scalar method.
 
@@ -87,14 +93,18 @@ class StaticAbstractKernel:
 		:param x2: scalar array
 		:return: scalar array
 		"""
-		return cond(jnp.any(jnp.isnan(x1) | jnp.isnan(x2)),
-		            lambda _: jnp.nan,
-		            lambda _: cls.pairwise_cov(kern, x1, x2),
-		            None)
+		return cond(
+			jnp.any(jnp.isnan(x1) | jnp.isnan(x2)),
+			lambda _: jnp.nan,
+			lambda _: cls.pairwise_cov(kern, x1, x2),
+			None,
+		)
 
 	@classmethod
 	@filter_jit
-	def cross_cov_vector(cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def cross_cov_vector(
+		cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray
+	) -> jnp.ndarray:
 		"""
 		Compute the kernel cross covariance values between an array of vectors (matrix) and a vector.
 
@@ -107,7 +117,9 @@ class StaticAbstractKernel:
 
 	@classmethod
 	@filter_jit
-	def cross_cov_vector_if_not_nan(cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray, **kwargs) -> jnp.ndarray:
+	def cross_cov_vector_if_not_nan(
+		cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray, **kwargs
+	) -> jnp.ndarray:
 		"""
 		Returns an array of NaN if scalar is NaN, otherwise calls the compute_vector method.
 
@@ -117,14 +129,18 @@ class StaticAbstractKernel:
 		:param kwargs: hyperparameters of the kernel
 		:return: vector array (N, )
 		"""
-		return cond(jnp.any(jnp.isnan(x2)),
-		            lambda _: jnp.full(len(x1), jnp.nan),
-		            lambda _: cls.cross_cov_vector(kern, x1, x2),
-		            None)
+		return cond(
+			jnp.any(jnp.isnan(x2)),
+			lambda _: jnp.full(len(x1), jnp.nan),
+			lambda _: cls.cross_cov_vector(kern, x1, x2),
+			None,
+		)
 
 	@classmethod
 	@filter_jit
-	def cross_cov_matrix(cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def cross_cov_matrix(
+		cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray
+	) -> jnp.ndarray:
 		"""
 		Compute the kernel covariance matrix between two vector arrays.
 

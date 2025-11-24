@@ -1,12 +1,13 @@
-import jax.numpy as jnp
-from jax import jit
 import equinox as eqx
+from jax import jit
+from jax import numpy as jnp
 
 from kernax import AbstractKernel, ConstantKernel
 
 
 class OperatorKernel(AbstractKernel):
-	""" Class for kernels that apply some operation on the output of two kernels."""
+	"""Class for kernels that apply some operation on the output of two kernels."""
+
 	left_kernel: AbstractKernel = eqx.field()
 	right_kernel: AbstractKernel = eqx.field()
 
@@ -29,7 +30,8 @@ class OperatorKernel(AbstractKernel):
 
 
 class SumKernel(OperatorKernel):
-	""" Sum kernel that sums the outputs of two kernels."""
+	"""Sum kernel that sums the outputs of two kernels."""
+
 	@jit
 	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
 		if x2 is None:
@@ -39,7 +41,7 @@ class SumKernel(OperatorKernel):
 
 
 class ProductKernel(OperatorKernel):
-	""" Product kernel that multiplies the outputs of two kernels. """
+	"""Product kernel that multiplies the outputs of two kernels."""
 
 	@jit
 	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:

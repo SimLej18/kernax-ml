@@ -1,11 +1,9 @@
-from functools import partial
-
-from jax import Array
-from jax import numpy as jnp
 import equinox as eqx
 from equinox import filter_jit
+from jax import Array
+from jax import numpy as jnp
 
-from kernax import StaticAbstractKernel, AbstractKernel
+from kernax import AbstractKernel, StaticAbstractKernel
 
 
 class StaticSEKernel(StaticAbstractKernel):
@@ -21,13 +19,14 @@ class StaticSEKernel(StaticAbstractKernel):
 		:return: scalar array
 		"""
 		kern = eqx.combine(kern)
-		return jnp.exp(-0.5 * ((x1 - x2) @ (x1 - x2)) / kern.length_scale ** 2)
+		return jnp.exp(-0.5 * ((x1 - x2) @ (x1 - x2)) / kern.length_scale**2)
 
 
 class SEKernel(AbstractKernel):
 	"""
 	Squared Exponential (aka "RBF" or "Gaussian") Kernel
 	"""
+
 	length_scale: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticSEKernel
 

@@ -11,65 +11,70 @@ __author__ = "S. Lejoly"
 __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"
 
-from .AbstractKernel import StaticAbstractKernel, AbstractKernel
-from .SEKernel import StaticSEKernel, SEKernel
-from .LinearKernel import StaticLinearKernel, LinearKernel
-from .MaternKernels import StaticMatern12Kernel, Matern12Kernel
-from .MaternKernels import StaticMatern32Kernel, Matern32Kernel
-from .MaternKernels import StaticMatern52Kernel, Matern52Kernel
-from .PeriodicKernel import StaticPeriodicKernel, PeriodicKernel
-from .RationalQuadraticKernel import StaticRationalQuadraticKernel, RationalQuadraticKernel
-from .ConstantKernel import StaticConstantKernel, ConstantKernel
-from .OperatorKernels import OperatorKernel, SumKernel, ProductKernel
+from .AbstractKernel import AbstractKernel, StaticAbstractKernel
+from .ConstantKernel import ConstantKernel, StaticConstantKernel
+from .LinearKernel import LinearKernel, StaticLinearKernel
+from .MaternKernels import (
+	Matern12Kernel,
+	Matern32Kernel,
+	Matern52Kernel,
+	StaticMatern12Kernel,
+	StaticMatern32Kernel,
+	StaticMatern52Kernel,
+)
+from .OperatorKernels import OperatorKernel, ProductKernel, SumKernel
+from .PeriodicKernel import PeriodicKernel, StaticPeriodicKernel
+from .RationalQuadraticKernel import RationalQuadraticKernel, StaticRationalQuadraticKernel
+from .SEKernel import SEKernel, StaticSEKernel
 from .WrapperKernels import (
-    WrapperKernel,
-    NegKernel,
-    ExpKernel,
-    LogKernel,
-    DiagKernel,
-    BatchKernel,
-    ActiveDimsKernel,
-    ARDKernel
+	ActiveDimsKernel,
+	ARDKernel,
+	BatchKernel,
+	DiagKernel,
+	ExpKernel,
+	LogKernel,
+	NegKernel,
+	WrapperKernel,
 )
 
 __all__ = [
-    # Package metadata
-    "__version__",
-    "__author__",
-    "__email__",
-    "__license__",
-    # Base classes
-    "StaticAbstractKernel",
-    "AbstractKernel",
-    # Base kernels
-    "StaticSEKernel",
-    "SEKernel",
-    "StaticConstantKernel",
-    "ConstantKernel",
-    "StaticLinearKernel",
-    "LinearKernel",
-    "StaticPeriodicKernel",
-    "PeriodicKernel",
-    "StaticRationalQuadraticKernel",
-    "RationalQuadraticKernel",
-    # Matern family
-    "StaticMatern12Kernel",
-    "Matern12Kernel",
-    "StaticMatern32Kernel",
-    "Matern32Kernel",
-    "StaticMatern52Kernel",
-    "Matern52Kernel",
-    # Composite kernels
-    "OperatorKernel",
-    "SumKernel",
-    "ProductKernel",
-    # Wrapper kernels
-    "WrapperKernel",
-    "NegKernel",
-    "ExpKernel",
-    "LogKernel",
-    "DiagKernel",
-    "BatchKernel",
-    "ActiveDimsKernel",
-    "ARDKernel",
+	# Package metadata
+	"__version__",
+	"__author__",
+	"__email__",
+	"__license__",
+	# Base classes
+	"StaticAbstractKernel",
+	"AbstractKernel",
+	# Base kernels
+	"StaticSEKernel",
+	"SEKernel",
+	"StaticConstantKernel",
+	"ConstantKernel",
+	"StaticLinearKernel",
+	"LinearKernel",
+	"StaticPeriodicKernel",
+	"PeriodicKernel",
+	"StaticRationalQuadraticKernel",
+	"RationalQuadraticKernel",
+	# Matern family
+	"StaticMatern12Kernel",
+	"Matern12Kernel",
+	"StaticMatern32Kernel",
+	"Matern32Kernel",
+	"StaticMatern52Kernel",
+	"Matern52Kernel",
+	# Composite kernels
+	"OperatorKernel",
+	"SumKernel",
+	"ProductKernel",
+	# Wrapper kernels
+	"WrapperKernel",
+	"NegKernel",
+	"ExpKernel",
+	"LogKernel",
+	"DiagKernel",
+	"BatchKernel",
+	"ActiveDimsKernel",
+	"ARDKernel",
 ]
