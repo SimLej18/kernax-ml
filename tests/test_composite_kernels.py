@@ -4,8 +4,8 @@ Tests for composite and wrapper kernels.
 
 import pytest
 import jax.numpy as jnp
-from Kernax import (
-    RBFKernel,
+from kernax import (
+    SEKernel,
     ConstantKernel,
     SumKernel,
     ProductKernel,
@@ -21,22 +21,22 @@ class TestSumKernel:
 
     def test_instantiation_with_kernels(self):
         """Test that Sum kernel can be instantiated with two kernels."""
-        k1 = RBFKernel(length_scale=1.0, variance=1.0)
+        k1 = SEKernel(length_scale=1.0)
         k2 = ConstantKernel(value=0.5)
         kernel = SumKernel(k1, k2)
-        assert isinstance(kernel.left_kernel, RBFKernel)
+        assert isinstance(kernel.left_kernel, SEKernel)
         assert isinstance(kernel.right_kernel, ConstantKernel)
 
     def test_addition_operator(self):
         """Test that + operator creates SumKernel."""
-        k1 = RBFKernel(length_scale=1.0, variance=1.0)
+        k1 = SEKernel(length_scale=1.0)
         k2 = ConstantKernel(value=0.5)
         kernel = k1 + k2
         assert isinstance(kernel, SumKernel)
 
     def test_computation(self, sample_1d_data):
         """Test that sum kernel computes correctly."""
-        k1 = RBFKernel(length_scale=1.0, variance=1.0)
+        k1 = SEKernel(length_scale=1.0)
         k2 = ConstantKernel(value=0.5)
         kernel = k1 + k2
         x1, x2 = sample_1d_data
@@ -48,7 +48,7 @@ class TestSumKernel:
 
     def test_auto_convert_scalar_to_constant(self):
         """Test that scalars are auto-converted to ConstantKernel."""
-        k1 = RBFKernel(length_scale=1.0, variance=1.0)
+        k1 = SEKernel(length_scale=1.0)
         kernel = SumKernel(k1, 2.0)
         assert isinstance(kernel.right_kernel, ConstantKernel)
 
@@ -58,22 +58,22 @@ class TestProductKernel:
 
     def test_instantiation_with_kernels(self):
         """Test that Product kernel can be instantiated with two kernels."""
-        k1 = RBFKernel(length_scale=1.0, variance=1.0)
+        k1 = SEKernel(length_scale=1.0)
         k2 = ConstantKernel(value=0.5)
         kernel = ProductKernel(k1, k2)
-        assert isinstance(kernel.left_kernel, RBFKernel)
+        assert isinstance(kernel.left_kernel, SEKernel)
         assert isinstance(kernel.right_kernel, ConstantKernel)
 
     def test_multiplication_operator(self):
         """Test that * operator creates ProductKernel."""
-        k1 = RBFKernel(length_scale=1.0, variance=1.0)
+        k1 = SEKernel(length_scale=1.0)
         k2 = ConstantKernel(value=0.5)
         kernel = k1 * k2
         assert isinstance(kernel, ProductKernel)
 
     def test_computation(self, sample_1d_data):
         """Test that product kernel computes correctly."""
-        k1 = RBFKernel(length_scale=1.0, variance=1.0)
+        k1 = SEKernel(length_scale=1.0)
         k2 = ConstantKernel(value=0.5)
         kernel = k1 * k2
         x1, x2 = sample_1d_data
@@ -194,7 +194,7 @@ class TestComplexComposition:
 
     def test_multiple_operations(self, sample_1d_data):
         """Test kernel with multiple composition operations."""
-        k1 = RBFKernel(length_scale=1.0, variance=1.0)
+        k1 = SEKernel(length_scale=1.0)
         k2 = ConstantKernel(value=0.5)
         k3 = DiagKernel(ExpKernel(0.1))
 
@@ -210,7 +210,7 @@ class TestComplexComposition:
     def test_realistic_gp_kernel(self, sample_1d_data):
         """Test a realistic GP kernel: RBF + noise."""
         # Common pattern: signal kernel + noise on diagonal
-        signal = RBFKernel(length_scale=1.0, variance=1.0)
+        signal = SEKernel(length_scale=1.0)
         noise = DiagKernel(ExpKernel(0.1))
         kernel = signal + noise
 

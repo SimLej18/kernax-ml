@@ -1,7 +1,8 @@
 from functools import partial
 
 import jax.numpy as jnp
-from jax import jit
+from jax import jit, Array
+import equinox as eqx
 
 from kernax import StaticAbstractKernel, AbstractKernel
 
@@ -22,11 +23,14 @@ class StaticConstantKernel(StaticAbstractKernel):
 
 
 class ConstantKernel(AbstractKernel):
+	value: Array = eqx.field(converter=jnp.asarray)
+	static_class = StaticConstantKernel
+
 	def __init__(self, value=1.):
 		"""
 		Instantiates a constant kernel with the given value.
 
 		:param value: the value of the constant kernel
 		"""
-		super().__init__(value=value)
-		self.static_class = StaticConstantKernel
+		super().__init__()
+		self.value = value

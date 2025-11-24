@@ -4,8 +4,8 @@ Tests for base kernel implementations.
 
 import pytest
 import jax.numpy as jnp
-from Kernax import (
-    RBFKernel,
+from kernax import (
+    SEKernel,
     LinearKernel,
     Matern12Kernel,
     Matern32Kernel,
@@ -13,22 +13,20 @@ from Kernax import (
     PeriodicKernel,
     RationalQuadraticKernel,
     ConstantKernel,
-    SEMagmaKernel,
 )
 
 
-class TestRBFKernel:
-    """Tests for RBF (Squared Exponential) Kernel."""
+class TestSEKernel:
+    """Tests for SE (Squared Exponential) Kernel."""
 
     def test_instantiation(self):
-        """Test that RBF kernel can be instantiated."""
-        kernel = RBFKernel(length_scale=1.0, variance=1.0)
+        """Test that SE kernel can be instantiated."""
+        kernel = SEKernel(length_scale=1.0)
         assert kernel.length_scale == 1.0
-        assert kernel.variance == 1.0
 
     def test_scalar_computation(self):
         """Test covariance computation between two scalars."""
-        kernel = RBFKernel(length_scale=1.0, variance=1.0)
+        kernel = SEKernel(length_scale=1.0)
         x1 = jnp.array([1.0])
         x2 = jnp.array([2.0])
         result = kernel(x1, x2)
@@ -37,7 +35,7 @@ class TestRBFKernel:
 
     def test_vector_computation(self, sample_1d_data):
         """Test covariance computation between vectors."""
-        kernel = RBFKernel(length_scale=1.0, variance=1.0)
+        kernel = SEKernel(length_scale=1.0)
         x1, x2 = sample_1d_data
         result = kernel(x1, x2)
         assert result.shape == (x1.shape[0], x2.shape[0])
@@ -45,7 +43,7 @@ class TestRBFKernel:
 
     def test_self_covariance_positive(self, sample_1d_data):
         """Test that self-covariance is positive definite."""
-        kernel = RBFKernel(length_scale=1.0, variance=1.0)
+        kernel = SEKernel(length_scale=1.0)
         x1, _ = sample_1d_data
         K = kernel(x1, x1)
         # Check diagonal elements are positive
@@ -161,20 +159,3 @@ class TestConstantKernel:
         result = kernel(x1, x2)
         assert jnp.allclose(result, value)
 
-
-class TestSEMagmaKernel:
-    """Tests for SEMagma Kernel."""
-
-    def test_instantiation(self):
-        """Test that SEMagma kernel can be instantiated."""
-        kernel = SEMagmaKernel(length_scale=1.0, variance=1.0)
-        assert kernel.length_scale == 1.0
-        assert kernel.variance == 1.0
-
-    def test_computation(self, sample_1d_data):
-        """Test covariance computation."""
-        kernel = SEMagmaKernel(length_scale=1.0, variance=1.0)
-        x1, x2 = sample_1d_data
-        result = kernel(x1, x2)
-        assert result.shape == (x1.shape[0], x2.shape[0])
-        assert jnp.all(jnp.isfinite(result))

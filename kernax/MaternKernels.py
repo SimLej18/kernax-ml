@@ -1,7 +1,8 @@
 from functools import partial
 
-from jax import jit
+from jax import jit, Array
 from jax import numpy as jnp
+import equinox as eqx
 
 from kernax import StaticAbstractKernel, AbstractKernel
 
@@ -24,9 +25,12 @@ class StaticMatern12Kernel(StaticAbstractKernel):
 
 
 class Matern12Kernel(AbstractKernel):
-    def __init__(self, length_scale=None):
-        super().__init__(length_scale=length_scale)
-        self.static_class = StaticMatern12Kernel
+    length_scale: Array = eqx.field(converter=jnp.asarray)
+    static_class = StaticMatern12Kernel
+
+    def __init__(self, length_scale):
+        super().__init__()
+        self.length_scale = length_scale
 
 
 # Matern 3/2 Kernel defined in Rasmussen and Williams (2006), section 4.2
@@ -48,9 +52,12 @@ class StaticMatern32Kernel(StaticAbstractKernel):
 
 
 class Matern32Kernel(AbstractKernel):
-    def __init__(self, length_scale=None):
-        super().__init__(length_scale=length_scale)
-        self.static_class = StaticMatern32Kernel
+    length_scale: Array = eqx.field(converter=jnp.asarray)
+    static_class = StaticMatern32Kernel
+
+    def __init__(self, length_scale):
+        super().__init__()
+        self.length_scale = length_scale
 
 
 # Matern 5/2 Kernel defined in Rasmussen and Williams (2006), section 4.2
@@ -72,6 +79,9 @@ class StaticMatern52Kernel(StaticAbstractKernel):
 
 
 class Matern52Kernel(AbstractKernel):
-    def __init__(self, length_scale=None):
-        super().__init__(length_scale=length_scale)
-        self.static_class = StaticMatern52Kernel
+    length_scale: Array = eqx.field(converter=jnp.asarray)
+    static_class = StaticMatern52Kernel
+
+    def __init__(self, length_scale):
+        super().__init__()
+        self.length_scale = length_scale

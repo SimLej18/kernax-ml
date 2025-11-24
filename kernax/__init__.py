@@ -21,7 +21,16 @@ from .PeriodicKernel import StaticPeriodicKernel, PeriodicKernel
 from .RationalQuadraticKernel import StaticRationalQuadraticKernel, RationalQuadraticKernel
 from .ConstantKernel import StaticConstantKernel, ConstantKernel
 from .OperatorKernels import OperatorKernel, SumKernel, ProductKernel
-from .WrapperKernels import WrapperKernel, NegKernel, ExpKernel, LogKernel, DiagKernel
+from .WrapperKernels import (
+    WrapperKernel,
+    NegKernel,
+    ExpKernel,
+    LogKernel,
+    DiagKernel,
+    BatchKernel,
+    ActiveDimsKernel,
+    ARDKernel
+)
 
 __all__ = [
     # Package metadata
@@ -60,4 +69,7 @@ __all__ = [
     "ExpKernel",
     "LogKernel",
     "DiagKernel",
+    "BatchKernel",
+    "ActiveDimsKernel",
+    "ARDKernel",
 ]

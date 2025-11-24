@@ -1,7 +1,8 @@
 from functools import partial
 
-from jax import jit
+from jax import jit, Array
 from jax import numpy as jnp
+import equinox as eqx
 
 from kernax import StaticAbstractKernel, AbstractKernel
 
@@ -26,12 +27,18 @@ class StaticRationalQuadraticKernel(StaticAbstractKernel):
 
 
 class RationalQuadraticKernel(AbstractKernel):
-	def __init__(self, length_scale=None, variance=None, alpha=None, **kwargs):
+	length_scale: Array = eqx.field(converter=jnp.asarray)
+	variance: Array = eqx.field(converter=jnp.asarray)
+	alpha: Array = eqx.field(converter=jnp.asarray)
+	static_class = StaticRationalQuadraticKernel
+
+	def __init__(self, length_scale, variance, alpha):
 		"""
 		:param length_scale: length scale parameter (ℓ)
 		:param variance: variance (σ²)
 		:param alpha: relative weighting of large-scale and small-scale variations (α)
 		"""
-		super().__init__(length_scale=length_scale, variance=variance, alpha=alpha, **kwargs)
-		
-		self.static_class = StaticRationalQuadraticKernel
+		super().__init__()
+		self.length_scale = length_scale
+		self.variance = variance
+		self.alpha = alpha

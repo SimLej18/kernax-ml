@@ -44,10 +44,10 @@ pip install -e .
 
 ```python
 import jax.numpy as jnp
-from Kernax import RBFKernel, LinearKernel, DiagKernel, ExpKernel
+from Kernax import SEKernel, LinearKernel, DiagKernel, ExpKernel, BatchKernel, ARDKernel
 
-# Create a simple RBF kernel
-kernel = RBFKernel(length_scale=1.0, variance=1.0)
+# Create a simple Squared Exponential kernel
+kernel = SEKernel(length_scale=1.0)
 
 # Compute covariance between two points
 x1 = jnp.array([1.0, 2.0])
@@ -59,27 +59,23 @@ X = jnp.array([[1.0], [2.0], [3.0]])
 K = kernel(X, X)  # Returns 3x3 covariance matrix
 
 # Compose kernels using operators
-composite_kernel = RBFKernel(length_scale=1.0, variance=1.0) + \
-                   DiagKernel(ExpKernel(0.1))  # RBF + noise
+composite_kernel = SEKernel(length_scale=1.0) + DiagKernel(ExpKernel(0.1))  # SE + noise
 
-# Use with batched inputs and distinct hyperparameters
-X_batched = jnp.array([...])  # Shape: (batch_size, n_points, n_dims)
-length_scales = jnp.array([...])  # Shape: (batch_size,)
-variances = jnp.array([...])      # Shape: (batch_size,)
+# Use BatchKernel for distinct hyperparameters per batch
+base_kernel = SEKernel(length_scale=1.0)
+batched_kernel = BatchKernel(base_kernel, batch_size=10, batch_in_axes=0, batch_over_inputs=True)
 
-batched_kernel = RBFKernel(length_scale=length_scales, variance=variances)
-K_batched = batched_kernel(X_batched, X_batched)  # Shape: (batch_size, n_points, n_points)
+# Use ARDKernel for Automatic Relevance Determination
+length_scales = jnp.array([1.0, 2.0, 0.5])  # Different scale per dimension
+ard_kernel = ARDKernel(SEKernel(length_scale=1.0), length_scales=length_scales)
 ```
 
 ## Available Kernels
 
 ### Base Kernels
 
-- **`RBFKernel`** (Radial Basis Function / Squared Exponential)
-  - Hyperparameters: `length_scale`, `variance`
-
-- **`SEMagmaKernel`** (Squared Exponential with specialized parameterization)
-  - Hyperparameters: `length_scale`, `variance`
+- **`SEKernel`** (Squared Exponential, aka RBF or Gaussian)
+  - Hyperparameters: `length_scale`
 
 - **`LinearKernel`**
   - Hyperparameters: `variance_b`, `variance_v`, `offset_c`
@@ -106,22 +102,30 @@ K_batched = batched_kernel(X_batched, X_batched)  # Shape: (batch_size, n_points
 
 ### Wrapper Kernels
 
+Transform or modify kernel behavior:
+
 - **`DiagKernel`**: Returns value only when inputs are equal (creates diagonal matrices)
 - **`ExpKernel`**: Applies exponential to kernel output
 - **`LogKernel`**: Applies logarithm to kernel output
 - **`NegKernel`**: Negates kernel output (use `-kernel`)
+- **`BatchKernel`**: Adds batch handling with distinct hyperparameters per batch
+- **`ActiveDimsKernel`**: Selects specific input dimensions before kernel computation
+- **`ARDKernel`**: Applies Automatic Relevance Determination (different length scale per dimension)
 
 ## Architecture
 
-Kernax uses a dual-class pattern (separating _state_ and _structure_) for each kernel type:
+Kernax is built on [Equinox](https://github.com/patrick-kidger/equinox), making kernels PyTorch-like modules with clean differentiation.
 
-1. **Static Class** (e.g., `StaticRBFKernel`): Contains JIT-compiled computation logic
-2. **Instance Class** (e.g., `RBFKernel`): Holds hyperparameters as PyTree nodes
+Each kernel uses a dual-class pattern:
+
+1. **Static Class** (e.g., `StaticSEKernel`): Contains JIT-compiled computation logic
+2. **Instance Class** (e.g., `SEKernel`): Extends `eqx.Module`, holds hyperparameters
 
 This design enables:
-- Efficient JIT compilation with static methods
-- Flexible hyperparameter management
-- Seamless integration with JAX's gradient computation and transformations
+- Efficient JIT compilation with Equinox's `filter_jit`
+- Automatic PyTree registration through `eqx.Module`
+- Seamless integration with JAX transformations (grad, vmap, etc.)
+- Clean hyperparameter management with automatic array conversion
 
 See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
 
@@ -138,42 +142,25 @@ See `benchmarks/` directory for detailed performance comparisons.
 
 ## Development Status
 
-### Working
+### ✅ Completed
 
-✅ Core kernel implementations (RBF, Linear, Matern, Periodic, etc.)
+- Core kernel implementations (SE, Linear, Matern, Periodic, etc.)
+- Kernel composition via operators
+- Automatic dimension handling
+- NaN-aware computations
+- Equinox Module integration
+- BatchKernel wrapper for batched hyperparameters
+- ARDKernel wrapper for Automatic Relevance Determination
+- ActiveDimsKernel wrapper for dimension selection
 
-✅ Kernel composition via operators
+### 🚧 In Progress / Planned
 
-✅ Automatic dimension handling
-
-✅ NaN-aware computations
-
-✅ Batched operations with distinct hyperparameters
-
-✅ JAX PyTree integration
-
-
-### In Progress / Planned
-
-🚧 Make Kernels extend Equinox's Module for better compatibility
-
-🚧 Use Equinox's feature for automatic jax.arrays conversions and parameter freezing
-
-🚧 Create Batch_Kernel and ARD_Kernel wrappers instead of handling batch in base kernels
-
-🚧 Add a static `active_dims` argument to kernels for dimension selection
-
-🚧 Rewrite inheritance to have StationaryKernel and IsotropicKernel base classes
-
-🚧 Write various computation engines for scenarios where e.g. only a diagonal is needed
-
-🚧 Comprehensive test suite
-
-🚧 Documentation and tutorials
-
-🚧 PyPI package distribution
-
-🚧 Benchmarks against other libraries (GPJax, ...)
+- Rewrite inheritance with StationaryKernel and IsotropicKernel base classes
+- Add computation engines for special cases (diagonal-only, etc.)
+- Comprehensive test suite covering all new features
+- Expanded documentation and tutorials
+- PyPI package distribution
+- Benchmarks against other libraries (GPJax, TinyGP, etc.)
 
 
 ## Contributing

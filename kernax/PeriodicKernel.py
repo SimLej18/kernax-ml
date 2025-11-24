@@ -1,7 +1,8 @@
 from functools import partial
 
-from jax import jit
+from jax import jit, Array
 from jax import numpy as jnp
+import equinox as eqx
 
 from kernax import StaticAbstractKernel, AbstractKernel
 
@@ -24,12 +25,18 @@ class StaticPeriodicKernel(StaticAbstractKernel):
 
 
 class PeriodicKernel(AbstractKernel):
-	def __init__(self, length_scale=None, variance=None, period=None):
+	length_scale: Array = eqx.field(converter=jnp.asarray)
+	variance: Array = eqx.field(converter=jnp.asarray)
+	period: Array = eqx.field(converter=jnp.asarray)
+	static_class = StaticPeriodicKernel
+
+	def __init__(self, length_scale, variance, period):
 		"""
 		:param length_scale: length scale parameter (ℓ)
 		:param variance: variance parameter (σ²)
 		:param period: period parameter (p)
 		"""
-		super().__init__(length_scale=length_scale, variance=variance, period=period)
-
-		self.static_class = StaticPeriodicKernel
+		super().__init__()
+		self.length_scale = length_scale
+		self.variance = variance
+		self.period = period

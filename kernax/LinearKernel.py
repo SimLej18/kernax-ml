@@ -1,7 +1,8 @@
 from functools import partial
 
-from jax import jit
+from jax import jit, Array
 from jax import numpy as jnp
+import equinox as eqx
 
 from kernax import StaticAbstractKernel, AbstractKernel
 
@@ -28,17 +29,18 @@ class StaticLinearKernel(StaticAbstractKernel):
 
 
 class LinearKernel(AbstractKernel):
-    def __init__(self, variance_b=None, variance_v=None, offset_c=None, **kwargs):
+    variance_b: Array = eqx.field(converter=jnp.asarray)
+    variance_v: Array = eqx.field(converter=jnp.asarray)
+    offset_c: Array = eqx.field(converter=jnp.asarray)
+    static_class = StaticLinearKernel
+
+    def __init__(self, variance_b, variance_v, offset_c):
         """
         :param variance_b: Bias variance (σ²_b). Controls the vertical offset.
         :param variance_v: Weight variance (σ²_v). Controls the slope.
         :param offset_c: Input offset (c). Determines the crossing point of the functions.
         """
-        super().__init__(
-            variance_b=variance_b, 
-            variance_v=variance_v, 
-            offset_c=offset_c, 
-            **kwargs
-        )
-        
-        self.static_class = StaticLinearKernel
+        super().__init__()
+        self.variance_b = variance_b
+        self.variance_v = variance_v
+        self.offset_c = offset_c

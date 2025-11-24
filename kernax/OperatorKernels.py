@@ -1,11 +1,15 @@
 import jax.numpy as jnp
 from jax import jit
+import equinox as eqx
 
 from kernax import AbstractKernel, ConstantKernel
 
 
 class OperatorKernel(AbstractKernel):
 	""" Class for kernels that apply some operation on the output of two kernels."""
+	left_kernel: AbstractKernel = eqx.field()
+	right_kernel: AbstractKernel = eqx.field()
+
 	def __init__(self, left_kernel, right_kernel):
 		"""
 		Instantiates a sum kernel with the given kernels.
@@ -19,7 +23,9 @@ class OperatorKernel(AbstractKernel):
 		if not isinstance(right_kernel, AbstractKernel):
 			right_kernel = ConstantKernel(value=right_kernel)
 
-		super().__init__(left_kernel=left_kernel, right_kernel=right_kernel)
+		super().__init__()
+		self.left_kernel = left_kernel
+		self.right_kernel = right_kernel
 
 
 class SumKernel(OperatorKernel):

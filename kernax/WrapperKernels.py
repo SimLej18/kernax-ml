@@ -26,6 +26,63 @@ class WrapperKernel(AbstractKernel):
 		self.inner_kernel = inner_kernel
 
 
+class StaticDiagKernel(StaticAbstractKernel):
+	"""
+	Static kernel that returns a value only if the inputs are equal, otherwise returns 0.
+	This results in a diagonal cross-covariance matrix.
+	"""
+	@classmethod
+	@partial(jit, static_argnums=(0,))
+	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+		return cond(jnp.all(x1 == x2),
+		            lambda _: kern.inner_kernel(x1, x2),
+		            lambda _: jnp.array(0.0),
+		            None)
+
+
+class DiagKernel(WrapperKernel):
+	"""
+	Kernel that returns a value only if the inputs are equal, otherwise returns 0.
+	This results in a diagonal cross-covariance matrix.
+	"""
+	static_class = StaticDiagKernel
+
+	def __init__(self, inner_kernel=None):
+		super().__init__(inner_kernel=inner_kernel)
+
+
+class ExpKernel(WrapperKernel):
+	"""
+	Kernel that applies the exponential operator to the output of another kernel.
+	"""
+	@jit
+	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
+		if x2 is None:
+			x2 = x1
+
+		return jnp.exp(self.inner_kernel(x1, x2))
+
+
+class LogKernel(WrapperKernel):
+	"""
+	Kernel that applies the logarithm operator to the output of another kernel.
+	"""
+	@jit
+	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
+		if x2 is None:
+			x2 = x1
+
+		return jnp.log(self.inner_kernel(x1, x2))
+
+
+class NegKernel(WrapperKernel):
+	@jit
+	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
+		if x2 is None:
+			x2 = x1
+
+		return - self.inner_kernel(x1, x2)
+
 
 class BatchKernel(WrapperKernel):
 	"""
@@ -149,6 +206,7 @@ class ARDKernel(WrapperKernel):
 		if x2 is None:
 			x2 = x1
 
+		# FIXME: this triggers a FrozenInstanceError, as inner_kernel (like every Equinox Module) is supposed to be immutable
 		self.inner_kernel.length_scale = jnp.ones_like(self.inner_kernel.length_scale)  # Ensure inner kernel length_scale is 1
 
 		return self.inner_kernel(x1 / self.length_scales, x2 / self.length_scales)
