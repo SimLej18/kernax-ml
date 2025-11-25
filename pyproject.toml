@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kernax-ml"
-version = "v0.1.0-alpha"
+version = "v0.1.1-alpha"
 description = "A JAX-based kernel library for Gaussian Processes with automatic differentiation and composable operations"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
     {name = "S. Lejoly", email = "simon.lejoly@unamur.be"}
@@ -107,7 +107,7 @@ force-single-line = false
 force-sort-within-sections = false
 
 [tool.mypy]
-python_version = "3.14"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
