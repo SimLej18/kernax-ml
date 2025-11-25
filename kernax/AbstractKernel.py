@@ -37,7 +37,7 @@ class AbstractKernel(eqx.Module):
 		else:
 			raise ValueError(
 				f"Invalid input dimensions: x1 has shape {x1.shape}, x2 has shape {x2.shape}. "
-				"Expected 1D, 2D arrays or 3D arrays for batched inputs."
+				"Expected scalar, 1D or 2D arrays as inputs."
 			)
 
 	def __add__(self, other):
