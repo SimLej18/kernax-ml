@@ -1,7 +1,7 @@
 """
-Kernax: A JAX-based kernel library for Gaussian Processes.
+kernax-ml: A JAX-based kernel library for Gaussian Processes.
 
-Kernax provides a collection of kernel functions (covariance functions) for
+kernax-ml provides a collection of kernel functions (covariance functions) for
 Gaussian Process models, with support for automatic differentiation, JIT
 compilation, and composable kernel operations.
 """

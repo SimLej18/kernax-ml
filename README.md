@@ -15,11 +15,17 @@ A JAX-based kernel library for Gaussian Processes with automatic differentiation
 
 ## Installation
 
-Currently, Kernax is not available on PyPI. Clone the repository and use it locally:
+Install from PyPI:
 
 ```bash
-git clone https://github.com/SimLej18/Kernax
-cd Kernax
+pip install kernax-ml
+```
+
+Or clone the repository for development:
+
+```bash
+git clone https://github.com/SimLej18/kernax-ml
+cd kernax-ml
 ```
 
 **Requirements**:
@@ -29,8 +35,8 @@ cd Kernax
 **Using Conda** (recommended):
 
 ```bash
-conda create -n Kernax python=3.14
-conda activate Kernax
+conda create -n kernax-ml python=3.14
+conda activate kernax-ml
 pip install -e .
 ```
 
@@ -44,7 +50,7 @@ pip install -e .
 
 ```python
 import jax.numpy as jnp
-from Kernax import SEKernel, LinearKernel, DiagKernel, ExpKernel, BatchKernel, ARDKernel
+from kernax import SEKernel, LinearKernel, DiagKernel, ExpKernel, BatchKernel, ARDKernel
 
 # Create a simple Squared Exponential kernel
 kernel = SEKernel(length_scale=1.0)

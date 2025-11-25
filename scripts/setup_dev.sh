@@ -1,5 +1,5 @@
 #!/bin/bash
-# Development environment setup script for Kernax using Conda
+# Development environment setup script for kernax-ml using Conda
 
 set -e  # Exit on error
 
@@ -26,7 +26,7 @@ if conda env list | grep -q "^Kernax "; then
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         echo "Removing existing environment..."
-        conda env remove -n Kernax -y
+        conda env remove -n kernax-ml -y
     else
         echo "Using existing environment."
         SKIP_CREATE=true
@@ -37,14 +37,14 @@ fi
 if [ "$SKIP_CREATE" != "true" ]; then
     echo ""
     echo "Creating conda environment 'Kernax' with Python 3.14..."
-    conda create -n Kernax python=3.14 -y
+    conda create -n kernax-ml python=3.14 -y
 fi
 
 # Activate environment
 echo ""
 echo "Activating conda environment..."
 eval "$(conda shell.bash hook)"
-conda activate Kernax
+conda activate kernax-ml
 
 # Upgrade pip
 echo ""

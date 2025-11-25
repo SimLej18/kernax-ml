@@ -1,4 +1,4 @@
-name: Kernax
+name: kernax-ml
 channels:
   - conda-forge
   - defaults

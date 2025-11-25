@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "kernax"
-version = "0.1.0"
+name = "kernax-ml"
+version = "v0.1.0-alpha"
 description = "A JAX-based kernel library for Gaussian Processes with automatic differentiation and composable operations"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -58,10 +58,10 @@ benchmarks = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/SimLej18/Kernax"
-Repository = "https://github.com/SimLej18/Kernax"
-Documentation = "https://kernax.readthedocs.io"
-"Bug Tracker" = "https://github.com/SimLej18/Kernax/issues"
+Homepage = "https://github.com/SimLej18/kernax-ml"
+Repository = "https://github.com/SimLej18/kernax-ml"
+Documentation = "https://kernax-ml.readthedocs.io"
+"Bug Tracker" = "https://github.com/SimLej18/kernax-ml/issues"
 
 [tool.setuptools]
 packages = ["kernax"]

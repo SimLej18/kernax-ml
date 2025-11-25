@@ -1,5 +1,5 @@
 """
-Setup script for Kernax package.
+Setup script for kernax-ml package.
 
 This file exists for backward compatibility with older tools.
 All configuration is in pyproject.toml.

@@ -6,8 +6,8 @@ Thank you for your interest in contributing to Kernax! This document provides gu
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/SimLej18/Kernax
-cd Kernax
+git clone https://github.com/SimLej18/kernax-ml
+cd kernax-ml
 ```
 
 2. Install development dependencies:
@@ -66,7 +66,7 @@ To add a new kernel type:
 from functools import partial
 from jax import jit
 import jax.numpy as jnp
-from Kernax import StaticAbstractKernel
+from kernax import StaticAbstractKernel
 
 class StaticNewKernel(StaticAbstractKernel):
     @classmethod
@@ -79,7 +79,7 @@ class StaticNewKernel(StaticAbstractKernel):
 3. Implement the instance class:
 ```python
 from jax.tree_util import register_pytree_node_class
-from Kernax import AbstractKernel
+from kernax import AbstractKernel
 
 @register_pytree_node_class
 class NewKernel(AbstractKernel):

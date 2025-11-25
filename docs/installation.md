@@ -6,13 +6,21 @@
 - JAX >= 0.8.0
 - JAXlib >= 0.8.0
 
-## From Source (Current)
+## From PyPI
 
-Since Kernax is not yet on PyPI, you need to install from source:
+Install the latest release:
 
 ```bash
-git clone https://github.com/SimLej18/Kernax
-cd Kernax
+pip install kernax-ml
+```
+
+## From Source
+
+For development or the latest changes:
+
+```bash
+git clone https://github.com/SimLej18/kernax-ml
+cd kernax-ml
 pip install -e .
 ```
 

@@ -61,8 +61,8 @@ python scripts/verify_setup.py
 ### Initial Setup
 ```bash
 # Clone repository
-git clone https://github.com/SimLej18/Kernax
-cd Kernax
+git clone https://github.com/SimLej18/kernax-ml
+cd kernax-ml
 
 # Run setup script
 bash scripts/setup_dev.sh
@@ -74,7 +74,7 @@ python scripts/verify_setup.py
 ### Updating Environment
 ```bash
 # Activate environment
-conda activate Kernax
+conda activate kernax-ml
 
 # Update dependencies
 pip install -r requirements.txt -r requirements-dev.txt
@@ -101,7 +101,7 @@ The setup script will prompt you to remove and recreate or keep the existing env
 #### Import errors
 ```bash
 # Make sure environment is activated
-conda activate Kernax
+conda activate kernax-ml
 
 # Reinstall in editable mode
 pip install -e .

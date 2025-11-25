@@ -1,3 +1,3 @@
 """
-Test suite for Kernax package.
+Test suite for kernax-ml package.
 """

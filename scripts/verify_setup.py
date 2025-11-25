@@ -40,7 +40,7 @@ def check_placeholder(filepath, description):
 
 def main():
     print("=" * 60)
-    print("Kernax Package Setup Verification")
+    print("kernax-ml Package Setup Verification")
     print("=" * 60)
     print()
 
@@ -70,8 +70,8 @@ def main():
     all_good &= check_file("SETUP_CHECKLIST.md", "Setup checklist")
     print()
 
-    # Kernax package
-    print("Kernax Package:")
+    # kernax-ml package
+    print("kernax-ml Package:")
     print("-" * 60)
     all_good &= check_file("kernax/__init__.py", "Package init")
     all_good &= check_file("kernax/py.typed", "Type hints marker")

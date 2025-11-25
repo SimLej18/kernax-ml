@@ -75,7 +75,7 @@ The `AbstractKernel` class (kernax/AbstractKernel.py:10-63) extends `eqx.Module`
 # Navigate to the kernax directory
 cd kernax
 
-# Run Python scripts that import Kernax
+# Run Python scripts that import kernax-ml
 python3 script.py
 ```
 
@@ -84,7 +84,7 @@ python3 script.py
 # Import and test a kernel in Python REPL
 cd kernax
 python3
->>> from Kernax import SEKernel
+>>> from kernax-ml import SEKernel
 >>> import jax.numpy as jnp
 >>> kernel = SEKernel(length_scale=1.0)
 >>> kernel(jnp.array([1.0]), jnp.array([2.0]))
@@ -129,8 +129,8 @@ class MyKernel(AbstractKernel):
 
 ### Import Patterns
 
-- Within kernax modules: Use `from Kernax import` or relative imports `from .AbstractKernel import`
-- Import inconsistency exists: Some files use `from Kernax import`, others use `from .AbstractKernel import` (both work)
+- Within kernax modules: Use `from kernax import` or relative imports `from .AbstractKernel import`
+- Import inconsistency exists: Some files use `from kernax import`, others use `from .AbstractKernel import` (both work)
 
 ### JAX and Equinox Considerations
 
