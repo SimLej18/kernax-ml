@@ -52,6 +52,9 @@ class DiagKernel(WrapperKernel):
 	def __init__(self, inner_kernel=None):
 		super().__init__(inner_kernel=inner_kernel)
 
+	def __str__(self):
+		return f"Diag({self.inner_kernel})"
+
 
 class ExpKernel(WrapperKernel):
 	"""
@@ -64,6 +67,9 @@ class ExpKernel(WrapperKernel):
 			x2 = x1
 
 		return jnp.exp(self.inner_kernel(x1, x2))
+
+	def __str__(self):
+		return f"Exp({self.inner_kernel})"
 
 
 class LogKernel(WrapperKernel):
@@ -78,6 +84,9 @@ class LogKernel(WrapperKernel):
 
 		return jnp.log(self.inner_kernel(x1, x2))
 
+	def __str__(self):
+		return f"Log({self.inner_kernel})"
+
 
 class NegKernel(WrapperKernel):
 	@jit
@@ -86,6 +95,9 @@ class NegKernel(WrapperKernel):
 			x2 = x1
 
 		return -self.inner_kernel(x1, x2)
+
+	def __str__(self):
+		return f"- {self.inner_kernel}"
 
 
 class BatchKernel(WrapperKernel):
@@ -167,6 +179,10 @@ class BatchKernel(WrapperKernel):
 				self.batch_over_inputs if x2 is not None else None,
 			),
 		)(self.inner_kernel, x1, x2)
+
+	def __str__(self):
+		# just str of the inner kernel, as the batch info is in the parameters of the inner kernel
+		return f"{self.inner_kernel}"
 
 
 class ActiveDimsKernel(WrapperKernel):

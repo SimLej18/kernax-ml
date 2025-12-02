@@ -39,6 +39,12 @@ class SumKernel(OperatorKernel):
 
 		return self.left_kernel(x1, x2) + self.right_kernel(x1, x2)
 
+	def __str__(self):
+		# If the right kernel is a NegKernel, we format it as a subtraction
+		if self.right_kernel.__class__.__name__ == "NegKernel":
+			return f"{self.left_kernel} - {self.right_kernel.inner_kernel}"
+		return f"{self.left_kernel} + {self.right_kernel}"
+
 
 class ProductKernel(OperatorKernel):
 	"""Product kernel that multiplies the outputs of two kernels."""
@@ -49,3 +55,9 @@ class ProductKernel(OperatorKernel):
 			x2 = x1
 
 		return self.left_kernel(x1, x2) * self.right_kernel(x1, x2)
+
+	def __str__(self):
+		# If the right kernel is a NegKernel, we add parentheses around it
+		if self.right_kernel.__class__.__name__ == "NegKernel":
+			return f"{self.left_kernel} * ({self.right_kernel})"
+		return f"{self.left_kernel} * {self.right_kernel}"

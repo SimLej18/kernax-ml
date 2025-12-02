@@ -4,18 +4,10 @@ from equinox import filter_jit
 from jax import vmap
 from jax.lax import cond
 
+from .utils import format_jax_array
+
 
 class AbstractKernel(eqx.Module):
-	"""
-	# TODO: check Equinox __str__ and __repr__ methods and adapt if needed
-	def __str__(self):
-		return f"{self.__class__.__name__}({', '.join([f'{key}={value}' for key, value in self.__dict__.items() \
-		if key not in self.static_attributes])})"
-
-	def __repr__(self):
-		return str(self)
-	"""
-
 	@filter_jit
 	def __call__(self, x1, x2=None):
 		# If no x2 is provided, we compute the covariance between x1 and itself
@@ -50,6 +42,18 @@ class AbstractKernel(eqx.Module):
 
 		return SumKernel(other, self)
 
+	def __sub__(self, other):
+		from kernax.OperatorKernels import SumKernel
+		from kernax.WrapperKernels import NegKernel
+
+		return SumKernel(self, NegKernel(other))
+
+	def __rsub__(self, other):
+		from kernax.OperatorKernels import SumKernel
+		from kernax.WrapperKernels import NegKernel
+
+		return SumKernel(other, NegKernel(self))
+
 	def __neg__(self):
 		from kernax.WrapperKernels import NegKernel
 
@@ -64,6 +68,11 @@ class AbstractKernel(eqx.Module):
 		from kernax.OperatorKernels import ProductKernel
 
 		return ProductKernel(other, self)
+
+	def __str__(self):
+		# Print parameters, aka elements of __dict__ that are jax arrays
+		return f"{self.__class__.__name__}({', '.join([f'{key}={format_jax_array(value)}' for key, value in self.__dict__.items() \
+		if isinstance(value, jnp.ndarray)])})"
 
 
 class StaticAbstractKernel:

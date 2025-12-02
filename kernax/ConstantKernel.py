@@ -4,6 +4,7 @@ from equinox import filter_jit
 from jax import Array
 
 from kernax import AbstractKernel, StaticAbstractKernel
+from .utils import format_jax_array
 
 
 class StaticConstantKernel(StaticAbstractKernel):
@@ -33,3 +34,7 @@ class ConstantKernel(AbstractKernel):
 		"""
 		super().__init__()
 		self.value = value
+
+	def __str__(self):
+		return format_jax_array(self.value)
+
