@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performance optimizations
 - More extensive test coverage
 
+## [0.1.3-alpha] - 2025-01-21
+
+### Added
+- New kernel: `BlockKernel` for block-structured covariance matrices
+
 ## [0.1.2-alpha] - 2024-12-02
 
 ### Added

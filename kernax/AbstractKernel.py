@@ -70,6 +70,8 @@ class AbstractKernel(eqx.Module):
 		return ProductKernel(other, self)
 
 	def __str__(self):
+		# FIXME: do not call `format_jax_array` when the pytree is filled with non-float values
+		#  For example, try to print the `batch_in_axes` property of a BatchKernel
 		# Print parameters, aka elements of __dict__ that are jax arrays
 		return f"{self.__class__.__name__}({', '.join([f'{key}={format_jax_array(value)}' for key, value in self.__dict__.items() \
 		if isinstance(value, jnp.ndarray)])})"

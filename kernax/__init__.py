@@ -6,7 +6,7 @@ Gaussian Process models, with support for automatic differentiation, JIT
 compilation, and composable kernel operations.
 """
 
-__version__ = "0.1.0"
+__version__ = "0.1.3-alpha"
 __author__ = "S. Lejoly"
 __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"
@@ -35,6 +35,7 @@ from .WrapperKernels import (
 	LogKernel,
 	NegKernel,
 	WrapperKernel,
+	BlockKernel,
 )
 
 __all__ = [
@@ -77,4 +78,5 @@ __all__ = [
 	"BatchKernel",
 	"ActiveDimsKernel",
 	"ARDKernel",
+	"BlockKernel",
 ]

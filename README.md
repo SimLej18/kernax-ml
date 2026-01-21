@@ -115,6 +115,7 @@ Transform or modify kernel behavior:
 - **`LogKernel`**: Applies logarithm to kernel output
 - **`NegKernel`**: Negates kernel output (use `-kernel`)
 - **`BatchKernel`**: Adds batch handling with distinct hyperparameters per batch
+- **`BlockKernel`**: Constructs block covariance matrices for grouped data
 - **`ActiveDimsKernel`**: Selects specific input dimensions before kernel computation
 - **`ARDKernel`**: Applies Automatic Relevance Determination (different length scale per dimension)
 
