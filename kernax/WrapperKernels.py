@@ -1,6 +1,7 @@
 from functools import partial
 
 import equinox as eqx
+from equinox import filter_jit
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import jit, vmap
