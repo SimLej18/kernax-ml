@@ -3,6 +3,7 @@ from functools import partial
 import equinox as eqx
 from equinox import filter_jit
 import jax.numpy as jnp
+import jax.scipy as jsp
 import jax.tree_util as jtu
 from jax import jit, vmap
 from jax.lax import cond
@@ -186,6 +187,43 @@ class BatchKernel(WrapperKernel):
 		return f"{self.inner_kernel}"
 
 
+@jit
+def symmetric_blocks_to_matrix(flat_blocks):
+	"""
+	Rebuilds a symmetric matrix from its unique blocks (upper triangle).
+
+	Args:
+		flat_blocks: Tensor (T, H, W) where T is a triangular number.
+					 Expected order: (0,0), (0,1), (0,2)... (row-major upper)
+	"""
+	# 1. Déduire le nombre de blocs (B) à partir de T
+	# Formule inverse de T = B(B+1)/2  =>  B^2 + B - 2T = 0
+	t, h, w = flat_blocks.shape
+	n_blocks = int((np.sqrt(8 * t + 1) - 1) / 2) # ou jnp.sqrt si t est tracé
+
+	# 2. Créer la grille de blocs vide (B, B, H, W)
+	grid = jnp.zeros((n_blocks, n_blocks, h, w), dtype=flat_blocks.dtype)
+
+	# 3. Récupérer les indices du triangle supérieur
+	# ex: rows=[0,0,1], cols=[0,1,1] pour B=2
+	rows, cols = jnp.triu_indices(n_blocks)
+
+	# 4. Remplir le triangle supérieur
+	grid = grid.at[rows, cols].set(flat_blocks)
+
+	# 5. Remplir le triangle inférieur par symétrie
+	# On prend le bloc en (rows, cols), on le transpose (swapaxes -1, -2)
+	# et on le place en (cols, rows).
+	# Note : Sur la diagonale (rows==cols), cela transpose le bloc sur lui-même,
+	# ce qui est correct car un bloc diagonal d'une matrice symétrique est lui-même symétrique.
+	grid = grid.at[cols, rows].set(grid[rows, cols].swapaxes(-1, -2))
+
+	# 6. Assemblage final (Même logique que précédemment)
+	return (grid
+			.swapaxes(1, 2)        # (RowBlock, H, ColBlock, W)
+			.reshape(n_blocks * h, n_blocks * w))
+
+
 class BlockKernel(WrapperKernel):
 	"""
 	Wrapper kernel to build block covariance matrices using any kernel.
@@ -236,7 +274,7 @@ class BlockKernel(WrapperKernel):
 
 		self.block_over_inputs = 0 if block_over_inputs else None
 
-		# Add batch dimension to parameters where batch_in_axes is 0
+		# Add block dimension to parameters where batch_in_axes is 0
 		self.inner_kernel = jtu.tree_map(
 			lambda param, block_in_ax: (
 				param if block_in_ax is None else jnp.repeat(param[None, ...], nb_blocks, axis=0)
@@ -271,19 +309,53 @@ class BlockKernel(WrapperKernel):
 		x1 = x1[rows] if self.block_over_inputs == 0 else x1
 		x2 = x2[cols] if self.block_over_inputs == 0 else x2
 
-		# vmap over the batch dimension of inner_kernel and inputs
-		# Each batch element gets its own version of inner_kernel with corresponding hyperparameters
-		return vmap(
+		# vmap over the block dimension of inner_kernel and inputs
+		# Each block element gets its own version of inner_kernel with corresponding hyperparameters
+		return symmetric_blocks_to_matrix(vmap(
 			lambda kernel, x1, x2: kernel(x1, x2),
 			in_axes=(
 				jtu.tree_map(lambda x: None if x is None else 0, self.block_in_axes),
 				self.block_over_inputs,
 				self.block_over_inputs,
 			),
-		)(full_kernel, x1, x2)
+		)(full_kernel, x1, x2))
 
 	def __str__(self):
 		return f"Block{self.inner_kernel}"
+
+
+class BlockDiagKernel(BatchKernel):
+	"""
+	Wrapper kernel to build block-diagonal covariance matrices using any kernel.
+
+	A basic kernel usually works on inputs of shape (N, I), and produces covariance matrices of shape (N, N).
+
+	Wrapped inside a block-diagonal kernel, they can either:
+	- still work on inputs of shape (N, I), but produce covariance matrices of shape (B*N, B*N), where B is the number of blocks. This is useful when the hyperparameters are distinct to blocks, i.e. each sub-matrix has its own set of hyperparameters.
+	- or work on inputs of shape (B, N, I), producing covariance matrices of shape (B*N, B*N). This is useful when inputs are different for each block, regardless of whether the hyperparameters are shared between blocks or not.
+
+	This class uses vmap to vectorize the kernel computation of each block, then resize the result into a block matrix.
+	"""
+	def __init__(self, inner_kernel, nb_blocks, block_in_axes=None, block_over_inputs=True):
+		super().__init__(inner_kernel, nb_blocks, block_in_axes, block_over_inputs)
+
+
+	@filter_jit
+	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+		"""
+		Compute the kernel over batched inputs using vmap.
+
+		Args:
+				x1: Input of shape (B, ..., N, I)
+				x2: Optional second input of shape (B, ..., M, I)
+
+		Returns:
+				Kernel block-matrix of appropriate shape
+		"""
+		return jsp.linalg.block_diag(*super().__call__(x1, x2))
+
+	def __str__(self):
+		return f"BlockDiag{self.inner_kernel}"
 
 
 class ActiveDimsKernel(WrapperKernel):

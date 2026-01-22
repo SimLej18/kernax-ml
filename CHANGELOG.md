@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performance optimizations
 - More extensive test coverage
 
+## [0.1.5-alpha] - 2025-01-22
+
+### Added
+- BlockDiagKernel based on BatchedKernel.
+
+### Fixed
+- Output shape of BlockKernel, which wasn't flat
+
 ## [0.1.4-alpha] - 2025-01-21
 
 ### Fixed
