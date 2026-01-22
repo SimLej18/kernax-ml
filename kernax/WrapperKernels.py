@@ -293,11 +293,11 @@ class BlockKernel(WrapperKernel):
 						 Expected order: (0,0), (0,1), (0,2)... (row-major upper)
 		"""
 		# 2. Créer la grille de blocs vide (B, B, H, W)
-		grid = jnp.zeros((self.nb_blocks, self.nb_blocks, h, w), dtype=flat_blocks.dtype)
+		grid = jnp.zeros((self.nb_blocks, self.nb_blocks, flat_blocks.shape[-2], flat_blocks.shape[-1]), dtype=flat_blocks.dtype)
 
 		# 3. Récupérer les indices du triangle supérieur
 		# ex: rows=[0,0,1], cols=[0,1,1] pour B=2
-		rows, cols = jnp.triu_indices(n_blocks)
+		rows, cols = jnp.triu_indices(self.nb_blocks)
 
 		# 4. Remplir le triangle supérieur
 		grid = grid.at[rows, cols].set(flat_blocks)
@@ -312,7 +312,7 @@ class BlockKernel(WrapperKernel):
 		# 6. Assemblage final (Même logique que précédemment)
 		return (grid
 		        .swapaxes(1, 2)  # (RowBlock, H, ColBlock, W)
-		        .reshape(n_blocks * h, n_blocks * w))
+		        .reshape(self.nb_blocks * flat_blocks.shape[-2], self.nb_blocks * flat_blocks.shape[-1]))
 
 	def __str__(self):
 		return f"Block{self.inner_kernel}"
