@@ -187,43 +187,6 @@ class BatchKernel(WrapperKernel):
 		return f"{self.inner_kernel}"
 
 
-@jit
-def symmetric_blocks_to_matrix(flat_blocks):
-	"""
-	Rebuilds a symmetric matrix from its unique blocks (upper triangle).
-
-	Args:
-		flat_blocks: Tensor (T, H, W) where T is a triangular number.
-					 Expected order: (0,0), (0,1), (0,2)... (row-major upper)
-	"""
-	# 1. Déduire le nombre de blocs (B) à partir de T
-	# Formule inverse de T = B(B+1)/2  =>  B^2 + B - 2T = 0
-	t, h, w = flat_blocks.shape
-	n_blocks = int((jnp.sqrt(8 * t + 1) - 1) / 2)
-
-	# 2. Créer la grille de blocs vide (B, B, H, W)
-	grid = jnp.zeros((n_blocks, n_blocks, h, w), dtype=flat_blocks.dtype)
-
-	# 3. Récupérer les indices du triangle supérieur
-	# ex: rows=[0,0,1], cols=[0,1,1] pour B=2
-	rows, cols = jnp.triu_indices(n_blocks)
-
-	# 4. Remplir le triangle supérieur
-	grid = grid.at[rows, cols].set(flat_blocks)
-
-	# 5. Remplir le triangle inférieur par symétrie
-	# On prend le bloc en (rows, cols), on le transpose (swapaxes -1, -2)
-	# et on le place en (cols, rows).
-	# Note : Sur la diagonale (rows==cols), cela transpose le bloc sur lui-même,
-	# ce qui est correct car un bloc diagonal d'une matrice symétrique est lui-même symétrique.
-	grid = grid.at[cols, rows].set(grid[rows, cols].swapaxes(-1, -2))
-
-	# 6. Assemblage final (Même logique que précédemment)
-	return (grid
-			.swapaxes(1, 2)        # (RowBlock, H, ColBlock, W)
-			.reshape(n_blocks * h, n_blocks * w))
-
-
 class BlockKernel(WrapperKernel):
 	"""
 	Wrapper kernel to build block covariance matrices using any kernel.
@@ -311,7 +274,7 @@ class BlockKernel(WrapperKernel):
 
 		# vmap over the block dimension of inner_kernel and inputs
 		# Each block element gets its own version of inner_kernel with corresponding hyperparameters
-		return symmetric_blocks_to_matrix(vmap(
+		return self.symmetric_blocks_to_matrix(vmap(
 			lambda kernel, x1, x2: kernel(x1, x2),
 			in_axes=(
 				jtu.tree_map(lambda x: None if x is None else 0, self.block_in_axes),
@@ -319,6 +282,37 @@ class BlockKernel(WrapperKernel):
 				self.block_over_inputs,
 			),
 		)(full_kernel, x1, x2))
+
+	@filter_jit
+	def symmetric_blocks_to_matrix(self, flat_blocks):
+		"""
+		Rebuilds a symmetric matrix from its unique blocks (upper triangle).
+
+		Args:
+			flat_blocks: Tensor (T, H, W) where T is a triangular number.
+						 Expected order: (0,0), (0,1), (0,2)... (row-major upper)
+		"""
+		# 2. Créer la grille de blocs vide (B, B, H, W)
+		grid = jnp.zeros((self.nb_blocks, self.nb_blocks, h, w), dtype=flat_blocks.dtype)
+
+		# 3. Récupérer les indices du triangle supérieur
+		# ex: rows=[0,0,1], cols=[0,1,1] pour B=2
+		rows, cols = jnp.triu_indices(n_blocks)
+
+		# 4. Remplir le triangle supérieur
+		grid = grid.at[rows, cols].set(flat_blocks)
+
+		# 5. Remplir le triangle inférieur par symétrie
+		# On prend le bloc en (rows, cols), on le transpose (swapaxes -1, -2)
+		# et on le place en (cols, rows).
+		# Note : Sur la diagonale (rows==cols), cela transpose le bloc sur lui-même,
+		# ce qui est correct car un bloc diagonal d'une matrice symétrique est lui-même symétrique.
+		grid = grid.at[cols, rows].set(grid[rows, cols].swapaxes(-1, -2))
+
+		# 6. Assemblage final (Même logique que précédemment)
+		return (grid
+		        .swapaxes(1, 2)  # (RowBlock, H, ColBlock, W)
+		        .reshape(n_blocks * h, n_blocks * w))
 
 	def __str__(self):
 		return f"Block{self.inner_kernel}"
