@@ -199,7 +199,7 @@ def symmetric_blocks_to_matrix(flat_blocks):
 	# 1. Déduire le nombre de blocs (B) à partir de T
 	# Formule inverse de T = B(B+1)/2  =>  B^2 + B - 2T = 0
 	t, h, w = flat_blocks.shape
-	n_blocks = int((np.sqrt(8 * t + 1) - 1) / 2) # ou jnp.sqrt si t est tracé
+	n_blocks = int((jnp.sqrt(8 * t + 1) - 1) / 2)
 
 	# 2. Créer la grille de blocs vide (B, B, H, W)
 	grid = jnp.zeros((n_blocks, n_blocks, h, w), dtype=flat_blocks.dtype)
