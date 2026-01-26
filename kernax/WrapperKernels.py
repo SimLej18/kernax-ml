@@ -355,6 +355,20 @@ class BlockDiagKernel(BatchKernel):
 class ActiveDimsKernel(WrapperKernel):
 	"""
 	Wrapper kernel to select active dimensions from the inputs before passing them to the inner kernel.
+
+	NOTE: This kernel *must* be the outer-most kernel (aka it shouldn't be wrapped inside another one)
+	If you use a kernel that has HPs specific to *input dimensions* (like an ARDKernel), make sure you instantiate it
+	with HPs only for the active dimensions. For example, on inputs of dimension 5 with 3 active dimensions:
+
+	```
+	# First, define ARD
+	length_scales = jnp.array([1.0, 0.5, 2.0])  # Defined only on 3 dims, as we later use ARD!
+	ard_kernel = ARDKernel(base_kernel, length_scales=length_scales)
+
+	# ActiveDims must always be the outer-most kernel
+	active_dims = jnp.array([0, 2, 4])
+	active_kernel = ActiveDimsKernel(ard_kernel, active_dims=active_dims)
+	```
 	"""
 
 	active_dims: jnp.ndarray = eqx.field(static=True, converter=jnp.asarray)
@@ -384,27 +398,32 @@ class ARDKernel(WrapperKernel):
 
 	length_scales: jnp.ndarray = eqx.field(converter=jnp.asarray)
 
+	def _freeze_inner_lengthscales(self, kernel):
+		def map_func(path, leaf):
+			if len(path) > 0:
+				last_node = path[-1] # To retrieve the attribute name
+				if isinstance(last_node, jtu.GetAttrKey) and last_node.name == "length_scale":
+					# Force length scale of 1
+					return jnp.ones_like(leaf)
+			return leaf
+
+		return jtu.tree_map_with_path(map_func, kernel)
+
 	def __init__(self, inner_kernel, length_scales):
 		"""
 		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel
 		:param length_scales: the length scales for each input dimension (1D array of floats)
 		"""
-		# TODO: for now, this kernel only works as the direct child of an Isotropic kernel, as it modifies the inner kernel length_scale directly
-		#  It would be nice if it could work on combinations of Isotropic kernels, modifying every "length_scale" parameter it finds in the inner kernel tree
-		#  It's hard to implement this behavior at the instance-level. Maybe we should make the user do it, or have a utility function to do it for them.
-		#  (It's not as simple as turning length_scale to a static attribute, see https://github.com/patrick-kidger/equinox/issues/154)
-		#  (It's also not as simple as setting `length_scale` to 1 during initialization, because the value could still be optimized to other values)
 		super().__init__(inner_kernel=inner_kernel)
 		self.length_scales = length_scales
 
 	@jit
 	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+		# TODO: add runtime error if length_scales doesn't match input dimensions
 		if x2 is None:
 			x2 = x1
 
-		# FIXME: this triggers a FrozenInstanceError, as inner_kernel (like every Equinox Module) is supposed to be immutable
-		self.inner_kernel.length_scale = jnp.ones_like(
-			self.inner_kernel.length_scale
-		)  # Ensure inner kernel length_scale is 1
-
-		return self.inner_kernel(x1 / self.length_scales, x2 / self.length_scales)
+		# FIXME: if used in an optimisation setting, inner length_scales can still have other values.
+		#  Freezing the inner at every call may be costly/slow down learning.
+		#  We should find a proper way to freeze these parameters.
+		return self._freeze_inner_lengthscales(self.inner_kernel)(x1 / self.length_scales, x2 / self.length_scales)

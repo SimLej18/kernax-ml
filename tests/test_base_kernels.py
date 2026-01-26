@@ -684,12 +684,19 @@ class TestPeriodicKernel:
 class TestRationalQuadraticKernel:
 	"""Tests for Rational Quadratic Kernel."""
 
+	@pytest.mark.parametrize("length_scale,alpha", [
+		(0.5, 0.5),
+		(1.0, 1.0),
+		(2.0, 2.0),
+		(1.0, 0.5),
+		(1.0, 2.0),
+	])
 	@allure.title("RationalQuadraticKernel Instantiation")
 	@allure.description("Test that RQ kernel can be instantiated.")
-	def test_instantiation(self):
-		kernel = RationalQuadraticKernel(length_scale=1.0, alpha=1.0)
-		assert kernel.length_scale == 1.0
-		assert kernel.alpha == 1.0
+	def test_instantiation(self, length_scale, alpha):
+		kernel = RationalQuadraticKernel(length_scale=length_scale, alpha=alpha)
+		assert kernel.length_scale == length_scale
+		assert kernel.alpha == alpha
 
 	@allure.title("RationalQuadraticKernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
@@ -706,10 +713,16 @@ class TestRationalQuadraticKernel:
 		assert jnp.isfinite(result)
 		assert jnp.allclose(result, expected, atol=1e-5)
 
+	@pytest.mark.parametrize("length_scale,alpha", [
+		(0.5, 1.0),
+		(1.0, 0.5),
+		(1.0, 1.0),
+		(2.0, 2.0),
+	])
 	@allure.title("RationalQuadraticKernel cross-cov computation")
 	@allure.description("Test cross-covariance computation between two batches of vectors.")
-	def test_cross_cov_computation(self, sample_1d_data):
-		kernel = RationalQuadraticKernel(length_scale=1.0, alpha=1.0)
+	def test_cross_cov_computation(self, sample_1d_data, length_scale, alpha):
+		kernel = RationalQuadraticKernel(length_scale=length_scale, alpha=alpha)
 		x1, x2 = sample_1d_data
 		result = kernel(x1, x2)
 		assert result.shape == (x1.shape[0], x2.shape[0])
@@ -736,13 +749,19 @@ class TestRationalQuadraticKernel:
 		K2 = kernel2(x1, x1)
 		assert jnp.all(K2 >= K)
 
+	@pytest.mark.parametrize("length_scale,alpha", [
+		(0.5, 1.0),
+		(1.0, 0.5),
+		(1.0, 1.0),
+		(2.0, 2.0),
+	])
 	@allure.title("RationalQuadraticKernel comparison with scikit-learn")
 	@allure.description("Compare RQ kernel results against scikit-learn implementation.")
-	def test_against_scikitlearn(self, sample_1d_data):
+	def test_against_scikitlearn(self, sample_1d_data, length_scale, alpha):
 		from sklearn.gaussian_process.kernels import RationalQuadratic
 
-		kernel = RationalQuadraticKernel(length_scale=1.0, alpha=1.0)
-		sklearn_kernel = RationalQuadratic(length_scale=1.0, alpha=1.0)
+		kernel = RationalQuadraticKernel(length_scale=length_scale, alpha=alpha)
+		sklearn_kernel = RationalQuadratic(length_scale=length_scale, alpha=alpha)
 
 		x1, x2 = sample_1d_data
 		result = kernel(x1, x2)
@@ -750,16 +769,22 @@ class TestRationalQuadraticKernel:
 
 		assert jnp.allclose(result, expected)
 
+	@pytest.mark.parametrize("length_scale,alpha", [
+		(0.5, 1.0),
+		(1.0, 0.5),
+		(1.0, 1.0),
+		(2.0, 2.0),
+	])
 	@allure.title("RationalQuadraticKernel comparison with GPyTorch")
 	@allure.description("Compare RQ kernel results against GPyTorch implementation.")
-	def test_against_gpytorch(self, sample_1d_data):
+	def test_against_gpytorch(self, sample_1d_data, length_scale, alpha):
 		import torch
 		from gpytorch.kernels import RQKernel
 
-		kernel = RationalQuadraticKernel(length_scale=1.0, alpha=1.0)
+		kernel = RationalQuadraticKernel(length_scale=length_scale, alpha=alpha)
 		gpytorch_kernel = RQKernel()
-		gpytorch_kernel._set_lengthscale(1.0)
-		gpytorch_kernel.alpha = 1.0
+		gpytorch_kernel._set_lengthscale(length_scale)
+		gpytorch_kernel.alpha = alpha
 
 		x1, x2 = sample_1d_data
 		x1_torch = torch.tensor(x1)
@@ -770,13 +795,19 @@ class TestRationalQuadraticKernel:
 
 		assert jnp.allclose(result, expected)
 
+	@pytest.mark.parametrize("length_scale,alpha", [
+		(0.5, 1.0),
+		(1.0, 0.5),
+		(1.0, 1.0),
+		(2.0, 2.0),
+	])
 	@allure.title("RationalQuadraticKernel comparison with GPJax")
 	@allure.description("Compare RQ kernel results against GPJax implementation.")
-	def test_against_gpjax(self, sample_1d_data):
+	def test_against_gpjax(self, sample_1d_data, length_scale, alpha):
 		from gpjax.kernels import RationalQuadratic
 
-		kernel = RationalQuadraticKernel(length_scale=1.0, alpha=1.0)
-		gpjax_kernel = RationalQuadratic(lengthscale=1.0, alpha=1.0)
+		kernel = RationalQuadraticKernel(length_scale=length_scale, alpha=alpha)
+		gpjax_kernel = RationalQuadratic(lengthscale=length_scale, alpha=alpha)
 
 		x1, x2 = sample_1d_data
 		result = kernel(x1, x2)

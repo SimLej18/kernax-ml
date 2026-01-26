@@ -3,20 +3,123 @@ Tests for wrapper kernels (BatchKernel, ActiveDimsKernel, ARDKernel).
 """
 
 import jax.numpy as jnp
+import pytest
+import allure
 
 from kernax import (
 	ActiveDimsKernel,
 	ARDKernel,
 	BatchKernel,
 	SEKernel,
+	DiagKernel,
+	ConstantKernel,
 )
+
+
+class TestDiagKernel:
+	"""Tests for Diagonal Kernel (White Noise)."""
+
+	@allure.title("DiagKernel Instantiation")
+	@allure.description("Test that Diagonal kernel can be instantiated.")
+	def test_instantiation(self):
+		inner_kernel = ConstantKernel(value=1.0)
+		kernel = DiagKernel(inner_kernel)
+		assert kernel.inner_kernel == inner_kernel
+
+	@allure.title("DiagKernel scalar computation")
+	@allure.description("Test covariance computation between two 1D vectors.")
+	def test_scalar_computation(self):
+		inner_kernel = ConstantKernel(value=2.0)
+		kernel = DiagKernel(inner_kernel)
+		x1 = jnp.array([1.0])
+		x2 = jnp.array([2.0])
+		x3 = jnp.array([1.0])
+
+		# Different points should give 0
+		result_diff = kernel(x1, x2)
+		assert result_diff.shape == ()
+		assert jnp.allclose(result_diff, 0.0)
+
+		# Same points should give inner kernel value
+		result_same = kernel(x1, x3)
+		assert result_same.shape == ()
+		assert jnp.allclose(result_same, 2.0)
+
+	@allure.title("DiagKernel cross-cov computation")
+	@allure.description("Test cross-covariance computation creates diagonal matrix.")
+	def test_cross_cov_computation(self, sample_1d_data):
+		inner_kernel = ConstantKernel(value=1.5)
+		kernel = DiagKernel(inner_kernel)
+		x1, _ = sample_1d_data
+
+		# Compute covariance matrix with itself
+		result = kernel(x1, x1)
+		assert result.shape == (x1.shape[0], x1.shape[0])
+		assert jnp.all(jnp.isfinite(result))
+
+		# Should be diagonal matrix with inner kernel values on diagonal
+		expected_diag = jnp.ones(x1.shape[0]) * 1.5
+		assert jnp.allclose(jnp.diag(result), expected_diag)
+
+		# Off-diagonal elements should be 0
+		mask = ~jnp.eye(x1.shape[0], dtype=bool)
+		assert jnp.allclose(result[mask], 0.0)
+
+	@allure.title("DiagKernel mathematical properties")
+	@allure.description("Test that mathematical properties of the kernel still hold.")
+	def test_math_properties(self, sample_1d_data):
+		inner_kernel = ConstantKernel(value=1.0)
+		kernel = DiagKernel(inner_kernel)
+		x1, _ = sample_1d_data
+		K = kernel(x1, x1)
+
+		# Check it's a diagonal matrix
+		assert jnp.allclose(K, jnp.diag(jnp.diag(K)))
+
+		# Check diagonal elements equal inner kernel value
+		assert jnp.allclose(jnp.diag(K), 1.0)
+
+		# Check matrix is symmetric
+		assert jnp.allclose(K, K.T)
+
+	@allure.title("DiagKernel with SE inner kernel")
+	@allure.description("Test DiagKernel with SE kernel as inner kernel.")
+	def test_with_se_inner_kernel(self):
+		inner_kernel = SEKernel(length_scale=1.0)
+		kernel = DiagKernel(inner_kernel)
+		x1 = jnp.array([1.0])
+		x2 = jnp.array([2.0])
+
+		# Different points should give 0
+		result_diff = kernel(x1, x2)
+		assert jnp.allclose(result_diff, 0.0)
+
+		# Same point should give SE kernel value (which is 1 for identical points)
+		result_same = kernel(x1, x1)
+		assert jnp.allclose(result_same, 1.0)
+
+	@allure.title("DiagKernel comparison with scikit-learn")
+	@allure.description("Compare Diagonal kernel results against scikit-learn WhiteKernel.")
+	def test_against_scikitlearn(self, sample_1d_data):
+		from sklearn.gaussian_process.kernels import WhiteKernel
+
+		inner_kernel = ConstantKernel(value=1.0)
+		kernel = DiagKernel(inner_kernel)
+		sklearn_kernel = WhiteKernel(noise_level=1.0)
+
+		x1, _ = sample_1d_data
+		result = kernel(x1)
+		expected = sklearn_kernel(x1)
+
+		assert jnp.allclose(result, expected)
 
 
 class TestBatchKernel:
 	"""Tests for BatchKernel wrapper."""
 
+	@allure.title("BatchKernel Instantiation")
+	@allure.description("Test that BatchKernel can be instantiated.")
 	def test_instantiation(self):
-		"""Test that BatchKernel can be instantiated."""
 		base_kernel = SEKernel(length_scale=1.0)
 		batch_kernel = BatchKernel(
 			base_kernel, batch_size=5, batch_in_axes=0, batch_over_inputs=True
@@ -24,8 +127,9 @@ class TestBatchKernel:
 		assert batch_kernel.inner_kernel is not None
 		assert batch_kernel.batch_over_inputs == 0
 
+	@allure.title("BatchKernel batch over hyperparameters")
+	@allure.description("Test batching with distinct hyperparameters per batch element.")
 	def test_batch_over_hyperparameters(self):
-		"""Test batching with distinct hyperparameters per batch element."""
 		# Create base kernel with single length_scale
 		base_kernel = SEKernel(length_scale=1.0)
 		batch_size = 3
@@ -49,34 +153,33 @@ class TestBatchKernel:
 		assert result.shape == (batch_size, x1.shape[0], x2.shape[0])
 		assert jnp.all(jnp.isfinite(result))
 
-	def test_batch_over_inputs_and_hyperparameters(self):
-		"""Test batching over both inputs and hyperparameters."""
+	@allure.title("BatchKernel batch over inputs and hyperparameters")
+	@allure.description("Test batching over both inputs and hyperparameters.")
+	def test_batch_over_inputs_and_hyperparameters(self, sample_batched_data):
 		base_kernel = SEKernel(length_scale=1.0)
-		batch_size = 4
+		x1_batched, x2_batched = sample_batched_data
+		batch_size = x1_batched.shape[0]
 
 		batch_kernel = BatchKernel(
 			base_kernel, batch_size=batch_size, batch_in_axes=0, batch_over_inputs=True
 		)
 
-		# Create batched inputs
-		x1_batched = jnp.array(
-			[[[1.0], [2.0]], [[1.5], [2.5]], [[2.0], [3.0]], [[2.5], [3.5]]]
-		)  # Shape: (4, 2, 1)
-
 		result = batch_kernel(x1_batched, x1_batched)
 
 		# Should produce batch_size covariance matrices
-		assert result.shape == (batch_size, 2, 2)
+		assert result.shape == (batch_size, x1_batched.shape[1], x1_batched.shape[1])
 		assert jnp.all(jnp.isfinite(result))
 
 		# Each batch element should be symmetric
 		for i in range(batch_size):
 			assert jnp.allclose(result[i], result[i].T)
 
-	def test_batch_over_inputs_only(self):
-		"""Test batching over inputs with shared hyperparameters."""
+	@allure.title("BatchKernel batch over inputs only")
+	@allure.description("Test batching over inputs with shared hyperparameters.")
+	def test_batch_over_inputs_only(self, sample_batched_data):
 		base_kernel = SEKernel(length_scale=1.0)
-		batch_size = 3
+		x_batched, _ = sample_batched_data
+		batch_size = x_batched.shape[0]
 
 		# Batch over inputs but share hyperparameters
 		batch_kernel = BatchKernel(
@@ -86,19 +189,18 @@ class TestBatchKernel:
 			batch_over_inputs=True,
 		)
 
-		x_batched = jnp.array([[[1.0], [2.0]], [[1.5], [2.5]], [[2.0], [3.0]]])
-
 		result = batch_kernel(x_batched, x_batched)
 
-		assert result.shape == (batch_size, 2, 2)
+		assert result.shape == (batch_size, x_batched.shape[1], x_batched.shape[1])
 		assert jnp.all(jnp.isfinite(result))
 
 
 class TestActiveDimsKernel:
 	"""Tests for ActiveDimsKernel wrapper."""
 
+	@allure.title("ActiveDimsKernel Instantiation")
+	@allure.description("Test that ActiveDimsKernel can be instantiated.")
 	def test_instantiation(self):
-		"""Test that ActiveDimsKernel can be instantiated."""
 		base_kernel = SEKernel(length_scale=1.0)
 		active_dims = jnp.array([0, 2])
 		kernel = ActiveDimsKernel(base_kernel, active_dims=active_dims)
@@ -106,8 +208,9 @@ class TestActiveDimsKernel:
 		assert kernel.inner_kernel is not None
 		assert jnp.array_equal(kernel.active_dims, active_dims)
 
+	@allure.title("ActiveDimsKernel dimension selection")
+	@allure.description("Test that kernel only uses specified dimensions.")
 	def test_dimension_selection(self):
-		"""Test that kernel only uses specified dimensions."""
 		base_kernel = SEKernel(length_scale=1.0)
 
 		# Only use first and third dimensions
@@ -130,26 +233,29 @@ class TestActiveDimsKernel:
 		assert jnp.allclose(result, expected)
 		assert jnp.isfinite(result)
 
-	def test_with_matrix_inputs(self):
-		"""Test ActiveDimsKernel with matrix inputs."""
+	@allure.title("ActiveDimsKernel with matrix inputs")
+	@allure.description("Test ActiveDimsKernel with matrix inputs.")
+	def test_with_matrix_inputs(self, sample_2d_data):
 		base_kernel = SEKernel(length_scale=1.0)
-		active_dims = jnp.array([1, 3])
+		active_dims = jnp.array([1])
+
+		# Expand sample data to more dimensions
+		x1, x2 = sample_2d_data
+		# Add extra dimensions
+		x1_expanded = jnp.concatenate([x1, jnp.ones((x1.shape[0], 3))], axis=1)
+		x2_expanded = jnp.concatenate([x2, jnp.ones((x2.shape[0], 3))], axis=1)
+
 		kernel = ActiveDimsKernel(base_kernel, active_dims=active_dims)
 
-		# Create inputs with 5 dimensions
-		n_points = 4
-		n_dims = 5
-		x1 = jnp.ones((n_points, n_dims))
-		x2 = jnp.ones((n_points, n_dims)) * 2.0
-
-		result = kernel(x1, x2)
+		result = kernel(x1_expanded, x2_expanded)
 
 		# Should produce covariance matrix
-		assert result.shape == (n_points, n_points)
+		assert result.shape == (x1.shape[0], x2.shape[0])
 		assert jnp.all(jnp.isfinite(result))
 
+	@allure.title("ActiveDimsKernel with single dimension")
+	@allure.description("Test ActiveDimsKernel with single active dimension.")
 	def test_single_dimension(self):
-		"""Test ActiveDimsKernel with single active dimension."""
 		base_kernel = SEKernel(length_scale=1.0)
 		active_dims = jnp.array([2])  # Only third dimension
 		kernel = ActiveDimsKernel(base_kernel, active_dims=active_dims)
@@ -170,8 +276,9 @@ class TestActiveDimsKernel:
 class TestARDKernel:
 	"""Tests for ARDKernel (Automatic Relevance Determination) wrapper."""
 
+	@allure.title("ARDKernel Instantiation")
+	@allure.description("Test that ARDKernel can be instantiated.")
 	def test_instantiation(self):
-		"""Test that ARDKernel can be instantiated."""
 		base_kernel = SEKernel(length_scale=1.0)
 		length_scales = jnp.array([1.0, 2.0, 0.5])
 		kernel = ARDKernel(base_kernel, length_scales=length_scales)
@@ -179,8 +286,9 @@ class TestARDKernel:
 		assert kernel.inner_kernel is not None
 		assert jnp.array_equal(kernel.length_scales, length_scales)
 
+	@allure.title("ARDKernel different scales per dimension")
+	@allure.description("Test that ARD applies different length scales per dimension.")
 	def test_different_scales_per_dimension(self):
-		"""Test that ARD applies different length scales per dimension."""
 		base_kernel = SEKernel(length_scale=1.0)
 
 		# Different relevance for each dimension
@@ -188,8 +296,8 @@ class TestARDKernel:
 		kernel = ARDKernel(base_kernel, length_scales=length_scales)
 
 		# Create inputs
-		x1 = jnp.array([[0.0, 0.0, 0.0]])
-		x2 = jnp.array([[1.0, 1.0, 1.0]])
+		x1 = jnp.array([[0.0, 2.0, 1.5]])
+		x2 = jnp.array([[-1.0, 1.0, 1.0]])
 
 		result = kernel(x1, x2)
 
@@ -202,8 +310,9 @@ class TestARDKernel:
 		assert jnp.allclose(result, expected, rtol=1e-5)
 		assert jnp.isfinite(result)
 
+	@allure.title("ARDKernel isotropic equivalence")
+	@allure.description("Test that uniform length scales give isotropic kernel.")
 	def test_isotropic_equivalence(self):
-		"""Test that uniform length scales give isotropic kernel."""
 		base_kernel = SEKernel(length_scale=1.0)
 
 		# All dimensions have same scale
@@ -222,8 +331,9 @@ class TestARDKernel:
 		# Should be approximately equal
 		assert jnp.allclose(ard_result, iso_result, rtol=1e-5)
 
+	@allure.title("ARDKernel with matrix inputs")
+	@allure.description("Test ARDKernel with matrix inputs.")
 	def test_matrix_inputs(self):
-		"""Test ARDKernel with matrix inputs."""
 		base_kernel = SEKernel(length_scale=1.0)
 		length_scales = jnp.array([1.0, 0.5, 2.0])
 		kernel = ARDKernel(base_kernel, length_scales=length_scales)
@@ -238,8 +348,9 @@ class TestARDKernel:
 		assert result.shape == (n_points, n_points)
 		assert jnp.all(jnp.isfinite(result))
 
+	@allure.title("ARDKernel relevance interpretation")
+	@allure.description("Test that smaller length scales indicate higher relevance.")
 	def test_relevance_interpretation(self):
-		"""Test that smaller length scales indicate higher relevance."""
 		base_kernel = SEKernel(length_scale=1.0)
 
 		# First dimension very relevant (small scale), last less relevant (large scale)
@@ -262,28 +373,31 @@ class TestARDKernel:
 class TestWrapperCombinations:
 	"""Test combinations of different wrapper kernels."""
 
+	@allure.title("Wrapper combinations ARD with ActiveDims")
+	@allure.description("Test combining ARD and ActiveDims wrappers.")
 	def test_ard_with_active_dims(self):
-		"""Test combining ARD and ActiveDims wrappers."""
 		base_kernel = SEKernel(length_scale=1.0)
 
-		# First select dimensions, then apply ARD
+		# First, define ARD
+		length_scales = jnp.array([1.0, 0.5, 2.0])  # Defined only on 3 dims, as we later use ARD!
+		ard_kernel = ARDKernel(base_kernel, length_scales=length_scales)
+
+		# ActiveDims must always be the outer-most kernel
 		active_dims = jnp.array([0, 2, 4])
-		active_kernel = ActiveDimsKernel(base_kernel, active_dims=active_dims)
+		active_kernel = ActiveDimsKernel(ard_kernel, active_dims=active_dims)
 
-		length_scales = jnp.array([1.0, 0.5, 2.0])  # For the 3 active dims
-		ard_kernel = ARDKernel(active_kernel, length_scales=length_scales)
+		# Create 5D inputs
+		x1 = jnp.ones((5,))
+		x2 = jnp.ones((5,)) * 1.5
 
-		# Create 5D input
-		x1 = jnp.ones((1, 5))
-		x2 = jnp.ones((1, 5)) * 2.0
-
-		result = ard_kernel(x1, x2)
+		result = active_kernel(x1, x2)
 
 		assert jnp.isfinite(result)
 		assert result.shape == ()  # Scalar output
 
+	@allure.title("Wrapper combinations Batch with ARD")
+	@allure.description("Test combining Batch and ARD wrappers.")
 	def test_batch_with_ard(self):
-		"""Test combining Batch and ARD wrappers."""
 		base_kernel = SEKernel(length_scale=1.0)
 
 		# Apply ARD first
