@@ -33,3 +33,9 @@ class SEKernel(AbstractKernel):
 	def __init__(self, length_scale):
 		super().__init__()
 		self.length_scale = length_scale
+
+class RBFKernel(SEKernel):
+	"""
+	Same as SEKernel
+	"""
+	pass

@@ -22,16 +22,15 @@ class StaticRationalQuadraticKernel(StaticAbstractKernel):
 
 		base = 1 + squared_dist / (2 * kern.alpha * kern.length_scale**2)
 
-		return kern.variance * jnp.power(base, -kern.alpha)
+		return jnp.power(base, -kern.alpha)
 
 
 class RationalQuadraticKernel(AbstractKernel):
 	length_scale: Array = eqx.field(converter=jnp.asarray)
-	variance: Array = eqx.field(converter=jnp.asarray)
 	alpha: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticRationalQuadraticKernel
 
-	def __init__(self, length_scale, variance, alpha):
+	def __init__(self, length_scale, alpha):
 		"""
 		:param length_scale: length scale parameter (ℓ)
 		:param variance: variance (σ²)
@@ -39,5 +38,4 @@ class RationalQuadraticKernel(AbstractKernel):
 		"""
 		super().__init__()
 		self.length_scale = length_scale
-		self.variance = variance
 		self.alpha = alpha

@@ -23,10 +23,10 @@ class StaticPolynomialKernel(StaticAbstractKernel):
 
 class PolynomialKernel(AbstractKernel):
 	"""
-	Squared Exponential (aka "RBF" or "Gaussian") Kernel
+	Polynomial kernel.
 	"""
 
-	degree: Array = eqx.field(converter=jnp.asarray, static=True, dtype=int)
+	degree: int = eqx.field(static=True)
 	gamma: Array = eqx.field(converter=jnp.asarray)
 	constant: Array = eqx.field(converter=jnp.asarray)
 

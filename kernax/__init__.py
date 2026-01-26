@@ -24,8 +24,9 @@ from .MaternKernels import (
 )
 from .OperatorKernels import OperatorKernel, ProductKernel, SumKernel
 from .PeriodicKernel import PeriodicKernel, StaticPeriodicKernel
+from .PolynomialKernel import PolynomialKernel, StaticPolynomialKernel
 from .RationalQuadraticKernel import RationalQuadraticKernel, StaticRationalQuadraticKernel
-from .SEKernel import SEKernel, StaticSEKernel
+from .SEKernel import SEKernel, StaticSEKernel, RBFKernel
 from .WrapperKernels import (
 	ActiveDimsKernel,
 	ARDKernel,
@@ -38,6 +39,7 @@ from .WrapperKernels import (
 	BlockKernel,
 	BlockDiagKernel,
 )
+from .WhiteNoiseKernel import WhiteNoiseKernel
 
 __all__ = [
 	# Package metadata
@@ -51,6 +53,7 @@ __all__ = [
 	# Base kernels
 	"StaticSEKernel",
 	"SEKernel",
+	"RBFKernel",
 	"StaticConstantKernel",
 	"ConstantKernel",
 	"StaticLinearKernel",
@@ -59,6 +62,9 @@ __all__ = [
 	"PeriodicKernel",
 	"StaticRationalQuadraticKernel",
 	"RationalQuadraticKernel",
+	"StaticPolynomialKernel",
+	"PolynomialKernel",
+	"WhiteNoiseKernel",
 	# Matern family
 	"StaticMatern12Kernel",
 	"Matern12Kernel",
