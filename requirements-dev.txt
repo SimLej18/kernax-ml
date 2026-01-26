@@ -4,6 +4,11 @@
 # Testing
 pytest>=7.0
 pytest-cov>=4.0
+allure-pytest>=2.15
+pytest-benchmark>=5.2
+gpjax>=0.13
+gpytorch>=1.15
+scikit-learn>=1.8
 
 # Code quality
 black>=22.0

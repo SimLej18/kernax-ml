@@ -1,0 +1,5 @@
+{
+  "name": "Kernax Test-Suite",
+  "historyPath": "./test-history/allure-history.jsonl",
+  "appendHistory": true
+}
