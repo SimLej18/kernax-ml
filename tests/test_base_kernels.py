@@ -1023,3 +1023,70 @@ class TestWhiteNoiseKernel:
 		expected = diag_const_kernel(x1)
 
 		assert jnp.allclose(result, expected)
+
+
+class TestNaNHandling:
+	"""Tests for NaN-aware computations."""
+
+	@allure.title("NaN handling in input")
+	@allure.description("Test that NaN in input produces NaN in output.")
+	def test_nan_in_input(self):
+		kernel = SEKernel(length_scale=1.0)
+		x1 = jnp.array([[1.0], [jnp.nan], [3.0]])  # Shape (3, 1) - 2D matrix
+		x2 = jnp.array([[1.5], [2.5], [3.5]])  # Shape (3, 1)
+
+		result = kernel(x1, x2)  # Shape (3, 3)
+
+		# Row corresponding to NaN input should be NaN
+		assert jnp.all(jnp.isnan(result[1, :]))
+
+	@allure.title("NaN propagation in matrix")
+	@allure.description("Test NaN propagation in matrix computations.")
+	def test_nan_propagation_in_matrix(self):
+		kernel = SEKernel(length_scale=1.0)
+
+		# Create matrix with some NaN values
+		x = jnp.array([[1.0], [jnp.nan], [3.0], [4.0]])
+
+		result = kernel(x, x)
+
+		# Row and column corresponding to NaN should be NaN
+		assert jnp.all(jnp.isnan(result[1, :]))
+		assert jnp.all(jnp.isnan(result[:, 1]))
+
+		# Other elements should be finite - use JAX immutable assignment
+		valid_mask = jnp.ones((4, 4), dtype=bool)
+		valid_mask = valid_mask.at[1, :].set(False)
+		valid_mask = valid_mask.at[:, 1].set(False)
+		assert jnp.all(jnp.isfinite(result[valid_mask]))
+
+
+class TestDimensionHandling:
+	"""Tests for automatic dimension handling."""
+
+	@allure.title("Dimension handling scalar to scalar")
+	@allure.description("Test scalar x scalar -> scalar.")
+	def test_scalar_to_scalar(self):
+		kernel = SEKernel(length_scale=1.0)
+		x1 = jnp.array([1.0])
+		x2 = jnp.array([2.0])
+		result = kernel(x1, x2)
+		assert result.shape == ()
+
+	@allure.title("Dimension handling vector to scalar")
+	@allure.description("Test vector x scalar -> vector.")
+	def test_vector_to_scalar(self):
+		kernel = SEKernel(length_scale=1.0)
+		x1 = jnp.array([[1.0], [2.0], [3.0]])
+		x2 = jnp.array([2.0])
+		result = kernel(x1, x2)
+		assert result.shape == (3,)
+
+	@allure.title("Dimension handling vector to vector")
+	@allure.description("Test vector x vector -> matrix.")
+	def test_vector_to_vector(self):
+		kernel = SEKernel(length_scale=1.0)
+		x1 = jnp.array([[1.0], [2.0], [3.0]])
+		x2 = jnp.array([[1.5], [2.5]])
+		result = kernel(x1, x2)
+		assert result.shape == (3, 2)
