@@ -10,6 +10,8 @@ from kernax import (
 	ActiveDimsKernel,
 	ARDKernel,
 	BatchKernel,
+	BlockKernel,
+	BlockDiagKernel,
 	SEKernel,
 	DiagKernel,
 	ConstantKernel,
@@ -193,6 +195,369 @@ class TestBatchKernel:
 
 		assert result.shape == (batch_size, x_batched.shape[1], x_batched.shape[1])
 		assert jnp.all(jnp.isfinite(result))
+
+
+class TestBlockKernel:
+	"""Tests for BlockKernel wrapper."""
+
+	@allure.title("BlockKernel Instantiation")
+	@allure.description("Test that BlockKernel can be instantiated.")
+	def test_instantiation(self):
+		import jax.tree_util as jtu
+		base_kernel = SEKernel(length_scale=1.0)
+		# Create a pytree with block_in_axes=0 for all hyperparameters
+		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
+		block_kernel = BlockKernel(
+			base_kernel, nb_blocks=3, block_in_axes=block_in_axes, block_over_inputs=True
+		)
+		assert block_kernel.inner_kernel is not None
+		assert block_kernel.nb_blocks == 3
+
+	@allure.title("BlockKernel block over hyperparameters")
+	@allure.description("Test blocking with distinct hyperparameters per block.")
+	def test_block_over_hyperparameters(self):
+		import jax.tree_util as jtu
+		# Create base kernel with single length_scale
+		base_kernel = SEKernel(length_scale=1.0)
+		nb_blocks = 3
+
+		# Create a pytree where hyperparameters vary across rows (0) and columns (1)
+		# For a valid block covariance matrix, we need different HPs for rows and cols
+		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)  # Vary across rows
+
+		# Wrap in BlockKernel to handle blocked hyperparameters
+		block_kernel = BlockKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=block_in_axes,
+			block_over_inputs=False,  # Same inputs for all blocks
+		)
+
+		# Create non-blocked inputs
+		x1 = jnp.array([[1.0], [2.0], [3.0]])
+		x2 = jnp.array([[1.5], [2.5], [3.5]])
+
+		# Compute covariance - should produce block matrix
+		result = block_kernel(x1, x2)
+
+		# Result should be a block matrix of shape (nb_blocks*N, nb_blocks*M)
+		expected_shape = (nb_blocks * x1.shape[0], nb_blocks * x2.shape[0])
+		assert result.shape == expected_shape
+		assert jnp.all(jnp.isfinite(result))
+
+	@allure.title("BlockKernel block over inputs and hyperparameters")
+	@allure.description("Test blocking over both inputs and hyperparameters.")
+	def test_block_over_inputs_and_hyperparameters(self, sample_batched_data):
+		base_kernel = SEKernel(length_scale=1.0)
+		x1_batched, x2_batched = sample_batched_data
+		nb_blocks = x1_batched.shape[0]
+
+		# Use a pytree to specify different axes for different hyperparameters
+		import jax.tree_util as jtu
+		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
+
+		block_kernel = BlockKernel(
+			base_kernel, nb_blocks=nb_blocks, block_in_axes=block_in_axes, block_over_inputs=True
+		)
+
+		result = block_kernel(x1_batched, x1_batched)
+
+		# Should produce block matrix of shape (nb_blocks*N, nb_blocks*N)
+		expected_shape = (nb_blocks * x1_batched.shape[1], nb_blocks * x1_batched.shape[1])
+		assert result.shape == expected_shape
+		assert jnp.all(jnp.isfinite(result))
+
+	@allure.title("BlockKernel block over inputs only")
+	@allure.description("Test blocking over inputs with shared hyperparameters.")
+	def test_block_over_inputs_only(self, sample_batched_data):
+		base_kernel = SEKernel(length_scale=1.0)
+		x_batched, _ = sample_batched_data
+		nb_blocks = x_batched.shape[0]
+
+		# Block over inputs but share hyperparameters
+		block_kernel = BlockKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,  # Shared hyperparameters
+			block_over_inputs=True,
+		)
+
+		result = block_kernel(x_batched, x_batched)
+
+		expected_shape = (nb_blocks * x_batched.shape[1], nb_blocks * x_batched.shape[1])
+		assert result.shape == expected_shape
+		assert jnp.all(jnp.isfinite(result))
+
+	@allure.title("BlockKernel mathematical properties")
+	@allure.description("Test that block matrix is symmetric.")
+	def test_math_properties(self, sample_batched_data):
+		base_kernel = SEKernel(length_scale=1.0)
+		x_batched, _ = sample_batched_data
+		nb_blocks = x_batched.shape[0]
+
+		block_kernel = BlockKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,
+			block_over_inputs=True,
+		)
+
+		result = block_kernel(x_batched, x_batched)
+
+		# Check matrix is symmetric (with numerical tolerance)
+		assert jnp.allclose(result, result.T, rtol=1e-5)
+
+		# Check all values are positive (for SE kernel with identical x1=x2)
+		assert jnp.all(result >= 0)
+
+	@allure.title("BlockKernel block structure verification")
+	@allure.description("Test that result has correct block structure.")
+	def test_block_structure(self):
+		base_kernel = SEKernel(length_scale=1.0)
+		nb_blocks = 2
+		n_points = 3
+
+		# Create batched inputs with distinct patterns
+		x_batched = jnp.array([[[1.0], [2.0], [3.0]], [[10.0], [20.0], [30.0]]])
+
+		block_kernel = BlockKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,
+			block_over_inputs=True,
+		)
+
+		result = block_kernel(x_batched, x_batched)
+
+		# Extract blocks manually
+		block_00 = result[:n_points, :n_points]
+		block_01 = result[:n_points, n_points:]
+		block_10 = result[n_points:, :n_points]
+		block_11 = result[n_points:, n_points:]
+
+		# Verify blocks are computed correctly
+		expected_00 = base_kernel(x_batched[0], x_batched[0])
+		expected_11 = base_kernel(x_batched[1], x_batched[1])
+		expected_01 = base_kernel(x_batched[0], x_batched[1])
+		expected_10 = base_kernel(x_batched[1], x_batched[0])
+
+		assert jnp.allclose(block_00, expected_00)
+		assert jnp.allclose(block_11, expected_11)
+		assert jnp.allclose(block_01, expected_01)
+		assert jnp.allclose(block_10, expected_10)
+
+
+class TestBlockDiagKernel:
+	"""Tests for BlockDiagKernel wrapper."""
+
+	@allure.title("BlockDiagKernel Instantiation")
+	@allure.description("Test that BlockDiagKernel can be instantiated.")
+	def test_instantiation(self):
+		import jax.tree_util as jtu
+		base_kernel = SEKernel(length_scale=1.0)
+		# Create a pytree with block_in_axes=0 for all hyperparameters
+		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
+		block_diag_kernel = BlockDiagKernel(
+			base_kernel, nb_blocks=3, block_in_axes=block_in_axes, block_over_inputs=True
+		)
+		assert block_diag_kernel.inner_kernel is not None
+		assert block_diag_kernel.batch_over_inputs == 0
+
+	@allure.title("BlockDiagKernel block over hyperparameters")
+	@allure.description("Test block-diagonal with distinct hyperparameters per block.")
+	def test_block_over_hyperparameters(self):
+		import jax.tree_util as jtu
+		# Create base kernel with single length_scale
+		base_kernel = SEKernel(length_scale=1.0)
+		nb_blocks = 3
+
+		# Create a pytree where hyperparameters are batched (0 for all)
+		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
+
+		# Wrap in BlockDiagKernel to handle blocked hyperparameters
+		block_diag_kernel = BlockDiagKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=block_in_axes,
+			block_over_inputs=False,  # Same inputs for all blocks
+		)
+
+		# Create non-blocked inputs
+		x1 = jnp.array([[1.0], [2.0], [3.0]])
+		x2 = jnp.array([[1.5], [2.5], [3.5]])
+
+		# Compute covariance - should produce block-diagonal matrix
+		result = block_diag_kernel(x1, x2)
+
+		# Result should be a block-diagonal matrix of shape (nb_blocks*N, nb_blocks*M)
+		expected_shape = (nb_blocks * x1.shape[0], nb_blocks * x2.shape[0])
+		assert result.shape == expected_shape
+		assert jnp.all(jnp.isfinite(result))
+
+	@allure.title("BlockDiagKernel block over inputs and hyperparameters")
+	@allure.description("Test block-diagonal over both inputs and hyperparameters.")
+	def test_block_over_inputs_and_hyperparameters(self, sample_batched_data):
+		import jax.tree_util as jtu
+		base_kernel = SEKernel(length_scale=1.0)
+		x1_batched, x2_batched = sample_batched_data
+		nb_blocks = x1_batched.shape[0]
+
+		# Create a pytree where hyperparameters are batched
+		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
+
+		block_diag_kernel = BlockDiagKernel(
+			base_kernel, nb_blocks=nb_blocks, block_in_axes=block_in_axes, block_over_inputs=True
+		)
+
+		result = block_diag_kernel(x1_batched, x1_batched)
+
+		# Should produce block-diagonal matrix
+		expected_shape = (nb_blocks * x1_batched.shape[1], nb_blocks * x1_batched.shape[1])
+		assert result.shape == expected_shape
+		assert jnp.all(jnp.isfinite(result))
+
+	@allure.title("BlockDiagKernel block over inputs only")
+	@allure.description("Test block-diagonal over inputs with shared hyperparameters.")
+	def test_block_over_inputs_only(self, sample_batched_data):
+		base_kernel = SEKernel(length_scale=1.0)
+		x_batched, _ = sample_batched_data
+		nb_blocks = x_batched.shape[0]
+
+		# Block over inputs but share hyperparameters
+		block_diag_kernel = BlockDiagKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,  # Shared hyperparameters
+			block_over_inputs=True,
+		)
+
+		result = block_diag_kernel(x_batched, x_batched)
+
+		expected_shape = (nb_blocks * x_batched.shape[1], nb_blocks * x_batched.shape[1])
+		assert result.shape == expected_shape
+		assert jnp.all(jnp.isfinite(result))
+
+	@allure.title("BlockDiagKernel diagonal structure")
+	@allure.description("Test that matrix is truly block-diagonal (zeros off blocks).")
+	def test_diagonal_structure(self, sample_batched_data):
+		base_kernel = SEKernel(length_scale=1.0)
+		x_batched, _ = sample_batched_data
+		nb_blocks = x_batched.shape[0]
+		n_points = x_batched.shape[1]
+
+		block_diag_kernel = BlockDiagKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,
+			block_over_inputs=True,
+		)
+
+		result = block_diag_kernel(x_batched, x_batched)
+
+		# Extract diagonal blocks
+		for i in range(nb_blocks):
+			start_i = i * n_points
+			end_i = (i + 1) * n_points
+			diag_block = result[start_i:end_i, start_i:end_i]
+
+			# Diagonal blocks should not be all zeros
+			assert not jnp.allclose(diag_block, 0.0)
+
+			# Off-diagonal blocks should be all zeros
+			for j in range(nb_blocks):
+				if i != j:
+					start_j = j * n_points
+					end_j = (j + 1) * n_points
+					off_diag_block = result[start_i:end_i, start_j:end_j]
+					assert jnp.allclose(off_diag_block, 0.0, atol=1e-6)
+
+	@allure.title("BlockDiagKernel mathematical properties")
+	@allure.description("Test that block-diagonal matrix is symmetric.")
+	def test_math_properties(self, sample_batched_data):
+		base_kernel = SEKernel(length_scale=1.0)
+		x_batched, _ = sample_batched_data
+		nb_blocks = x_batched.shape[0]
+
+		block_diag_kernel = BlockDiagKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,
+			block_over_inputs=True,
+		)
+
+		result = block_diag_kernel(x_batched, x_batched)
+
+		# Check matrix is symmetric
+		assert jnp.allclose(result, result.T)
+
+		# Check all diagonal values are positive
+		assert jnp.all(jnp.diag(result) >= 0)
+
+	@allure.title("BlockDiagKernel individual blocks verification")
+	@allure.description("Test that each diagonal block is computed correctly.")
+	def test_individual_blocks(self):
+		base_kernel = SEKernel(length_scale=1.0)
+		nb_blocks = 3
+		n_points = 4
+
+		# Create batched inputs with distinct patterns
+		x_batched = jnp.array([
+			[[1.0], [2.0], [3.0], [4.0]],
+			[[10.0], [20.0], [30.0], [40.0]],
+			[[100.0], [200.0], [300.0], [400.0]]
+		])
+
+		block_diag_kernel = BlockDiagKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,
+			block_over_inputs=True,
+		)
+
+		result = block_diag_kernel(x_batched, x_batched)
+
+		# Verify each diagonal block matches the expected kernel computation
+		for i in range(nb_blocks):
+			start_i = i * n_points
+			end_i = (i + 1) * n_points
+			diag_block = result[start_i:end_i, start_i:end_i]
+
+			expected_block = base_kernel(x_batched[i], x_batched[i])
+			assert jnp.allclose(diag_block, expected_block)
+
+	@allure.title("BlockDiagKernel comparison with BatchKernel")
+	@allure.description("Test that BlockDiagKernel produces same diagonal blocks as BatchKernel.")
+	def test_comparison_with_batch_kernel(self, sample_batched_data):
+		base_kernel = SEKernel(length_scale=1.0)
+		x_batched, _ = sample_batched_data
+		nb_blocks = x_batched.shape[0]
+		n_points = x_batched.shape[1]
+
+		# Create both kernels with same configuration
+		block_diag_kernel = BlockDiagKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,
+			block_over_inputs=True,
+		)
+
+		batch_kernel = BatchKernel(
+			base_kernel,
+			batch_size=nb_blocks,
+			batch_in_axes=None,
+			batch_over_inputs=True,
+		)
+
+		block_diag_result = block_diag_kernel(x_batched, x_batched)
+		batch_result = batch_kernel(x_batched, x_batched)
+
+		# Extract diagonal blocks from BlockDiagKernel and compare with BatchKernel output
+		for i in range(nb_blocks):
+			start_i = i * n_points
+			end_i = (i + 1) * n_points
+			diag_block = block_diag_result[start_i:end_i, start_i:end_i]
+
+			assert jnp.allclose(diag_block, batch_result[i])
 
 
 class TestActiveDimsKernel:
