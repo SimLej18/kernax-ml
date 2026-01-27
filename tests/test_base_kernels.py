@@ -31,6 +31,14 @@ class TestSEKernel:
 		kernel = SEKernel(length_scale=1.0)
 		assert kernel.length_scale == 1.0
 
+	@allure.title("SEKernel string representation")
+	@allure.description("Test that SE kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = SEKernel(length_scale=1.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
 	@allure.title("SEKernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
 	def test_scalar_computation(self):
@@ -66,8 +74,8 @@ class TestSEKernel:
 		kernel_1 = SEKernel(length_scale=1.0)
 		kernel_2 = SEKernel(length_scale=2.0)
 		x1, _ = sample_1d_data
-		K_1 = kernel_1(x1, x1)
-		K_2 = kernel_2(x1, x1)
+		K_1 = kernel_1(x1)  # Test optional x2 parameter
+		K_2 = kernel_2(x1)  # Test optional x2 parameter
 
 		# Check diagonal elements are positive
 		assert jnp.all(jnp.diag(K_1) > 0)
@@ -140,6 +148,14 @@ class TestRBFKernel:
 		kernel = RBFKernel(length_scale=1.0)
 		assert kernel.length_scale == 1.0
 
+	@allure.title("RBFKernel string representation")
+	@allure.description("Test that RBF kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = RBFKernel(length_scale=1.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
 	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
 	@allure.title("RBFKernel comparison with SEKernel")
 	@allure.description("Compare RBF kernel results against SEKernel implementation.")
@@ -164,6 +180,14 @@ class TestLinearKernel:
 		assert kernel.variance_b == 0.5
 		assert kernel.variance_v == 1.0
 		assert kernel.offset_c == 0.0
+
+	@allure.title("LinearKernel string representation")
+	@allure.description("Test that Linear kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = LinearKernel(variance_b=0.5, variance_v=1.0, offset_c=0.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
 
 	@allure.title("LinearKernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
@@ -208,7 +232,7 @@ class TestLinearKernel:
 	def test_math_properties(self, sample_1d_data, variance_b, variance_v, offset_c):
 		kernel = LinearKernel(variance_b=variance_b, variance_v=variance_v, offset_c=offset_c)
 		x1, _ = sample_1d_data
-		K = kernel(x1, x1)
+		K = kernel(x1)  # Test optional x2 parameter
 
 		# Check diagonal elements are positive
 		assert jnp.all(jnp.diag(K) > 0)
@@ -257,6 +281,14 @@ class TestMatern12Kernel:
 		kernel = Matern12Kernel(length_scale=1.0)
 		assert kernel.length_scale == 1.0
 
+	@allure.title("Matern12Kernel string representation")
+	@allure.description("Test that Matern 1/2 kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = Matern12Kernel(length_scale=1.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
 	@allure.title("Matern12Kernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
 	def test_scalar_computation(self):
@@ -289,7 +321,7 @@ class TestMatern12Kernel:
 	def test_math_properties(self, sample_1d_data):
 		kernel = Matern12Kernel(length_scale=1.0)
 		x1, _ = sample_1d_data
-		K = kernel(x1, x1)
+		K = kernel(x1)  # Test optional x2 parameter
 
 		# Check diagonal elements are 1 (same point)
 		assert jnp.allclose(jnp.diag(K), 1.0)
@@ -362,6 +394,14 @@ class TestMatern32Kernel:
 		kernel = Matern32Kernel(length_scale=1.0)
 		assert kernel.length_scale == 1.0
 
+	@allure.title("Matern32Kernel string representation")
+	@allure.description("Test that Matern 3/2 kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = Matern32Kernel(length_scale=1.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
 	@allure.title("Matern32Kernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
 	def test_scalar_computation(self):
@@ -394,7 +434,7 @@ class TestMatern32Kernel:
 	def test_math_properties(self, sample_1d_data):
 		kernel = Matern32Kernel(length_scale=1.0)
 		x1, _ = sample_1d_data
-		K = kernel(x1, x1)
+		K = kernel(x1)  # Test optional x2 parameter
 
 		# Check diagonal elements are 1 (same point)
 		assert jnp.allclose(jnp.diag(K), 1.0)
@@ -404,7 +444,7 @@ class TestMatern32Kernel:
 
 		# Test that higher length scale gives higher values
 		kernel2 = Matern32Kernel(length_scale=2.0)
-		K2 = kernel2(x1, x1)
+		K2 = kernel2(x1)  # Test optional x2 parameter
 		assert jnp.all(K2 >= K)
 
 	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
@@ -468,6 +508,14 @@ class TestMatern52Kernel:
 		kernel = Matern52Kernel(length_scale=length_scale)
 		assert kernel.length_scale == length_scale
 
+	@allure.title("Matern52Kernel string representation")
+	@allure.description("Test that Matern 5/2 kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = Matern52Kernel(length_scale=1.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
 	@allure.title("Matern52Kernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
 	def test_scalar_computation(self):
@@ -500,7 +548,7 @@ class TestMatern52Kernel:
 	def test_math_properties(self, sample_1d_data):
 		kernel = Matern52Kernel(length_scale=1.0)
 		x1, _ = sample_1d_data
-		K = kernel(x1, x1)
+		K = kernel(x1)  # Test optional x2 parameter
 
 		# Check diagonal elements are 1 (same point)
 		assert jnp.allclose(jnp.diag(K), 1.0)
@@ -510,7 +558,7 @@ class TestMatern52Kernel:
 
 		# Check that bigger length scale gives higher values
 		kernel2 = Matern52Kernel(length_scale=2.0)
-		K2 = kernel2(x1, x1)
+		K2 = kernel2(x1)  # Test optional x2 parameter
 		assert jnp.all(K2 >= K)
 
 	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
@@ -575,6 +623,14 @@ class TestPeriodicKernel:
 		assert kernel.variance == 1.0
 		assert kernel.period == 2.0
 
+	@allure.title("PeriodicKernel string representation")
+	@allure.description("Test that Periodic kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
 	@allure.title("PeriodicKernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
 	def test_scalar_computation(self):
@@ -619,7 +675,7 @@ class TestPeriodicKernel:
 	def test_math_properties(self, sample_1d_data):
 		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
 		x1, _ = sample_1d_data
-		K = kernel(x1, x1)
+		K = kernel(x1)  # Test optional x2 parameter
 
 		# Check diagonal elements equal variance (same point)
 		assert jnp.allclose(jnp.diag(K), 1.0)
@@ -629,7 +685,7 @@ class TestPeriodicKernel:
 
 		# Test that higher length scale gives higher values
 		kernel2 = PeriodicKernel(length_scale=2.0, variance=1.0, period=2.0)
-		K2 = kernel2(x1, x1)
+		K2 = kernel2(x1)  # Test optional x2 parameter
 		assert jnp.all(K2 >= K)
 
 	@allure.title("PeriodicKernel comparison with scikit-learn")
@@ -708,6 +764,14 @@ class TestRationalQuadraticKernel:
 		assert kernel.length_scale == length_scale
 		assert kernel.alpha == alpha
 
+	@allure.title("RationalQuadraticKernel string representation")
+	@allure.description("Test that RQ kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = RationalQuadraticKernel(length_scale=1.0, alpha=1.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
 	@allure.title("RationalQuadraticKernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
 	def test_scalar_computation(self):
@@ -749,7 +813,7 @@ class TestRationalQuadraticKernel:
 	def test_math_properties(self, sample_1d_data):
 		kernel = RationalQuadraticKernel(length_scale=1.0, alpha=1.0)
 		x1, _ = sample_1d_data
-		K = kernel(x1, x1)
+		K = kernel(x1)  # Test optional x2 parameter
 
 		# Check diagonal elements equal variance (same point)
 		assert jnp.allclose(jnp.diag(K), 1.0)
@@ -759,7 +823,7 @@ class TestRationalQuadraticKernel:
 
 		# Test that higher length scale gives higher values
 		kernel2 = RationalQuadraticKernel(length_scale=2.0, alpha=1.0)
-		K2 = kernel2(x1, x1)
+		K2 = kernel2(x1)  # Test optional x2 parameter
 		assert jnp.all(K2 >= K)
 
 	@pytest.mark.parametrize(
@@ -849,6 +913,14 @@ class TestPolynomialKernel:
 		assert kernel.gamma == 1.0
 		assert kernel.constant == 0.0
 
+	@allure.title("PolynomialKernel string representation")
+	@allure.description("Test that Polynomial kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = PolynomialKernel(degree=2, gamma=1.0, constant=0.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
 	@allure.title("PolynomialKernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
 	def test_scalar_computation(self):
@@ -880,7 +952,7 @@ class TestPolynomialKernel:
 	def test_math_properties(self, sample_1d_data):
 		kernel = PolynomialKernel(degree=2, gamma=1.0, constant=1.0)
 		x1, _ = sample_1d_data
-		K = kernel(x1, x1)
+		K = kernel(x1)  # Test optional x2 parameter
 
 		# Check diagonal elements are positive
 		assert jnp.all(jnp.diag(K) > 0)
@@ -966,6 +1038,14 @@ class TestConstantKernel:
 		kernel = ConstantKernel(value=2.0)
 		assert kernel.value == 2.0
 
+	@allure.title("ConstantKernel string representation")
+	@allure.description("Test that Constant kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = ConstantKernel(value=2.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
 	@allure.title("ConstantKernel scalar computation")
 	@allure.description("Test covariance computation returns constant value.")
 	def test_scalar_computation(self):
@@ -998,7 +1078,7 @@ class TestConstantKernel:
 	def test_math_properties(self, sample_1d_data):
 		kernel = ConstantKernel(value=1.5)
 		x1, _ = sample_1d_data
-		K = kernel(x1, x1)
+		K = kernel(x1)  # Test optional x2 parameter
 
 		# Check all elements are the constant value
 		assert jnp.allclose(K, 1.5)
@@ -1064,6 +1144,14 @@ class TestWhiteNoiseKernel:
 	def test_instantiation(self):
 		kernel = WhiteNoiseKernel(noise=1.0)
 		assert kernel.inner_kernel.value == 1.0
+
+	@allure.title("WhiteNoiseKernel string representation")
+	@allure.description("Test that WhiteNoise kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = WhiteNoiseKernel(noise=1.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
 
 	@pytest.mark.parametrize("noise", [0.5, 1.0, 2.0])
 	@allure.title("WhiteNoiseKernel comparison with Diag(Constant())")
