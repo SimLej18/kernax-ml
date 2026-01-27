@@ -3,13 +3,13 @@ from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 
-from kernax import AbstractKernel, StaticAbstractKernel
+from .AbstractKernel import AbstractKernel, StaticAbstractKernel
 
 
 class StaticLinearKernel(StaticAbstractKernel):
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the linear kernel covariance value between two vectors.
 
@@ -24,7 +24,7 @@ class StaticLinearKernel(StaticAbstractKernel):
 		# Compute the dot product of the shifted vectors
 		dot_product = jnp.sum(x1_shifted * x2_shifted)
 
-		return kern.variance_b + kern.variance_v * dot_product
+		return kern.variance_b + kern.variance_v * dot_product  # type: ignore[no-any-return]
 
 
 class LinearKernel(AbstractKernel):

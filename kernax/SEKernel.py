@@ -3,13 +3,13 @@ from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 
-from kernax import AbstractKernel, StaticAbstractKernel
+from .AbstractKernel import AbstractKernel, StaticAbstractKernel
 
 
 class StaticSEKernel(StaticAbstractKernel):
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the kernel covariance value between two vectors.
 
@@ -19,7 +19,7 @@ class StaticSEKernel(StaticAbstractKernel):
 		:return: scalar array
 		"""
 		kern = eqx.combine(kern)
-		return jnp.exp(-0.5 * ((x1 - x2) @ (x1 - x2)) / kern.length_scale**2)
+		return jnp.exp(-0.5 * ((x1 - x2) @ (x1 - x2)) / kern.length_scale**2)  # type: ignore[attr-defined]
 
 
 class SEKernel(AbstractKernel):
@@ -34,8 +34,10 @@ class SEKernel(AbstractKernel):
 		super().__init__()
 		self.length_scale = length_scale
 
+
 class RBFKernel(SEKernel):
 	"""
 	Same as SEKernel
 	"""
+
 	pass

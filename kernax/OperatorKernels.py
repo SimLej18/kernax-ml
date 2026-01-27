@@ -1,8 +1,10 @@
-import equinox as eqx
-from jax import jit
-from jax import numpy as jnp
+from typing import Optional
 
-from kernax import AbstractKernel, ConstantKernel
+import equinox as eqx
+from jax import Array, jit
+
+from .AbstractKernel import AbstractKernel
+from .ConstantKernel import ConstantKernel
 
 
 class OperatorKernel(AbstractKernel):
@@ -33,7 +35,7 @@ class SumKernel(OperatorKernel):
 	"""Sum kernel that sums the outputs of two kernels."""
 
 	@jit
-	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
 		if x2 is None:
 			x2 = x1
 
@@ -42,7 +44,7 @@ class SumKernel(OperatorKernel):
 	def __str__(self):
 		# If the right kernel is a NegKernel, we format it as a subtraction
 		if self.right_kernel.__class__.__name__ == "NegKernel":
-			return f"{self.left_kernel} - {self.right_kernel.inner_kernel}"
+			return f"{self.left_kernel} - {self.right_kernel.inner_kernel}"  # type: ignore[attr-defined]
 		return f"{self.left_kernel} + {self.right_kernel}"
 
 
@@ -50,7 +52,7 @@ class ProductKernel(OperatorKernel):
 	"""Product kernel that multiplies the outputs of two kernels."""
 
 	@jit
-	def __call__(self, x1: jnp.ndarray, x2: jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
 		if x2 is None:
 			x2 = x1
 

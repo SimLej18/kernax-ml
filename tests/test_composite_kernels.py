@@ -2,9 +2,9 @@
 Tests for composite and wrapper kernels.
 """
 
+import allure
 import jax.numpy as jnp
 import pytest
-import allure
 
 from kernax import (
 	ConstantKernel,
@@ -12,11 +12,11 @@ from kernax import (
 	ExpKernel,
 	LogKernel,
 	NegKernel,
+	PolynomialKernel,
 	ProductKernel,
+	RationalQuadraticKernel,
 	SEKernel,
 	SumKernel,
-	RationalQuadraticKernel,
-	PolynomialKernel,
 )
 
 
@@ -42,11 +42,14 @@ class TestSumKernel:
 		assert isinstance(kernel.left_kernel, SEKernel)
 		assert isinstance(kernel.right_kernel, ConstantKernel)
 
-	@pytest.mark.parametrize("length_scale,constant_value", [
-		(0.5, 0.5),
-		(1.0, 1.0),
-		(2.0, 0.1),
-	])
+	@pytest.mark.parametrize(
+		"length_scale,constant_value",
+		[
+			(0.5, 0.5),
+			(1.0, 1.0),
+			(2.0, 0.1),
+		],
+	)
 	@allure.title("SumKernel computation SE + Constant")
 	@allure.description("Test that sum kernel computes correctly with SE and Constant kernels.")
 	def test_computation_SE_plus_const(self, sample_1d_data, length_scale, constant_value):
@@ -60,13 +63,18 @@ class TestSumKernel:
 
 		assert jnp.allclose(result, expected)
 
-	@pytest.mark.parametrize("length_scale,alpha,degree", [
-		(1.0, 1.0, 2),
-		(0.5, 2.0, 3),
-		(2.0, 0.5, 1),
-	])
+	@pytest.mark.parametrize(
+		"length_scale,alpha,degree",
+		[
+			(1.0, 1.0, 2),
+			(0.5, 2.0, 3),
+			(2.0, 0.5, 1),
+		],
+	)
 	@allure.title("SumKernel computation RQ + Polynomial")
-	@allure.description("Test that sum kernel computes correctly with RationalQuadratic and Polynomial kernels.")
+	@allure.description(
+		"Test that sum kernel computes correctly with RationalQuadratic and Polynomial kernels."
+	)
 	def test_computation_RQ_plus_poly(self, sample_1d_data, length_scale, alpha, degree):
 		k1 = RationalQuadraticKernel(length_scale=length_scale, alpha=alpha)
 		k2 = PolynomialKernel(degree=degree, gamma=1.0, constant=1.0)
@@ -87,7 +95,7 @@ class TestSumKernel:
 		assert isinstance(kernel.right_kernel, ConstantKernel)
 
 		# Operator mode
-		kernel = k1 + 2.
+		kernel = k1 + 2.0
 		assert isinstance(kernel.right_kernel, ConstantKernel)
 
 	@allure.title("SumKernel mathematical properties")
@@ -126,11 +134,14 @@ class TestProductKernel:
 		kernel = k1 * k2
 		assert isinstance(kernel, ProductKernel)
 
-	@pytest.mark.parametrize("length_scale,constant_value", [
-		(0.5, 0.5),
-		(1.0, 1.0),
-		(2.0, 0.1),
-	])
+	@pytest.mark.parametrize(
+		"length_scale,constant_value",
+		[
+			(0.5, 0.5),
+			(1.0, 1.0),
+			(2.0, 0.1),
+		],
+	)
 	@allure.title("ProductKernel computation")
 	@allure.description("Test that product kernel computes correctly.")
 	def test_computation(self, sample_1d_data, length_scale, constant_value):
@@ -153,7 +164,7 @@ class TestProductKernel:
 		assert isinstance(kernel.right_kernel, ConstantKernel)
 
 		# Operator mode
-		kernel = k1 * 2.
+		kernel = k1 * 2.0
 		assert isinstance(kernel.right_kernel, ConstantKernel)
 
 	@allure.title("ProductKernel mathematical properties")

@@ -3,13 +3,13 @@ from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 
-from kernax import AbstractKernel, StaticAbstractKernel
+from .AbstractKernel import AbstractKernel, StaticAbstractKernel
 
 
 class StaticPolynomialKernel(StaticAbstractKernel):
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the kernel covariance value between two vectors.
 
@@ -18,7 +18,7 @@ class StaticPolynomialKernel(StaticAbstractKernel):
 		:param x2: scalar array
 		:return: scalar array
 		"""
-		return jnp.pow(kern.gamma * (x1.T @ x2) + kern.constant, kern.degree)
+		return jnp.pow(kern.gamma * (x1.T @ x2) + kern.constant, kern.degree)  # type: ignore[attr-defined]
 
 
 class PolynomialKernel(AbstractKernel):
@@ -32,7 +32,7 @@ class PolynomialKernel(AbstractKernel):
 
 	static_class = StaticPolynomialKernel
 
-	def __init__(self, degree: int, gamma: float = 1., constant: float = 0.):
+	def __init__(self, degree: int, gamma: float = 1.0, constant: float = 0.0):
 		"""
 		:param degree: degree of the polynomial
 		:param gamma: scale factor
@@ -40,5 +40,5 @@ class PolynomialKernel(AbstractKernel):
 		"""
 		super().__init__()
 		self.degree = degree
-		self.gamma = gamma
-		self.constant = constant
+		self.gamma = gamma  # type: ignore[assignment]  # Converter handles float to Array
+		self.constant = constant  # type: ignore[assignment]  # Converter handles float to Array

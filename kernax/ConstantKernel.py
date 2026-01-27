@@ -3,14 +3,14 @@ import jax.numpy as jnp
 from equinox import filter_jit
 from jax import Array
 
-from kernax import AbstractKernel, StaticAbstractKernel
+from .AbstractKernel import AbstractKernel, StaticAbstractKernel
 from .utils import format_jax_array
 
 
 class StaticConstantKernel(StaticAbstractKernel):
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the kernel covariance value between two vectors.
 
@@ -19,7 +19,7 @@ class StaticConstantKernel(StaticAbstractKernel):
 		:param x2: scalar array
 		:return: scalar array
 		"""
-		return kern.value  # The constant value is returned regardless of the inputs
+		return kern.value  # type: ignore[no-any-return]  # The constant value is returned regardless of the inputs
 
 
 class ConstantKernel(AbstractKernel):
@@ -37,4 +37,3 @@ class ConstantKernel(AbstractKernel):
 
 	def __str__(self):
 		return format_jax_array(self.value)
-

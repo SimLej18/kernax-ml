@@ -3,14 +3,14 @@ from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 
-from kernax import AbstractKernel, StaticAbstractKernel
+from .AbstractKernel import AbstractKernel, StaticAbstractKernel
 
 
 # Matern 1/2 (Exponential) Kernel defined in Rasmussen and Williams (2006), section 4.2
 class StaticMatern12Kernel(StaticAbstractKernel):
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the Matern 1/2 kernel covariance value between two vectors.
 
@@ -36,7 +36,7 @@ class Matern12Kernel(AbstractKernel):
 class StaticMatern32Kernel(StaticAbstractKernel):
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the Matern 3/2 kernel covariance value between two vectors.
 
@@ -47,7 +47,7 @@ class StaticMatern32Kernel(StaticAbstractKernel):
 		"""
 		r = jnp.linalg.norm(x1 - x2)  # Euclidean distance
 		sqrt3_r_div_l = (jnp.sqrt(3) * r) / kern.length_scale
-		return (1.0 + sqrt3_r_div_l) * jnp.exp(-sqrt3_r_div_l)
+		return (1.0 + sqrt3_r_div_l) * jnp.exp(-sqrt3_r_div_l)  # type: ignore[no-any-return]
 
 
 class Matern32Kernel(AbstractKernel):
@@ -63,7 +63,7 @@ class Matern32Kernel(AbstractKernel):
 class StaticMatern52Kernel(StaticAbstractKernel):
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the Matern 5/2 kernel covariance value between two vectors.
 
@@ -74,7 +74,7 @@ class StaticMatern52Kernel(StaticAbstractKernel):
 		"""
 		r = jnp.linalg.norm(x1 - x2)  # Euclidean distance
 		sqrt5_r_div_l = (jnp.sqrt(5) * r) / kern.length_scale
-		return (1.0 + sqrt5_r_div_l + (5.0 / 3.0) * (r / kern.length_scale) ** 2) * jnp.exp(
+		return (1.0 + sqrt5_r_div_l + (5.0 / 3.0) * (r / kern.length_scale) ** 2) * jnp.exp(  # type: ignore[no-any-return]
 			-sqrt5_r_div_l
 		)
 

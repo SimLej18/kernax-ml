@@ -2,19 +2,18 @@
 Tests for wrapper kernels (BatchKernel, ActiveDimsKernel, ARDKernel).
 """
 
-import jax.numpy as jnp
-import pytest
 import allure
+import jax.numpy as jnp
 
 from kernax import (
 	ActiveDimsKernel,
 	ARDKernel,
 	BatchKernel,
-	BlockKernel,
 	BlockDiagKernel,
-	SEKernel,
-	DiagKernel,
+	BlockKernel,
 	ConstantKernel,
+	DiagKernel,
+	SEKernel,
 )
 
 
@@ -204,6 +203,7 @@ class TestBlockKernel:
 	@allure.description("Test that BlockKernel can be instantiated.")
 	def test_instantiation(self):
 		import jax.tree_util as jtu
+
 		base_kernel = SEKernel(length_scale=1.0)
 		# Create a pytree with block_in_axes=0 for all hyperparameters
 		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
@@ -217,6 +217,7 @@ class TestBlockKernel:
 	@allure.description("Test blocking with distinct hyperparameters per block.")
 	def test_block_over_hyperparameters(self):
 		import jax.tree_util as jtu
+
 		# Create base kernel with single length_scale
 		base_kernel = SEKernel(length_scale=1.0)
 		nb_blocks = 3
@@ -254,6 +255,7 @@ class TestBlockKernel:
 
 		# Use a pytree to specify different axes for different hyperparameters
 		import jax.tree_util as jtu
+
 		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
 
 		block_kernel = BlockKernel(
@@ -354,6 +356,7 @@ class TestBlockDiagKernel:
 	@allure.description("Test that BlockDiagKernel can be instantiated.")
 	def test_instantiation(self):
 		import jax.tree_util as jtu
+
 		base_kernel = SEKernel(length_scale=1.0)
 		# Create a pytree with block_in_axes=0 for all hyperparameters
 		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
@@ -367,6 +370,7 @@ class TestBlockDiagKernel:
 	@allure.description("Test block-diagonal with distinct hyperparameters per block.")
 	def test_block_over_hyperparameters(self):
 		import jax.tree_util as jtu
+
 		# Create base kernel with single length_scale
 		base_kernel = SEKernel(length_scale=1.0)
 		nb_blocks = 3
@@ -398,6 +402,7 @@ class TestBlockDiagKernel:
 	@allure.description("Test block-diagonal over both inputs and hyperparameters.")
 	def test_block_over_inputs_and_hyperparameters(self, sample_batched_data):
 		import jax.tree_util as jtu
+
 		base_kernel = SEKernel(length_scale=1.0)
 		x1_batched, x2_batched = sample_batched_data
 		nb_blocks = x1_batched.shape[0]
@@ -501,11 +506,13 @@ class TestBlockDiagKernel:
 		n_points = 4
 
 		# Create batched inputs with distinct patterns
-		x_batched = jnp.array([
-			[[1.0], [2.0], [3.0], [4.0]],
-			[[10.0], [20.0], [30.0], [40.0]],
-			[[100.0], [200.0], [300.0], [400.0]]
-		])
+		x_batched = jnp.array(
+			[
+				[[1.0], [2.0], [3.0], [4.0]],
+				[[10.0], [20.0], [30.0], [40.0]],
+				[[100.0], [200.0], [300.0], [400.0]],
+			]
+		)
 
 		block_diag_kernel = BlockDiagKernel(
 			base_kernel,

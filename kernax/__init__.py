@@ -26,20 +26,20 @@ from .OperatorKernels import OperatorKernel, ProductKernel, SumKernel
 from .PeriodicKernel import PeriodicKernel, StaticPeriodicKernel
 from .PolynomialKernel import PolynomialKernel, StaticPolynomialKernel
 from .RationalQuadraticKernel import RationalQuadraticKernel, StaticRationalQuadraticKernel
-from .SEKernel import SEKernel, StaticSEKernel, RBFKernel
+from .SEKernel import RBFKernel, SEKernel, StaticSEKernel
+from .WhiteNoiseKernel import WhiteNoiseKernel
 from .WrapperKernels import (
 	ActiveDimsKernel,
 	ARDKernel,
 	BatchKernel,
+	BlockDiagKernel,
+	BlockKernel,
 	DiagKernel,
 	ExpKernel,
 	LogKernel,
 	NegKernel,
 	WrapperKernel,
-	BlockKernel,
-	BlockDiagKernel,
 )
-from .WhiteNoiseKernel import WhiteNoiseKernel
 
 __all__ = [
 	# Package metadata

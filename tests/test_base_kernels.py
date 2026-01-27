@@ -2,9 +2,9 @@
 Tests for base kernel implementations.
 """
 
+import allure
 import jax.numpy as jnp
 import pytest
-import allure
 
 from kernax import (
 	ConstantKernel,
@@ -16,8 +16,8 @@ from kernax import (
 	PeriodicKernel,
 	PolynomialKernel,
 	RationalQuadraticKernel,
-	SEKernel,
 	RBFKernel,
+	SEKernel,
 	WhiteNoiseKernel,
 )
 
@@ -131,6 +131,7 @@ class TestSEKernel:
 
 class TestRBFKernel:
 	"""Tests for RBF (Radial Basis Function) Kernel."""
+
 	# As RBF is a copy of SE, we just test instanciation and equivalence
 
 	@allure.title("SEKernel Instantiation")
@@ -178,12 +179,15 @@ class TestLinearKernel:
 		assert jnp.isfinite(result)
 		assert jnp.allclose(result, expected)
 
-	@pytest.mark.parametrize("variance_b,variance_v,offset_c", [
-		(0.0, 1.0, 0.0),
-		(0.5, 1.0, 0.0),
-		(1.0, 0.5, 0.0),
-		(0.5, 1.0, 0.5),
-	])
+	@pytest.mark.parametrize(
+		"variance_b,variance_v,offset_c",
+		[
+			(0.0, 1.0, 0.0),
+			(0.5, 1.0, 0.0),
+			(1.0, 0.5, 0.0),
+			(0.5, 1.0, 0.5),
+		],
+	)
 	@allure.title("LinearKernel cross-cov computation")
 	@allure.description("Test cross-covariance computation between two batches of vectors.")
 	def test_cross_cov_computation(self, sample_1d_data, variance_b, variance_v, offset_c):
@@ -196,7 +200,9 @@ class TestLinearKernel:
 			for j in range(x2.shape[0]):
 				assert jnp.allclose(result[i, j], kernel(x1[i], x2[j]))
 
-	@pytest.mark.parametrize("variance_b,variance_v,offset_c", [(0.5, 1.0, 0.), (1.0, 0.5, 2.), (1.0, 1.0, -3.)])
+	@pytest.mark.parametrize(
+		"variance_b,variance_v,offset_c", [(0.5, 1.0, 0.0), (1.0, 0.5, 2.0), (1.0, 1.0, -3.0)]
+	)
 	@allure.title("LinearKernel mathematical properties")
 	@allure.description("Test that mathematical properties of the kernel still hold.")
 	def test_math_properties(self, sample_1d_data, variance_b, variance_v, offset_c):
@@ -241,6 +247,7 @@ class TestLinearKernel:
 
 		assert jnp.allclose(result, expected)
 
+
 class TestMatern12Kernel:
 	"""Tests for Matern 1/2 Kernel (Exponential)."""
 
@@ -280,7 +287,7 @@ class TestMatern12Kernel:
 	@allure.title("Matern12Kernel mathematical properties")
 	@allure.description("Test that mathematical properties of the kernel still hold.")
 	def test_math_properties(self, sample_1d_data):
-		kernel = Matern12Kernel(length_scale=1.)
+		kernel = Matern12Kernel(length_scale=1.0)
 		x1, _ = sample_1d_data
 		K = kernel(x1, x1)
 
@@ -291,7 +298,7 @@ class TestMatern12Kernel:
 		assert jnp.allclose(K, K.T)
 
 		# Check that higher length scale gives higher values
-		kernel2 = Matern12Kernel(length_scale=2.)
+		kernel2 = Matern12Kernel(length_scale=2.0)
 		K2 = kernel2(x1, x1)
 		assert jnp.all(K2 >= K)
 
@@ -385,7 +392,7 @@ class TestMatern32Kernel:
 	@allure.title("Matern32Kernel mathematical properties")
 	@allure.description("Test that mathematical properties of the kernel still hold.")
 	def test_math_properties(self, sample_1d_data):
-		kernel = Matern32Kernel(length_scale=1.)
+		kernel = Matern32Kernel(length_scale=1.0)
 		x1, _ = sample_1d_data
 		K = kernel(x1, x1)
 
@@ -396,7 +403,7 @@ class TestMatern32Kernel:
 		assert jnp.allclose(K, K.T)
 
 		# Test that higher length scale gives higher values
-		kernel2 = Matern32Kernel(length_scale=2.)
+		kernel2 = Matern32Kernel(length_scale=2.0)
 		K2 = kernel2(x1, x1)
 		assert jnp.all(K2 >= K)
 
@@ -684,13 +691,16 @@ class TestPeriodicKernel:
 class TestRationalQuadraticKernel:
 	"""Tests for Rational Quadratic Kernel."""
 
-	@pytest.mark.parametrize("length_scale,alpha", [
-		(0.5, 0.5),
-		(1.0, 1.0),
-		(2.0, 2.0),
-		(1.0, 0.5),
-		(1.0, 2.0),
-	])
+	@pytest.mark.parametrize(
+		"length_scale,alpha",
+		[
+			(0.5, 0.5),
+			(1.0, 1.0),
+			(2.0, 2.0),
+			(1.0, 0.5),
+			(1.0, 2.0),
+		],
+	)
 	@allure.title("RationalQuadraticKernel Instantiation")
 	@allure.description("Test that RQ kernel can be instantiated.")
 	def test_instantiation(self, length_scale, alpha):
@@ -713,12 +723,15 @@ class TestRationalQuadraticKernel:
 		assert jnp.isfinite(result)
 		assert jnp.allclose(result, expected, atol=1e-5)
 
-	@pytest.mark.parametrize("length_scale,alpha", [
-		(0.5, 1.0),
-		(1.0, 0.5),
-		(1.0, 1.0),
-		(2.0, 2.0),
-	])
+	@pytest.mark.parametrize(
+		"length_scale,alpha",
+		[
+			(0.5, 1.0),
+			(1.0, 0.5),
+			(1.0, 1.0),
+			(2.0, 2.0),
+		],
+	)
 	@allure.title("RationalQuadraticKernel cross-cov computation")
 	@allure.description("Test cross-covariance computation between two batches of vectors.")
 	def test_cross_cov_computation(self, sample_1d_data, length_scale, alpha):
@@ -749,12 +762,15 @@ class TestRationalQuadraticKernel:
 		K2 = kernel2(x1, x1)
 		assert jnp.all(K2 >= K)
 
-	@pytest.mark.parametrize("length_scale,alpha", [
-		(0.5, 1.0),
-		(1.0, 0.5),
-		(1.0, 1.0),
-		(2.0, 2.0),
-	])
+	@pytest.mark.parametrize(
+		"length_scale,alpha",
+		[
+			(0.5, 1.0),
+			(1.0, 0.5),
+			(1.0, 1.0),
+			(2.0, 2.0),
+		],
+	)
 	@allure.title("RationalQuadraticKernel comparison with scikit-learn")
 	@allure.description("Compare RQ kernel results against scikit-learn implementation.")
 	def test_against_scikitlearn(self, sample_1d_data, length_scale, alpha):
@@ -769,12 +785,15 @@ class TestRationalQuadraticKernel:
 
 		assert jnp.allclose(result, expected)
 
-	@pytest.mark.parametrize("length_scale,alpha", [
-		(0.5, 1.0),
-		(1.0, 0.5),
-		(1.0, 1.0),
-		(2.0, 2.0),
-	])
+	@pytest.mark.parametrize(
+		"length_scale,alpha",
+		[
+			(0.5, 1.0),
+			(1.0, 0.5),
+			(1.0, 1.0),
+			(2.0, 2.0),
+		],
+	)
 	@allure.title("RationalQuadraticKernel comparison with GPyTorch")
 	@allure.description("Compare RQ kernel results against GPyTorch implementation.")
 	def test_against_gpytorch(self, sample_1d_data, length_scale, alpha):
@@ -795,12 +814,15 @@ class TestRationalQuadraticKernel:
 
 		assert jnp.allclose(result, expected)
 
-	@pytest.mark.parametrize("length_scale,alpha", [
-		(0.5, 1.0),
-		(1.0, 0.5),
-		(1.0, 1.0),
-		(2.0, 2.0),
-	])
+	@pytest.mark.parametrize(
+		"length_scale,alpha",
+		[
+			(0.5, 1.0),
+			(1.0, 0.5),
+			(1.0, 1.0),
+			(2.0, 2.0),
+		],
+	)
 	@allure.title("RationalQuadraticKernel comparison with GPJax")
 	@allure.description("Compare RQ kernel results against GPJax implementation.")
 	def test_against_gpjax(self, sample_1d_data, length_scale, alpha):
@@ -1033,7 +1055,8 @@ class TestConstantKernel:
 
 
 class TestWhiteNoiseKernel:
-	""" Tests for WhiteNoiseKernel class. """
+	"""Tests for WhiteNoiseKernel class."""
+
 	# As WhiteNoiseKernel is just a shortcut to a Diag(Constant()) kernel, we only test instantiation and equivalence
 
 	@allure.title("WhiteNoiseKernel Instantiation")

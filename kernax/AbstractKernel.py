@@ -1,21 +1,33 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, ClassVar, Optional, Type
+
 import equinox as eqx
 import jax.numpy as jnp
 from equinox import filter_jit
-from jax import vmap
+from jax import Array, vmap
 from jax.lax import cond
 
 from .utils import format_jax_array
 
+if TYPE_CHECKING:
+	pass
+
 
 class AbstractKernel(eqx.Module):
+	static_class: ClassVar[Optional[Type[StaticAbstractKernel]]] = None  # Must be defined in sub-class
+
 	@filter_jit
-	def __call__(self, x1, x2=None):
+	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
 		# If no x2 is provided, we compute the covariance between x1 and itself
 		if x2 is None:
 			x2 = x1
 
 		# Turn scalar inputs into vectors
 		x1, x2 = jnp.atleast_1d(x1), jnp.atleast_1d(x2)
+
+		# Ensure static_class is not None
+		assert self.static_class is not None, "static_class must be defined in subclass"
 
 		# Call the appropriate method
 		if jnp.ndim(x1) == 1 and jnp.ndim(x2) == 1:
@@ -73,14 +85,21 @@ class AbstractKernel(eqx.Module):
 		# FIXME: do not call `format_jax_array` when the pytree is filled with non-float values
 		#  For example, try to print the `batch_in_axes` property of a BatchKernel
 		# Print parameters, aka elements of __dict__ that are jax arrays
-		return f"{self.__class__.__name__}({', '.join([f'{key}={format_jax_array(value)}' for key, value in self.__dict__.items() \
-		if isinstance(value, jnp.ndarray)])})"
+		return f"{self.__class__.__name__}({
+			', '.join(
+				[
+					f'{key}={format_jax_array(value)}'
+					for key, value in self.__dict__.items()
+					if isinstance(value, Array)
+				]
+			)
+		})"
 
 
 class StaticAbstractKernel:
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the kernel covariance value between two vectors.
 
@@ -94,8 +113,8 @@ class StaticAbstractKernel:
 	@classmethod
 	@filter_jit
 	def pairwise_cov_if_not_nan(
-		cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray
-	) -> jnp.ndarray:
+		cls, kern: AbstractKernel, x1: Array, x2: Array
+	) -> Array:
 		"""
 		Returns NaN if either x1 or x2 is NaN, otherwise calls the compute_scalar method.
 
@@ -104,7 +123,7 @@ class StaticAbstractKernel:
 		:param x2: scalar array
 		:return: scalar array
 		"""
-		return cond(
+		return cond(  # type: ignore[no-any-return]
 			jnp.any(jnp.isnan(x1) | jnp.isnan(x2)),
 			lambda _: jnp.nan,
 			lambda _: cls.pairwise_cov(kern, x1, x2),
@@ -114,8 +133,8 @@ class StaticAbstractKernel:
 	@classmethod
 	@filter_jit
 	def cross_cov_vector(
-		cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray
-	) -> jnp.ndarray:
+		cls, kern: AbstractKernel, x1: Array, x2: Array
+	) -> Array:
 		"""
 		Compute the kernel cross covariance values between an array of vectors (matrix) and a vector.
 
@@ -129,8 +148,8 @@ class StaticAbstractKernel:
 	@classmethod
 	@filter_jit
 	def cross_cov_vector_if_not_nan(
-		cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray, **kwargs
-	) -> jnp.ndarray:
+		cls, kern: AbstractKernel, x1: Array, x2: Array, **kwargs
+	) -> Array:
 		"""
 		Returns an array of NaN if scalar is NaN, otherwise calls the compute_vector method.
 
@@ -140,7 +159,7 @@ class StaticAbstractKernel:
 		:param kwargs: hyperparameters of the kernel
 		:return: vector array (N, )
 		"""
-		return cond(
+		return cond(  # type: ignore[no-any-return]
 			jnp.any(jnp.isnan(x2)),
 			lambda _: jnp.full(len(x1), jnp.nan),
 			lambda _: cls.cross_cov_vector(kern, x1, x2),
@@ -150,8 +169,8 @@ class StaticAbstractKernel:
 	@classmethod
 	@filter_jit
 	def cross_cov_matrix(
-		cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray
-	) -> jnp.ndarray:
+		cls, kern: AbstractKernel, x1: Array, x2: Array
+	) -> Array:
 		"""
 		Compute the kernel covariance matrix between two vector arrays.
 

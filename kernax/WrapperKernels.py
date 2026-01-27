@@ -1,14 +1,15 @@
 from functools import partial
 
 import equinox as eqx
-from equinox import filter_jit
 import jax.numpy as jnp
 import jax.scipy as jsp
 import jax.tree_util as jtu
-from jax import jit, vmap
+from equinox import filter_jit
+from jax import Array, jit, vmap
 from jax.lax import cond
 
-from kernax import AbstractKernel, ConstantKernel, StaticAbstractKernel
+from .AbstractKernel import AbstractKernel, StaticAbstractKernel
+from .ConstantKernel import ConstantKernel
 
 
 class WrapperKernel(AbstractKernel):
@@ -37,8 +38,8 @@ class StaticDiagKernel(StaticAbstractKernel):
 
 	@classmethod
 	@partial(jit, static_argnums=(0,))
-	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
-		return cond(
+	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
+		return cond(  # type: ignore[no-any-return]
 			jnp.all(x1 == x2), lambda _: kern.inner_kernel(x1, x2), lambda _: jnp.array(0.0), None
 		)
 
@@ -64,7 +65,7 @@ class ExpKernel(WrapperKernel):
 	"""
 
 	@jit
-	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		if x2 is None:
 			x2 = x1
 
@@ -80,7 +81,7 @@ class LogKernel(WrapperKernel):
 	"""
 
 	@jit
-	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		if x2 is None:
 			x2 = x1
 
@@ -92,7 +93,7 @@ class LogKernel(WrapperKernel):
 
 class NegKernel(WrapperKernel):
 	@jit
-	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		if x2 is None:
 			x2 = x1
 
@@ -160,7 +161,7 @@ class BatchKernel(WrapperKernel):
 		)
 
 	@jit
-	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		"""
 		Compute the kernel over batched inputs using vmap.
 
@@ -173,7 +174,7 @@ class BatchKernel(WrapperKernel):
 		"""
 		# vmap over the batch dimension of inner_kernel and inputs
 		# Each batch element gets its own version of inner_kernel with corresponding hyperparameters
-		return vmap(
+		return vmap(  # type: ignore[no-any-return]
 			lambda kernel, x1, x2: kernel(x1, x2),
 			in_axes=(
 				self.batch_in_axes,
@@ -247,7 +248,7 @@ class BlockKernel(WrapperKernel):
 		)
 
 	@filter_jit
-	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		"""
 		Compute the kernel over batched inputs using vmap.
 
@@ -263,8 +264,11 @@ class BlockKernel(WrapperKernel):
 		rows, cols = jnp.triu_indices(self.nb_blocks)
 
 		full_kernel = jtu.tree_map(
-			lambda param, block_in_ax:
-			param[rows] if block_in_ax == 0 else param[cols] if block_in_ax == 1 else param,
+			lambda param, block_in_ax: param[rows]
+			if block_in_ax == 0
+			else param[cols]
+			if block_in_ax == 1
+			else param,
 			self.inner_kernel,
 			self.block_in_axes,
 		)
@@ -274,14 +278,16 @@ class BlockKernel(WrapperKernel):
 
 		# vmap over the block dimension of inner_kernel and inputs
 		# Each block element gets its own version of inner_kernel with corresponding hyperparameters
-		return self.symmetric_blocks_to_matrix(vmap(
-			lambda kernel, x1, x2: kernel(x1, x2),
-			in_axes=(
-				jtu.tree_map(lambda x: None if x is None else 0, self.block_in_axes),
-				self.block_over_inputs,
-				self.block_over_inputs,
-			),
-		)(full_kernel, x1, x2))
+		return self.symmetric_blocks_to_matrix(  # type: ignore[no-any-return]
+			vmap(
+				lambda kernel, x1, x2: kernel(x1, x2),
+				in_axes=(
+					jtu.tree_map(lambda x: None if x is None else 0, self.block_in_axes),
+					self.block_over_inputs,
+					self.block_over_inputs,
+				),
+			)(full_kernel, x1, x2)
+		)
 
 	@filter_jit
 	def symmetric_blocks_to_matrix(self, flat_blocks):
@@ -293,7 +299,10 @@ class BlockKernel(WrapperKernel):
 						 Expected order: (0,0), (0,1), (0,2)... (row-major upper)
 		"""
 		# 2. Créer la grille de blocs vide (B, B, H, W)
-		grid = jnp.zeros((self.nb_blocks, self.nb_blocks, flat_blocks.shape[-2], flat_blocks.shape[-1]), dtype=flat_blocks.dtype)
+		grid = jnp.zeros(
+			(self.nb_blocks, self.nb_blocks, flat_blocks.shape[-2], flat_blocks.shape[-1]),
+			dtype=flat_blocks.dtype,
+		)
 
 		# 3. Récupérer les indices du triangle supérieur
 		# ex: rows=[0,0,1], cols=[0,1,1] pour B=2
@@ -310,9 +319,9 @@ class BlockKernel(WrapperKernel):
 		grid = grid.at[cols, rows].set(grid[rows, cols].swapaxes(-1, -2))
 
 		# 6. Assemblage final (Même logique que précédemment)
-		return (grid
-		        .swapaxes(1, 2)  # (RowBlock, H, ColBlock, W)
-		        .reshape(self.nb_blocks * flat_blocks.shape[-2], self.nb_blocks * flat_blocks.shape[-1]))
+		return grid.swapaxes(1, 2).reshape(  # (RowBlock, H, ColBlock, W)
+			self.nb_blocks * flat_blocks.shape[-2], self.nb_blocks * flat_blocks.shape[-1]
+		)
 
 	def __str__(self):
 		return f"Block{self.inner_kernel}"
@@ -330,12 +339,12 @@ class BlockDiagKernel(BatchKernel):
 
 	This class uses vmap to vectorize the kernel computation of each block, then resize the result into a block matrix.
 	"""
+
 	def __init__(self, inner_kernel, nb_blocks, block_in_axes=None, block_over_inputs=True):
 		super().__init__(inner_kernel, nb_blocks, block_in_axes, block_over_inputs)
 
-
 	@filter_jit
-	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: None | Array = None) -> Array:  # type: ignore[override]
 		"""
 		Compute the kernel over batched inputs using vmap.
 
@@ -346,7 +355,7 @@ class BlockDiagKernel(BatchKernel):
 		Returns:
 				Kernel block-matrix of appropriate shape
 		"""
-		return jsp.linalg.block_diag(*super().__call__(x1, x2))
+		return jsp.linalg.block_diag(*super().__call__(x1, x2))  # type: ignore[no-any-return]
 
 	def __str__(self):
 		return f"BlockDiag{self.inner_kernel}"
@@ -371,7 +380,7 @@ class ActiveDimsKernel(WrapperKernel):
 	```
 	"""
 
-	active_dims: jnp.ndarray = eqx.field(static=True, converter=jnp.asarray)
+	active_dims: Array = eqx.field(static=True, converter=jnp.asarray)
 
 	def __init__(self, inner_kernel, active_dims):
 		"""
@@ -382,7 +391,7 @@ class ActiveDimsKernel(WrapperKernel):
 		self.active_dims = active_dims
 
 	@jit
-	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		# TODO: add runtime error if active_dims doesn't match input dimensions
 		if x2 is None:
 			x2 = x1
@@ -396,12 +405,12 @@ class ARDKernel(WrapperKernel):
 	Each input dimension is scaled by a separate length scale hyperparameter.
 	"""
 
-	length_scales: jnp.ndarray = eqx.field(converter=jnp.asarray)
+	length_scales: Array = eqx.field(converter=jnp.asarray)
 
 	def _freeze_inner_lengthscales(self, kernel):
 		def map_func(path, leaf):
 			if len(path) > 0:
-				last_node = path[-1] # To retrieve the attribute name
+				last_node = path[-1]  # To retrieve the attribute name
 				if isinstance(last_node, jtu.GetAttrKey) and last_node.name == "length_scale":
 					# Force length scale of 1
 					return jnp.ones_like(leaf)
@@ -418,7 +427,7 @@ class ARDKernel(WrapperKernel):
 		self.length_scales = length_scales
 
 	@jit
-	def __call__(self, x1: jnp.ndarray, x2: None | jnp.ndarray = None) -> jnp.ndarray:
+	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		# TODO: add runtime error if length_scales doesn't match input dimensions
 		if x2 is None:
 			x2 = x1
@@ -426,4 +435,6 @@ class ARDKernel(WrapperKernel):
 		# FIXME: if used in an optimisation setting, inner length_scales can still have other values.
 		#  Freezing the inner at every call may be costly/slow down learning.
 		#  We should find a proper way to freeze these parameters.
-		return self._freeze_inner_lengthscales(self.inner_kernel)(x1 / self.length_scales, x2 / self.length_scales)
+		return self._freeze_inner_lengthscales(self.inner_kernel)(  # type: ignore[no-any-return]
+			x1 / self.length_scales, x2 / self.length_scales
+		)

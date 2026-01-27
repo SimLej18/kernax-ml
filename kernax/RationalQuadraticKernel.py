@@ -3,13 +3,13 @@ from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 
-from kernax import AbstractKernel, StaticAbstractKernel
+from .AbstractKernel import AbstractKernel, StaticAbstractKernel
 
 
 class StaticRationalQuadraticKernel(StaticAbstractKernel):
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
+	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the Rational Quadratic kernel covariance value between two vectors.
 
