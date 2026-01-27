@@ -64,6 +64,8 @@ The `AbstractKernel` class (kernax/AbstractKernel.py:10-63) extends `eqx.Module`
    - `NegKernel`: Negates output
    - `DiagKernel`: Returns value only when inputs are equal (creates diagonal matrices)
    - `BatchKernel`: Adds batch handling with distinct hyperparameters per batch element
+   - `BlockKernel`: Constructs block covariance matrices for grouped data with optional block structure over inputs/hyperparameters
+   - `BlockDiagKernel`: Creates block-diagonal covariance matrices, specialized version of BlockKernel for diagonal block structure
    - `ActiveDimsKernel`: Selects specific input dimensions before kernel computation
    - `ARDKernel`: Applies Automatic Relevance Determination (different length scale per dimension)
    - Transform wrappers auto-convert non-kernel arguments to `ConstantKernel`
@@ -89,6 +91,26 @@ python3
 >>> kernel = SEKernel(length_scale=1.0)
 >>> kernel(jnp.array([1.0]), jnp.array([2.0]))
 ```
+
+### Running Tests
+```bash
+# Run all tests
+make test
+
+# Run tests with coverage report
+make test-cov
+
+# Run tests and generate Allure HTML report
+make test-allure
+
+# Run linters (ruff, mypy)
+make lint
+
+# Format code with tabs
+make format
+```
+
+All test outputs (htmlcov, allure-results, allure-report) are saved in `tests/out/` directory.
 
 ## Implementation Guidelines
 
@@ -129,8 +151,9 @@ class MyKernel(AbstractKernel):
 
 ### Import Patterns
 
-- Within kernax modules: Use `from kernax import` or relative imports `from .AbstractKernel import`
-- Import inconsistency exists: Some files use `from kernax import`, others use `from .AbstractKernel import` (both work)
+- Within kernax modules: Use relative imports `from .AbstractKernel import` (preferred for avoiding circular imports)
+- External imports: Use absolute imports `from kernax import` for clarity
+- All imports have been standardized to use relative imports within the kernax package to fix mypy type checking issues
 
 ### JAX and Equinox Considerations
 
@@ -140,3 +163,47 @@ class MyKernel(AbstractKernel):
 - PyTree registration is automatic through `eqx.Module` inheritance
 - Use `eqx.field(static=True)` for non-differentiable parameters (e.g., dimensions, boolean flags)
 - Equinox provides clean separation between differentiable and static fields
+
+### Testing Guidelines
+
+The test suite uses pytest with Allure reporting and achieves 94% code coverage. Tests are organized as:
+
+- **test_base_kernels.py**: Tests for all base kernel implementations (SE, Linear, Matern, Periodic, etc.)
+  - Mathematical properties (symmetry, positive semi-definiteness)
+  - Dimension handling (scalar, vector, matrix)
+  - NaN handling for missing data
+  - Hyperparameter variations
+  - String representations
+
+- **test_kernel_compositions.py**: Tests for kernel composition operations
+  - Operator overloading (+, -, *, unary -)
+  - Explicit constructor tests (SumKernel, ProductKernel)
+  - Scalar auto-conversion to ConstantKernel
+  - Wrapper kernels (ExpKernel, LogKernel, NegKernel)
+  - Complex compositions and mathematical properties (associativity, distributivity)
+
+- **test_wrapper_kernels.py**: Tests for wrapper kernel implementations
+  - DiagKernel, BatchKernel, BlockKernel, BlockDiagKernel
+  - ActiveDimsKernel, ARDKernel
+  - Batch handling and dimension selection
+  - Block structure verification
+
+When adding new kernels or features:
+1. Add comprehensive tests covering all use cases
+2. Use `@allure.title` and `@allure.description` decorators
+3. Use pytest parametrization for multiple scenarios
+4. Test string representations with `test_str_representation()`
+5. Verify mathematical properties when applicable
+6. Ensure coverage remains above 90%
+
+### Code Quality
+
+- **Linting**: Use `make lint` to run ruff and mypy
+  - Code follows ruff formatting with tabs (line length 100)
+  - Type hints use relative imports and `from __future__ import annotations`
+  - JAX operations may need `# type: ignore` comments for mypy compatibility
+
+- **Formatting**: Use `make format` to auto-format code
+  - Indent style: tabs
+  - Quote style: double quotes
+  - Line ending: auto

@@ -12,6 +12,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performance optimizations
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.2.1-alpha] - 2025-01-27
+
+### Added
+- **Testing Infrastructure:**
+  - Comprehensive tests for `BlockKernel` and `BlockDiagKernel` wrapper kernels (14 new tests)
+  - Enhanced composition tests with `ExpKernel` and `LogKernel` coverage
+  - String representation tests for all base kernels
+  - Mathematical property tests (associativity, distributivity) for kernel compositions
+  - Test coverage increased from 88% to 94% (231 passing tests)
+- **Makefile Commands:**
+  - `make test-allure` command for generating Allure one-file HTML reports
+  - Centralized test output directory (`tests/out/`) for all test artifacts
+
+### Changed
+- **Import Structure:**
+  - Standardized all internal imports to use relative imports (`from .AbstractKernel import`)
+  - Fixes circular import issues and improves type checking
+- **Test Organization:**
+  - Merged `test_composite_kernels.py` into `test_kernel_compositions.py`
+  - Removed redundant tests while preserving unique functionality
+  - All composition tests now in single file (50 comprehensive tests)
+- **Test Configuration:**
+  - pytest outputs now save to `tests/out/htmlcov/` instead of root directory
+  - Allure results and reports now save to `tests/out/`
+- **Code Quality:**
+  - Fixed all mypy linting errors (86 errors reduced to 0)
+  - Added proper type annotations with `ClassVar` and `Optional`
+  - Added `# type: ignore` comments for JAX-specific type issues
+
+### Fixed
+- **GitHub Actions:** Unified Python version to 3.12 for consistency across CI/CD
+- **Documentation:**
+  - Corrected Python requirement from 3.14 to 3.12 in README.md
+  - Updated CLAUDE.md with BlockKernel/BlockDiagKernel documentation
+  - Added testing guidelines and code quality standards to CLAUDE.md
+
+### Removed
+- **Deprecated Files:**
+  - `setup.py` (replaced by `pyproject.toml` build system)
+  - `test_composite_kernels.py` (merged into `test_kernel_compositions.py`)
+
+### Development
+- `.gitignore` updated to exclude `tests/out/` directory
+- All test outputs (coverage, allure reports) now centralized in `tests/out/`
+
 ## [0.2.0-alpha] - 2025-01-26
 
 ### Added
@@ -129,8 +174,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JAXlib >= 0.8.0
 - Equinox >= 0.11.0
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.2.0...HEAD
-[0.2.0]: https://github.com/SimLej18/kernax-ml/compare/v0.1.5-alpha...v0.2.0
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.2.1-alpha...HEAD
+[0.2.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.2.0-alpha...v0.2.1-alpha
+[0.2.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.1.5-alpha...v0.2.0-alpha
 [0.1.5-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.1.4-alpha...v0.1.5-alpha
 [0.1.4-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.1.3-alpha...v0.1.4-alpha
 [0.1.3-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.1.2-alpha...v0.1.3-alpha

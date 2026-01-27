@@ -29,13 +29,13 @@ cd kernax-ml
 ```
 
 **Requirements**:
-- Python >= 3.14
-- JAX >= 0.8.0
+- Python >= 3.12
+- JAX >= 0.6.2
 
 **Using Conda** (recommended):
 
 ```bash
-conda create -n kernax-ml python=3.14
+conda create -n kernax-ml python=3.12
 conda activate kernax-ml
 pip install -e .
 ```
@@ -101,6 +101,13 @@ ard_kernel = ARDKernel(SEKernel(length_scale=1.0), length_scales=length_scales)
 - **`ConstantKernel`**
   - Hyperparameters: `value`
 
+- **`PolynomialKernel`**
+  - Hyperparameters: `degree`, `gamma`, `constant`
+
+- **`WhiteNoiseKernel`**
+  - Convenient shortcut for `DiagKernel(ConstantKernel(value))`
+  - Hyperparameters: `value`
+
 ### Composite Kernels
 
 - **`SumKernel`**: Adds two kernels (use `kernel1 + kernel2`)
@@ -135,6 +142,24 @@ This design enables:
 - Clean hyperparameter management with automatic array conversion
 
 See [CLAUDE.md](CLAUDE.md) for detailed architecture documentation.
+
+## Testing & Quality
+
+Kernax maintains high code quality standards:
+
+- **94% test coverage** with 231+ passing tests
+- **Allure test reporting** for detailed test analytics
+- **Cross-library validation** against scikit-learn, GPyTorch, and GPJax
+- **Type checking** with mypy for enhanced code safety
+- **Code formatting** with ruff (tabs, line length 100)
+
+Run tests with:
+```bash
+make test           # Run all tests
+make test-cov       # Run tests with coverage report
+make test-allure    # Generate Allure HTML report
+make lint           # Run type checking and linting
+```
 
 ## Benchmarks
 
