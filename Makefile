@@ -6,6 +6,7 @@ help:
 	@echo "  make install-dev   - Install package with development dependencies"
 	@echo "  make test          - Run tests"
 	@echo "  make test-cov      - Run tests with coverage report"
+	@echo "  make test-allure   - Run tests and generate an allure one-file HTML report"
 	@echo "  make lint          - Run linters (ruff, mypy)"
 	@echo "  make format        - Format code with tabs (ruff)"
 	@echo "  make clean         - Remove build artifacts"
@@ -24,7 +25,13 @@ test:
 	pytest
 
 test-cov:
-	pytest --cov=kernax --cov-report=html --cov-report=term
+	mkdir -p tests/out
+	pytest --cov=kernax --cov-report=html:tests/out/htmlcov --cov-report=term
+
+test-allure:
+	mkdir -p tests/out/allure-results
+	pytest --alluredir=tests/out/allure-results
+	allure awesome tests/out/allure-results --single-file --output=tests/out/allure-report
 
 lint:
 	ruff check kernax tests
@@ -40,7 +47,7 @@ clean:
 	rm -rf *.egg-info
 	rm -rf .pytest_cache
 	rm -rf .mypy_cache
-	rm -rf htmlcov/
+	rm -rf tests/out/
 	rm -rf .coverage
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete

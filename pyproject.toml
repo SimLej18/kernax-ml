@@ -131,5 +131,5 @@ addopts = [
     "--verbose",
     "--cov=kernax",
     "--cov-report=term-missing",
-    "--cov-report=html",
+    "--cov-report=html:tests/out/htmlcov",
 ]
