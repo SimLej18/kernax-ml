@@ -124,9 +124,9 @@ warn_unused_ignores = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
+python_files = ["test_*.py", "benchmark_*.py", "compare_*.py"]
+python_classes = ["Test*", "Benchmark*", "Compare*"]
+python_functions = ["test_*", "benchmark_*", "compare_*"]
 addopts = [
     "--verbose",
     "--cov=kernax",

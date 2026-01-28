@@ -9,6 +9,7 @@ pytest-benchmark>=5.2
 gpjax>=0.13
 gpytorch>=1.15
 scikit-learn>=1.8
+pygal>=3.1
 
 # Code quality
 black>=22.0

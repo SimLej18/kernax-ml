@@ -19,7 +19,7 @@ class StaticSEKernel(StaticAbstractKernel):
 		:return: scalar array
 		"""
 		kern = eqx.combine(kern)
-		return jnp.exp(-0.5 * ((x1 - x2) @ (x1 - x2)) / kern.length_scale**2)  # type: ignore[attr-defined]
+		return jnp.exp(-0.5 * (jnp.sum((x1 - x2) ** 2)) / kern.length_scale**2)  # type: ignore[attr-defined]
 
 
 class SEKernel(AbstractKernel):

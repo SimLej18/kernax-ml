@@ -156,6 +156,7 @@ cython_debug/
 datasets/
 
 # Benchmarks results
+benchmarks/out/
 benchmarks/results/
 benchmarks/*.html
 benchmarks/*.png

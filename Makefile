@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-cov lint format clean build upload docs
+.PHONY: help install install-dev test test-cov test-allure benchmarks benchmarks-compare lint format clean build upload docs
 
 help:
 	@echo "Available commands:"
@@ -7,6 +7,8 @@ help:
 	@echo "  make test          - Run tests"
 	@echo "  make test-cov      - Run tests with coverage report"
 	@echo "  make test-allure   - Run tests and generate an allure one-file HTML report"
+	@echo "  make benchmarks         - Run performance benchmarks"
+	@echo "  make benchmarks-compare - Run cross-library comparison benchmarks"
 	@echo "  make lint          - Run linters (ruff, mypy)"
 	@echo "  make format        - Format code with tabs (ruff)"
 	@echo "  make clean         - Remove build artifacts"
@@ -33,6 +35,14 @@ test-allure:
 	pytest --alluredir=tests/out/allure-results
 	allure awesome tests/out/allure-results --single-file --output=tests/out/allure-report
 
+benchmarks:
+	mkdir -p benchmarks/out
+	pytest benchmarks/base_kernels --benchmark-only -v --benchmark-time-unit=ms --benchmark-autosave --benchmark-compare --benchmark-group-by=func --benchmark-sort=name
+
+benchmarks-compare:
+	mkdir -p benchmarks/out
+	pytest benchmarks/comparison/ --benchmark-only -v --benchmark-time-unit=ms --benchmark-autosave --benchmark-group-by=fullfunc
+
 lint:
 	ruff check kernax tests
 	mypy kernax --ignore-missing-imports
@@ -48,6 +58,7 @@ clean:
 	rm -rf .pytest_cache
 	rm -rf .mypy_cache
 	rm -rf tests/out/
+	rm -rf benchmarks/out/
 	rm -rf .coverage
 	find . -type d -name __pycache__ -exec rm -rf {} +
 	find . -type f -name "*.pyc" -delete
