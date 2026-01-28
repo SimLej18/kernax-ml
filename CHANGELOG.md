@@ -9,8 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Planned
 - Comprehensive documentation
-- Performance optimizations
 - Additional kernel types (more Matern variants, spectral kernels)
+
+## [0.3.0-alpha] - 2025-01-28
+
+### Added
+- **Benchmark Infrastructure:**
+  - Comprehensive benchmarking suite for base kernels (`benchmarks/base_kernels/`)
+  - Cross-library comparison benchmarks (kernax vs sklearn, GPyTorch, GPJax)
+  - Parametrized test structure for comparing implementations
+  - Support for `--bench-rounds` configuration
+  - Automatic benchmark saving and comparison via pytest-benchmark
+  - Input generators module for reusable benchmark data generation
+- **Makefile Commands:**
+  - `make benchmarks` for performance benchmarks with grouping and comparison
+  - `make benchmarks-compare` for cross-library comparisons with autosave
+
+### Changed
+- **Performance:**
+  - Optimized distance computation in SEKernel for better performance
+- **CI/CD:**
+  - Updated GitHub Actions linting workflow to use `ruff` instead of black/flake8/isort
+  - Aligned CI linting with `make lint` commands
 
 ## [0.2.1-alpha] - 2025-01-27
 
