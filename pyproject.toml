@@ -68,8 +68,9 @@ Repository = "https://github.com/SimLej18/kernax-ml"
 Documentation = "https://kernax-ml.readthedocs.io"
 "Bug Tracker" = "https://github.com/SimLej18/kernax-ml/issues"
 
-[tool.setuptools]
-packages = ["kernax"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["kernax*"]
 
 [tool.setuptools.package-data]
 kernax = ["py.typed"]
