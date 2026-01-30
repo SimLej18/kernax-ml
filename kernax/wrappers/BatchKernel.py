@@ -23,6 +23,7 @@ class BatchKernel(WrapperKernel):
 	"""
 
 	inner_kernel: AbstractKernel = eqx.field()
+	batch_size: int = eqx.field(static=True)
 	batch_in_axes: bool = eqx.field(static=True)
 	batch_over_inputs: int | None = eqx.field(static=True)
 
@@ -40,9 +41,8 @@ class BatchKernel(WrapperKernel):
 		"""
 		# Initialize the WrapperKernel
 		super().__init__(inner_kernel=inner_kernel)
+		self.batch_size = batch_size
 
-		# TODO: batch_size isn't needed if hyperparameters are shared
-		# TODO: explicit error message when batch_in_axes is all None and batch_over_inputs is False, as that makes vmap (and a Batch Kernel) useless
 		# Default: all array hyperparameters are shared (None for all array leaves)
 		if batch_in_axes is None:
 			# Extract only array leaves and map them to None
@@ -76,16 +76,29 @@ class BatchKernel(WrapperKernel):
 		Returns:
 				Kernel matrix of appropriate shape with batch dimension
 		"""
-		# vmap over the batch dimension of inner_kernel and inputs
-		# Each batch element gets its own version of inner_kernel with corresponding hyperparameters
-		return vmap(  # type: ignore[no-any-return]
-			lambda kernel, x1, x2: kernel(x1, x2),
-			in_axes=(
-				self.batch_in_axes,
-				self.batch_over_inputs,
-				self.batch_over_inputs if x2 is not None else None,
-			),
-		)(self.inner_kernel, x1, x2)
+		# Check if we can use vmap (at least one axis is not None)
+		can_use_vmap = (
+			not jtu.tree_all(jtu.tree_map(lambda k: k is None, self.batch_in_axes))
+			or self.batch_over_inputs is not None
+		)
+
+		if can_use_vmap:
+			# Use vmap when we have batched hyperparameters or batched inputs
+			return vmap(  # type: ignore[no-any-return]
+				lambda kernel, x1, x2: kernel(x1, x2),
+				in_axes=(
+					self.batch_in_axes,
+					self.batch_over_inputs,
+					self.batch_over_inputs if x2 is not None else None,
+				),
+			)(self.inner_kernel, x1, x2)
+		else:
+			# Repeat the same matrix when all hyperparameters and inputs are shared
+			return jnp.repeat(
+				jnp.expand_dims(self.inner_kernel(x1, x2), 0),
+				self.batch_size,
+				axis=0
+			)
 
 	def __str__(self):
 		# just str of the inner kernel, as the batch info is in the parameters of the inner kernel

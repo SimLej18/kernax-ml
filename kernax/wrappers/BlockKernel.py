@@ -81,33 +81,46 @@ class BlockKernel(WrapperKernel):
 		"""
 		x2 = x1 if x2 is None else x2
 
-		rows, cols = jnp.triu_indices(self.nb_blocks)
-
-		full_kernel = jtu.tree_map(
-			lambda param, block_in_ax: param[rows]
-			if block_in_ax == 0
-			else param[cols]
-			if block_in_ax == 1
-			else param,
-			self.inner_kernel,
-			self.block_in_axes,
+		# Check if we can use vmap (at least one axis is not None)
+		can_use_vmap = (
+			not jtu.tree_all(jtu.tree_map(lambda k: k is None, self.block_in_axes))
+			or self.block_over_inputs is not None
 		)
 
-		x1 = x1[rows] if self.block_over_inputs == 0 else x1
-		x2 = x2[cols] if self.block_over_inputs == 0 else x2
+		if can_use_vmap:
+			# Use vmap when we have blocked hyperparameters or blocked inputs
+			rows, cols = jnp.triu_indices(self.nb_blocks)
 
-		# vmap over the block dimension of inner_kernel and inputs
-		# Each block element gets its own version of inner_kernel with corresponding hyperparameters
-		return self.symmetric_blocks_to_matrix(  # type: ignore[no-any-return]
-			vmap(
-				lambda kernel, x1, x2: kernel(x1, x2),
-				in_axes=(
-					jtu.tree_map(lambda x: None if x is None else 0, self.block_in_axes),
-					self.block_over_inputs,
-					self.block_over_inputs,
-				),
-			)(full_kernel, x1, x2)
-		)
+			full_kernel = jtu.tree_map(
+				lambda param, block_in_ax: param[rows]
+				if block_in_ax == 0
+				else param[cols]
+				if block_in_ax == 1
+				else param,
+				self.inner_kernel,
+				self.block_in_axes,
+			)
+
+			x1_indexed = x1[rows] if self.block_over_inputs == 0 else x1
+			x2_indexed = x2[cols] if self.block_over_inputs == 0 else x2
+
+			# vmap over the block dimension of inner_kernel and inputs
+			# Each block element gets its own version of inner_kernel with corresponding hyperparameters
+			return self.symmetric_blocks_to_matrix(  # type: ignore[no-any-return]
+				vmap(
+					lambda kernel, x1, x2: kernel(x1, x2),
+					in_axes=(
+						jtu.tree_map(lambda x: None if x is None else 0, self.block_in_axes),
+						self.block_over_inputs,
+						self.block_over_inputs,
+					),
+				)(full_kernel, x1_indexed, x2_indexed)
+			)
+		else:
+			# All hyperparameters and inputs are shared: create a block matrix with identical blocks
+			single_block = self.inner_kernel(x1, x2)
+			# Tile the block to create the full block matrix
+			return jnp.tile(single_block, (self.nb_blocks, self.nb_blocks))
 
 	@filter_jit
 	def symmetric_blocks_to_matrix(self, flat_blocks):

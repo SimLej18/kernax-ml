@@ -195,6 +195,46 @@ class TestBatchKernel:
 		assert result.shape == (batch_size, x_batched.shape[1], x_batched.shape[1])
 		assert jnp.all(jnp.isfinite(result))
 
+	@allure.title("BatchKernel with shared hyperparameters and shared inputs")
+	@allure.description(
+		"Test BatchKernel with batch_in_axes=None and batch_over_inputs=False. "
+		"All batch matrices should be identical since same HPs and inputs are used."
+	)
+	def test_shared_hyperparameters_shared_inputs(self):
+		base_kernel = SEKernel(length_scale=1.0)
+		batch_size = 4
+
+		# Shared hyperparameters AND shared inputs
+		batch_kernel = BatchKernel(
+			base_kernel,
+			batch_size=batch_size,
+			batch_in_axes=None,  # Shared hyperparameters
+			batch_over_inputs=False,  # Shared inputs
+		)
+
+		# Non-batched inputs
+		x1 = jnp.array([[1.0], [2.0], [3.0]])
+		x2 = jnp.array([[1.5], [2.5], [3.5]])
+
+		result = batch_kernel(x1, x2)
+
+		# Result should have batch dimension
+		assert result.shape == (batch_size, x1.shape[0], x2.shape[0])
+		assert jnp.all(jnp.isfinite(result))
+
+		# All batch matrices should be identical (same HPs + same inputs)
+		expected_matrix = base_kernel(x1, x2)
+		for i in range(batch_size):
+			assert jnp.allclose(
+				result[i], expected_matrix, rtol=1e-6
+			), f"Batch {i} differs from expected"
+
+		# Verify that all batch matrices are identical to each other
+		for i in range(1, batch_size):
+			assert jnp.allclose(
+				result[i], result[0], rtol=1e-6
+			), f"Batch {i} differs from batch 0"
+
 
 class TestBlockKernel:
 	"""Tests for BlockKernel wrapper."""
@@ -347,6 +387,65 @@ class TestBlockKernel:
 		assert jnp.allclose(block_11, expected_11)
 		assert jnp.allclose(block_01, expected_01)
 		assert jnp.allclose(block_10, expected_10)
+
+	@allure.title("BlockKernel with shared hyperparameters and shared inputs")
+	@allure.description(
+		"Test BlockKernel with block_in_axes=None and block_over_inputs=False. "
+		"All blocks should be identical since same HPs and inputs are used."
+	)
+	def test_shared_hyperparameters_shared_inputs(self):
+		base_kernel = SEKernel(length_scale=1.0)
+		nb_blocks = 3
+		n_points = 4
+
+		# Shared hyperparameters AND shared inputs
+		block_kernel = BlockKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,  # Shared hyperparameters
+			block_over_inputs=False,  # Shared inputs
+		)
+
+		# Non-blocked inputs
+		x1 = jnp.array([[1.0], [2.0], [3.0], [4.0]])
+		x2 = jnp.array([[1.5], [2.5], [3.5], [4.5]])
+
+		result = block_kernel(x1, x2)
+
+		# Result should be a block matrix of shape (nb_blocks*N, nb_blocks*M)
+		expected_shape = (nb_blocks * x1.shape[0], nb_blocks * x2.shape[0])
+		assert result.shape == expected_shape
+		assert jnp.all(jnp.isfinite(result))
+
+		# Compute the expected block (same for all blocks)
+		expected_block = base_kernel(x1, x2)
+
+		# All blocks should be identical (same HPs + same inputs)
+		for i in range(nb_blocks):
+			for j in range(nb_blocks):
+				start_i = i * n_points
+				end_i = (i + 1) * n_points
+				start_j = j * n_points
+				end_j = (j + 1) * n_points
+
+				block_ij = result[start_i:end_i, start_j:end_j]
+				assert jnp.allclose(
+					block_ij, expected_block, rtol=1e-6
+				), f"Block ({i},{j}) differs from expected"
+
+		# Verify that all blocks are identical to block (0,0)
+		block_00 = result[:n_points, :n_points]
+		for i in range(nb_blocks):
+			for j in range(nb_blocks):
+				start_i = i * n_points
+				end_i = (i + 1) * n_points
+				start_j = j * n_points
+				end_j = (j + 1) * n_points
+
+				block_ij = result[start_i:end_i, start_j:end_j]
+				assert jnp.allclose(
+					block_ij, block_00, rtol=1e-6
+				), f"Block ({i},{j}) differs from block (0,0)"
 
 
 class TestBlockDiagKernel:
@@ -566,6 +665,73 @@ class TestBlockDiagKernel:
 
 			assert jnp.allclose(diag_block, batch_result[i])
 
+	@allure.title("BlockDiagKernel with shared hyperparameters and shared inputs")
+	@allure.description(
+		"Test BlockDiagKernel with block_in_axes=None and block_over_inputs=False. "
+		"All diagonal blocks should be identical since same HPs and inputs are used."
+	)
+	def test_shared_hyperparameters_shared_inputs(self):
+		base_kernel = SEKernel(length_scale=1.0)
+		nb_blocks = 3
+		n_points = 4
+
+		# Shared hyperparameters AND shared inputs
+		block_diag_kernel = BlockDiagKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,  # Shared hyperparameters
+			block_over_inputs=False,  # Shared inputs
+		)
+
+		# Non-blocked inputs
+		x1 = jnp.array([[1.0], [2.0], [3.0], [4.0]])
+		x2 = jnp.array([[1.5], [2.5], [3.5], [4.5]])
+
+		result = block_diag_kernel(x1, x2)
+
+		# Result should be a block-diagonal matrix of shape (nb_blocks*N, nb_blocks*M)
+		expected_shape = (nb_blocks * x1.shape[0], nb_blocks * x2.shape[0])
+		assert result.shape == expected_shape
+		assert jnp.all(jnp.isfinite(result))
+
+		# Compute the expected diagonal block (same for all diagonal blocks)
+		expected_block = base_kernel(x1, x2)
+
+		# Verify all diagonal blocks are identical
+		for i in range(nb_blocks):
+			start_i = i * n_points
+			end_i = (i + 1) * n_points
+
+			diag_block = result[start_i:end_i, start_i:end_i]
+			assert jnp.allclose(
+				diag_block, expected_block, rtol=1e-6
+			), f"Diagonal block {i} differs from expected"
+
+		# Verify all diagonal blocks are identical to the first one
+		first_diag_block = result[:n_points, :n_points]
+		for i in range(1, nb_blocks):
+			start_i = i * n_points
+			end_i = (i + 1) * n_points
+			diag_block = result[start_i:end_i, start_i:end_i]
+
+			assert jnp.allclose(
+				diag_block, first_diag_block, rtol=1e-6
+			), f"Diagonal block {i} differs from first diagonal block"
+
+		# Verify off-diagonal blocks are all zeros
+		for i in range(nb_blocks):
+			for j in range(nb_blocks):
+				if i != j:
+					start_i = i * n_points
+					end_i = (i + 1) * n_points
+					start_j = j * n_points
+					end_j = (j + 1) * n_points
+
+					off_diag_block = result[start_i:end_i, start_j:end_j]
+					assert jnp.allclose(
+						off_diag_block, 0.0, atol=1e-6
+					), f"Off-diagonal block ({i},{j}) is not zero"
+
 
 class TestActiveDimsKernel:
 	"""Tests for ActiveDimsKernel wrapper."""
@@ -744,6 +910,86 @@ class TestARDKernel:
 
 class TestWrapperCombinations:
 	"""Test combinations of different wrapper kernels."""
+
+	@allure.title("Commutativity of BatchKernel and BlockKernel composition")
+	@allure.description(
+		"Test that BlockKernel(BatchKernel(inner)) and BatchKernel(BlockKernel(inner)) "
+		"produce the same result when both use shared hyperparameters and shared inputs."
+	)
+	def test_batch_block_commutativity(self):
+		base_kernel = SEKernel(length_scale=1.0)
+		batch_size = 3
+		nb_blocks = 2
+
+		# Create test inputs
+		x1 = jnp.array([[1.0], [2.0], [3.0]])
+		x2 = jnp.array([[1.5], [2.5], [3.5]])
+
+		# Composition 1: BlockKernel(BatchKernel(inner))
+		batch_then_block = BlockKernel(
+			BatchKernel(
+				base_kernel,
+				batch_size=batch_size,
+				batch_in_axes=None,  # Shared HPs
+				batch_over_inputs=False,  # Shared inputs
+			),
+			nb_blocks=nb_blocks,
+			block_in_axes=None,  # Shared HPs
+			block_over_inputs=False,  # Shared inputs
+		)
+
+		# Composition 2: BatchKernel(BlockKernel(inner))
+		block_then_batch = BatchKernel(
+			BlockKernel(
+				base_kernel,
+				nb_blocks=nb_blocks,
+				block_in_axes=None,  # Shared HPs
+				block_over_inputs=False,  # Shared inputs
+			),
+			batch_size=batch_size,
+			batch_in_axes=None,  # Shared HPs
+			batch_over_inputs=False,  # Shared inputs
+		)
+
+		# Compute results
+		result1 = batch_then_block(x1, x2)
+		result2 = block_then_batch(x1, x2)
+
+		# Check shapes are identical
+		assert result1.shape == result2.shape, (
+			f"Shapes differ: {result1.shape} vs {result2.shape}"
+		)
+		expected_shape = (batch_size, nb_blocks * x1.shape[0], nb_blocks * x2.shape[0])
+		assert result1.shape == expected_shape, (
+			f"Shape {result1.shape} doesn't match expected {expected_shape}"
+		)
+
+		# Check values are identical (commutativity)
+		assert jnp.allclose(result1, result2, rtol=1e-6), (
+			"BlockKernel(BatchKernel) and BatchKernel(BlockKernel) should commute "
+			"when both use shared hyperparameters and shared inputs"
+		)
+
+		# Verify the structure: all batch elements should be identical
+		for i in range(1, batch_size):
+			assert jnp.allclose(result1[i], result1[0], rtol=1e-6), (
+				f"Batch element {i} differs from batch element 0"
+			)
+
+		# Verify the block structure: all blocks should be identical
+		base_result = base_kernel(x1, x2)
+		n_points = x1.shape[0]
+		for i in range(nb_blocks):
+			for j in range(nb_blocks):
+				start_i = i * n_points
+				end_i = (i + 1) * n_points
+				start_j = j * n_points
+				end_j = (j + 1) * n_points
+
+				block_ij = result1[0, start_i:end_i, start_j:end_j]
+				assert jnp.allclose(block_ij, base_result, rtol=1e-6), (
+					f"Block ({i},{j}) differs from base kernel result"
+				)
 
 	@allure.title("Wrapper combinations ARD with ActiveDims")
 	@allure.description("Test combining ARD and ActiveDims wrappers.")
