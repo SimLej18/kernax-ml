@@ -15,7 +15,9 @@ if TYPE_CHECKING:
 
 
 class AbstractKernel(eqx.Module):
-	static_class: ClassVar[Optional[Type[StaticAbstractKernel]]] = None  # Must be defined in sub-class
+	static_class: ClassVar[Optional[Type[StaticAbstractKernel]]] = (
+		None  # Must be defined in sub-class
+	)
 
 	@filter_jit
 	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
@@ -45,39 +47,39 @@ class AbstractKernel(eqx.Module):
 			)
 
 	def __add__(self, other):
-		from kernax.OperatorKernels import SumKernel
+		from kernax.operators import SumKernel
 
 		return SumKernel(self, other)
 
 	def __radd__(self, other):
-		from kernax.OperatorKernels import SumKernel
+		from kernax.operators import SumKernel
 
 		return SumKernel(other, self)
 
 	def __sub__(self, other):
-		from kernax.OperatorKernels import SumKernel
-		from kernax.WrapperKernels import NegKernel
+		from kernax.operators import SumKernel
+		from kernax.wrappers import NegKernel
 
 		return SumKernel(self, NegKernel(other))
 
 	def __rsub__(self, other):
-		from kernax.OperatorKernels import SumKernel
-		from kernax.WrapperKernels import NegKernel
+		from kernax.operators import SumKernel
+		from kernax.wrappers import NegKernel
 
 		return SumKernel(other, NegKernel(self))
 
 	def __neg__(self):
-		from kernax.WrapperKernels import NegKernel
+		from kernax.wrappers import NegKernel
 
 		return NegKernel(self)
 
 	def __mul__(self, other):
-		from kernax.OperatorKernels import ProductKernel
+		from kernax.operators import ProductKernel
 
 		return ProductKernel(self, other)
 
 	def __rmul__(self, other):
-		from kernax.OperatorKernels import ProductKernel
+		from kernax.operators import ProductKernel
 
 		return ProductKernel(other, self)
 
@@ -112,9 +114,7 @@ class StaticAbstractKernel:
 
 	@classmethod
 	@filter_jit
-	def pairwise_cov_if_not_nan(
-		cls, kern: AbstractKernel, x1: Array, x2: Array
-	) -> Array:
+	def pairwise_cov_if_not_nan(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
 		"""
 		Returns NaN if either x1 or x2 is NaN, otherwise calls the compute_scalar method.
 
@@ -132,9 +132,7 @@ class StaticAbstractKernel:
 
 	@classmethod
 	@filter_jit
-	def cross_cov_vector(
-		cls, kern: AbstractKernel, x1: Array, x2: Array
-	) -> Array:
+	def cross_cov_vector(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the kernel cross covariance values between an array of vectors (matrix) and a vector.
 
@@ -168,9 +166,7 @@ class StaticAbstractKernel:
 
 	@classmethod
 	@filter_jit
-	def cross_cov_matrix(
-		cls, kern: AbstractKernel, x1: Array, x2: Array
-	) -> Array:
+	def cross_cov_matrix(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the kernel covariance matrix between two vector arrays.
 

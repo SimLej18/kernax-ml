@@ -3,8 +3,8 @@ import jax.numpy as jnp
 from equinox import filter_jit
 from jax import Array
 
-from .AbstractKernel import AbstractKernel, StaticAbstractKernel
-from .utils import format_jax_array
+from ..AbstractKernel import AbstractKernel, StaticAbstractKernel
+from ..utils import format_jax_array
 
 
 class StaticConstantKernel(StaticAbstractKernel):

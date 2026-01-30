@@ -3,7 +3,7 @@ from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 
-from .AbstractKernel import AbstractKernel, StaticAbstractKernel
+from ..AbstractKernel import AbstractKernel, StaticAbstractKernel
 
 
 class StaticLinearKernel(StaticAbstractKernel):

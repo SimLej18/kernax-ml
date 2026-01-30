@@ -1,4 +1,5 @@
-from .WrapperKernels import ConstantKernel, DiagKernel, StaticDiagKernel
+from ..wrappers import DiagKernel, StaticDiagKernel
+from .ConstantKernel import ConstantKernel
 
 
 class WhiteNoiseKernel(DiagKernel):

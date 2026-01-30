@@ -12,23 +12,40 @@ __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"
 
 from .AbstractKernel import AbstractKernel, StaticAbstractKernel
-from .ConstantKernel import ConstantKernel, StaticConstantKernel
-from .LinearKernel import LinearKernel, StaticLinearKernel
-from .MaternKernels import (
+
+# Import operator kernels
+from .operators import (
+	OperatorKernel,
+	ProductKernel,
+	SumKernel,
+)
+
+# Import base kernels from stationary
+from .stationary import (
+	ConstantKernel,
+	LinearKernel,
 	Matern12Kernel,
 	Matern32Kernel,
 	Matern52Kernel,
+	PeriodicKernel,
+	PolynomialKernel,
+	RationalQuadraticKernel,
+	RBFKernel,
+	SEKernel,
+	StaticConstantKernel,
+	StaticLinearKernel,
 	StaticMatern12Kernel,
 	StaticMatern32Kernel,
 	StaticMatern52Kernel,
+	StaticPeriodicKernel,
+	StaticPolynomialKernel,
+	StaticRationalQuadraticKernel,
+	StaticSEKernel,
+	WhiteNoiseKernel,
 )
-from .OperatorKernels import OperatorKernel, ProductKernel, SumKernel
-from .PeriodicKernel import PeriodicKernel, StaticPeriodicKernel
-from .PolynomialKernel import PolynomialKernel, StaticPolynomialKernel
-from .RationalQuadraticKernel import RationalQuadraticKernel, StaticRationalQuadraticKernel
-from .SEKernel import RBFKernel, SEKernel, StaticSEKernel
-from .WhiteNoiseKernel import WhiteNoiseKernel
-from .WrapperKernels import (
+
+# Import wrapper kernels
+from .wrappers import (
 	ActiveDimsKernel,
 	ARDKernel,
 	BatchKernel,
