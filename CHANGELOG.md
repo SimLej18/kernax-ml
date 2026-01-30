@@ -11,6 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.3.1-alpha] - 2025-01-30
+
+### Fixed
+- **BatchKernel:** Fixed critical bug with `batch_in_axes=None` and `batch_over_inputs=False`
+  - Replaced `cond` JAX (which traces both branches) with `if/else` Python for static conditions
+  - Now correctly handles case where all hyperparameters and inputs are shared
+  - Resolves `ValueError: vmap must have at least one non-None value in in_axes`
+- **BlockKernel:** Fixed same issue with `block_in_axes=None` and `block_over_inputs=False`
+  - Added conditional logic to avoid vmap when all axes are None
+  - Simplified tile operation for creating block matrices with identical blocks
+  - Correctly handles shared hyperparameters and shared inputs
+- **BlockDiagKernel:** Inherits fix from BatchKernel, now works correctly with shared parameters
+
+### Added
+- **Test Coverage:** 4 new tests for edge cases with shared hyperparameters and inputs
+  - `TestBatchKernel::test_shared_hyperparameters_shared_inputs`
+  - `TestBlockKernel::test_shared_hyperparameters_shared_inputs`
+  - `TestBlockDiagKernel::test_shared_hyperparameters_shared_inputs`
+  - `TestWrapperCombinations::test_batch_block_commutativity` - verifies that `BlockKernel(BatchKernel(x))` equals `BatchKernel(BlockKernel(x))`
+
+### Changed
+- **Code Organization:** Improved internal structure of wrapper kernels for better maintainability
+- **Test Suite:** Increased wrapper kernel test coverage (4 new tests, all passing)
+
 ## [0.3.0-alpha] - 2025-01-28
 
 ### Added
@@ -194,7 +218,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JAXlib >= 0.8.0
 - Equinox >= 0.11.0
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.2.1-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.3.1-alpha...HEAD
+[0.3.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.3.0-alpha...v0.3.1-alpha
+[0.3.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.2.1-alpha...v0.3.0-alpha
 [0.2.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.2.0-alpha...v0.2.1-alpha
 [0.2.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.1.5-alpha...v0.2.0-alpha
 [0.1.5-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.1.4-alpha...v0.1.5-alpha
