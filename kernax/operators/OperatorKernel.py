@@ -1,7 +1,7 @@
 import equinox as eqx
 
 from ..AbstractKernel import AbstractKernel
-from ..stationary.ConstantKernel import ConstantKernel
+from ..other.ConstantKernel import ConstantKernel
 
 
 class OperatorKernel(AbstractKernel):

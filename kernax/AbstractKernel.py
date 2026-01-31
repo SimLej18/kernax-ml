@@ -19,6 +19,19 @@ class AbstractKernel(eqx.Module):
 		None  # Must be defined in sub-class
 	)
 
+	def __init__(self):
+		"""
+		Initialize the kernel and mark that a kernel has been instantiated.
+
+		This locks the parameter_transform config setting to prevent inconsistencies
+		with JIT-compiled code.
+		"""
+		# Import here to avoid circular dependency
+		from .config import config
+
+		# Mark that kernels have been instantiated (locks parameter_transform)
+		config._mark_kernel_instantiated()
+
 	@filter_jit
 	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
 		# If no x2 is provided, we compute the covariance between x1 and itself

@@ -3,14 +3,18 @@ from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 
-from ..AbstractKernel import AbstractKernel, StaticAbstractKernel
+from ..AbstractKernel import AbstractKernel
+from ..distances import euclidean_distance
+from .StationaryKernel import StaticStationaryKernel
 
 
 # Matern 3/2 Kernel defined in Rasmussen and Williams (2006), section 4.2
-class StaticMatern32Kernel(StaticAbstractKernel):
+class StaticMatern32Kernel(StaticStationaryKernel):
+	distance_func = euclidean_distance
+
 	@classmethod
 	@filter_jit
-	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
+	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
 		"""
 		Compute the Matern 3/2 kernel covariance value between two vectors.
 
@@ -19,15 +23,50 @@ class StaticMatern32Kernel(StaticAbstractKernel):
 		:param x2: scalar array
 		:return: scalar array
 		"""
-		r = jnp.linalg.norm(x1 - x2)  # Euclidean distance
-		sqrt3_r_div_l = (jnp.sqrt(3) * r) / kern.length_scale
+		kern = eqx.combine(kern)
+		r = cls.distance_func(x1, x2)
+		sqrt3_r_div_l = (jnp.sqrt(3) * r) / kern.length_scale  # type: ignore[attr-defined]
 		return (1.0 + sqrt3_r_div_l) * jnp.exp(-sqrt3_r_div_l)  # type: ignore[no-any-return]
 
 
 class Matern32Kernel(AbstractKernel):
-	length_scale: Array = eqx.field(converter=jnp.asarray)
+	"""
+	Matern 3/2 Kernel
+
+	The length_scale parameter is always positive. Internally, it may be stored in an
+	unconstrained space depending on the global configuration.
+	"""
+
+	_unconstrained_length_scale: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticMatern32Kernel
 
 	def __init__(self, length_scale):
+		"""
+		Initialize the Matern 3/2 kernel with a length scale parameter.
+
+		Args:
+			length_scale: Length scale parameter (must be positive)
+
+		Raises:
+			ValueError: If length_scale is not positive
+		"""
+		# Validate positivity
+		length_scale = jnp.array(length_scale)
+		length_scale = eqx.error_if(
+			length_scale, jnp.any(length_scale <= 0), "length_scale must be positive."
+		)
+
+		# Initialize parent (locks config)
 		super().__init__()
-		self.length_scale = length_scale
+
+		# Transform to unconstrained space
+		from ..transforms import to_unconstrained
+
+		self._unconstrained_length_scale = to_unconstrained(jnp.asarray(length_scale))
+
+	@property
+	def length_scale(self) -> Array:
+		"""Get the length scale in constrained space (always positive)."""
+		from ..transforms import to_constrained
+
+		return to_constrained(self._unconstrained_length_scale)

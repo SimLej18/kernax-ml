@@ -13,6 +13,12 @@ __license__ = "MIT"
 
 from .AbstractKernel import AbstractKernel, StaticAbstractKernel
 
+# Import configuration system
+from .config import config
+
+# Import transformation utilities
+from . import transforms
+
 # Import operator kernels
 from .operators import (
 	OperatorKernel,
@@ -20,27 +26,35 @@ from .operators import (
 	SumKernel,
 )
 
-# Import base kernels from stationary
+# Import stationary kernels
 from .stationary import (
-	ConstantKernel,
-	LinearKernel,
 	Matern12Kernel,
 	Matern32Kernel,
 	Matern52Kernel,
 	PeriodicKernel,
-	PolynomialKernel,
 	RationalQuadraticKernel,
 	RBFKernel,
 	SEKernel,
-	StaticConstantKernel,
-	StaticLinearKernel,
 	StaticMatern12Kernel,
 	StaticMatern32Kernel,
 	StaticMatern52Kernel,
 	StaticPeriodicKernel,
-	StaticPolynomialKernel,
 	StaticRationalQuadraticKernel,
 	StaticSEKernel,
+)
+
+# Import dot-product kernels
+from .dotproduct import (
+	LinearKernel,
+	PolynomialKernel,
+	StaticLinearKernel,
+	StaticPolynomialKernel,
+)
+
+# Import other kernels
+from .other import (
+	ConstantKernel,
+	StaticConstantKernel,
 	WhiteNoiseKernel,
 )
 
@@ -64,6 +78,10 @@ __all__ = [
 	"__author__",
 	"__email__",
 	"__license__",
+	# Configuration
+	"config",
+	# Transformations
+	"transforms",
 	# Base classes
 	"StaticAbstractKernel",
 	"AbstractKernel",
