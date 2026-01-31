@@ -47,8 +47,10 @@ from .stationary import (
 from .dotproduct import (
 	LinearKernel,
 	PolynomialKernel,
+	SigmoidKernel,
 	StaticLinearKernel,
 	StaticPolynomialKernel,
+	StaticSigmoidKernel,
 )
 
 # Import other kernels
@@ -99,6 +101,8 @@ __all__ = [
 	"RationalQuadraticKernel",
 	"StaticPolynomialKernel",
 	"PolynomialKernel",
+	"StaticSigmoidKernel",
+	"SigmoidKernel",
 	"WhiteNoiseKernel",
 	# Matern family
 	"StaticMatern12Kernel",

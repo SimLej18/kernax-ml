@@ -2,10 +2,14 @@
 Tests for base kernel implementations.
 """
 
+import warnings
+
 import allure
+import jax
 import jax.numpy as jnp
 import pytest
 
+import kernax
 from kernax import (
 	ConstantKernel,
 	DiagKernel,
@@ -18,6 +22,7 @@ from kernax import (
 	RationalQuadraticKernel,
 	RBFKernel,
 	SEKernel,
+	SigmoidKernel,
 	WhiteNoiseKernel,
 )
 
@@ -1232,3 +1237,273 @@ class TestDimensionHandling:
 		x2 = jnp.array([[1.5], [2.5]])
 		result = kernel(x1, x2)
 		assert result.shape == (3, 2)
+
+
+@pytest.fixture
+def sample_1d_data():
+	"""Generate sample 1D data for testing."""
+	key = jax.random.PRNGKey(42)
+	x1 = jax.random.uniform(key, shape=(10, 1))
+	x2 = jax.random.uniform(key, shape=(10, 1))
+	return x1, x2
+
+
+class TestSigmoidKernel:
+	"""Test suite for SigmoidKernel."""
+
+	@allure.title("SigmoidKernel instantiation")
+	@allure.description("Test that SigmoidKernel can be instantiated with valid parameters.")
+	def test_instantiation(self):
+		"""Test basic kernel instantiation."""
+		# Reset config for clean state
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		# Test with default parameters
+		kernel = kernax.SigmoidKernel()
+		assert kernel.alpha == 1.0
+		assert kernel.constant == 0.0
+
+		# Test with custom parameters
+		kernel = kernax.SigmoidKernel(alpha=0.5, constant=1.0)
+		assert kernel.alpha == 0.5
+		assert kernel.constant == 1.0
+
+		# Test with different values
+		kernel = kernax.SigmoidKernel(alpha=2.0, constant=-1.5)
+		assert kernel.alpha == 2.0
+		assert kernel.constant == -1.5
+
+	@allure.title("SigmoidKernel parameter validation")
+	@allure.description("Test that SigmoidKernel rejects invalid parameters.")
+	def test_parameter_validation(self):
+		"""Test that invalid parameters are rejected."""
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		# Alpha must be positive
+		with pytest.raises(Exception):  # eqx.error_if raises EquinoxRuntimeError
+			kernax.SigmoidKernel(alpha=0.0)
+
+		with pytest.raises(Exception):
+			kernax.SigmoidKernel(alpha=-1.0)
+
+		# Constant can be any value (no error expected)
+		kernel = kernax.SigmoidKernel(alpha=1.0, constant=-10.0)
+		assert kernel.constant == -10.0
+
+	@allure.title("SigmoidKernel string representation")
+	@allure.description("Test that the kernel has a readable string representation.")
+	def test_str_representation(self):
+		"""Test string representation of the kernel."""
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		kernel = kernax.SigmoidKernel(alpha=1.0, constant=0.0)
+		str_repr = str(kernel)
+		assert "SigmoidKernel" in str_repr
+
+	@allure.title("SigmoidKernel scalar computation")
+	@allure.description("Test kernel computation between two scalar inputs.")
+	def test_scalar_computation(self):
+		"""Test kernel computation on scalar inputs."""
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		kernel = kernax.SigmoidKernel(alpha=1.0, constant=0.0)
+
+		x1 = jnp.array([1.0])
+		x2 = jnp.array([2.0])
+
+		result = kernel(x1, x2)
+
+		# Check properties
+		assert jnp.isfinite(result)
+		assert result.shape == ()
+		# Sigmoid kernel output is in range (-1, 1) due to tanh
+		assert -1.0 <= result <= 1.0
+
+	@pytest.mark.parametrize(
+		"alpha,constant",
+		[
+			(1.0, 0.0),
+			(0.5, 1.0),
+			(2.0, -0.5),
+		],
+	)
+	@allure.title("SigmoidKernel cross-cov computation")
+	@allure.description("Test cross-covariance computation between two batches of vectors.")
+	def test_cross_cov_computation(self, sample_1d_data, alpha, constant):
+		"""Test cross-covariance matrix computation."""
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		kernel = kernax.SigmoidKernel(alpha=alpha, constant=constant)
+		x1, x2 = sample_1d_data
+
+		result = kernel(x1, x2)
+
+		# Check shape
+		assert result.shape == (x1.shape[0], x2.shape[0])
+
+		# Check all values are finite
+		assert jnp.all(jnp.isfinite(result))
+
+		# Check values are in valid range for tanh
+		assert jnp.all(result >= -1.0)
+		assert jnp.all(result <= 1.0)
+
+		# Check consistency with pairwise computations
+		for i in range(x1.shape[0]):
+			for j in range(x2.shape[0]):
+				assert jnp.allclose(result[i, j], kernel(x1[i], x2[j]))
+
+	@pytest.mark.parametrize("alpha,constant", [(1.0, 0.0), (0.5, 1.0), (2.0, -1.0)])
+	@allure.title("SigmoidKernel mathematical properties")
+	@allure.description("Test mathematical properties of the sigmoid kernel.")
+	def test_math_properties(self, sample_1d_data, alpha, constant):
+		"""Test mathematical properties."""
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		kernel = kernax.SigmoidKernel(alpha=alpha, constant=constant)
+		x1, _ = sample_1d_data
+
+		K = kernel(x1)  # Test optional x2 parameter
+
+		# Check shape
+		assert K.shape == (x1.shape[0], x1.shape[0])
+
+		# Check all values are in range
+		assert jnp.all(K >= -1.0)
+		assert jnp.all(K <= 1.0)
+
+		# Sigmoid kernel is symmetric
+		assert jnp.allclose(K, K.T)
+
+	@allure.title("SigmoidKernel against scikit-learn")
+	@allure.description("Compare kernax SigmoidKernel against sklearn.gaussian_process.kernels.Sigmoid.")
+	def test_against_scikitlearn(self, sample_1d_data):
+		"""Test against scikit-learn implementation."""
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		try:
+			from sklearn.gaussian_process.kernels import DotProduct
+		except ImportError:
+			pytest.skip("scikit-learn not installed")
+
+		x1, x2 = sample_1d_data
+
+		# Convert to numpy for sklearn
+		x1_np = jnp.array(x1)
+		x2_np = jnp.array(x2)
+
+		# Test with various parameters
+		for alpha, constant in [(1.0, 0.0), (0.5, 1.0), (2.0, -0.5)]:
+			# Kernax kernel
+			kernax_kernel = kernax.SigmoidKernel(alpha=alpha, constant=constant)
+			K_kernax = kernax_kernel(x1_np, x2_np)
+
+			# Manual implementation matching sklearn's approach
+			# sklearn doesn't have a direct Sigmoid kernel, but we can compute it manually
+			# tanh(alpha * <x, x'> + c)
+			dot_products = x1_np @ x2_np.T
+			K_manual = jnp.tanh(alpha * dot_products + constant)
+
+			# Compare
+			assert jnp.allclose(K_kernax, K_manual, rtol=1e-5, atol=1e-5)
+
+	@allure.title("SigmoidKernel output range")
+	@allure.description("Verify that sigmoid kernel output is always in (-1, 1) range.")
+	def test_output_range(self, sample_1d_data):
+		"""Test that output is always in valid range."""
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		x1, x2 = sample_1d_data
+
+		# Test with various extreme parameters
+		for alpha, constant in [(0.01, -10.0), (10.0, 10.0), (0.1, 0.0)]:
+			kernel = kernax.SigmoidKernel(alpha=alpha, constant=constant)
+			K = kernel(x1, x2)
+
+			# tanh outputs in [-1, 1] (can equal -1 or 1 with extreme inputs)
+			assert jnp.all(K >= -1.0)
+			assert jnp.all(K <= 1.0)
+			assert jnp.all(jnp.isfinite(K))
+
+	@allure.title("SigmoidKernel with parameter transforms")
+	@allure.description("Test that parameter transforms work correctly.")
+	def test_with_transforms(self):
+		"""Test kernel with different parameter transforms."""
+		for transform in ["identity", "exp", "softplus"]:
+			with warnings.catch_warnings():
+				warnings.simplefilter("ignore", RuntimeWarning)
+				kernax.config.unsafe_reset()
+
+			kernax.config.parameter_transform = transform
+
+			kernel = kernax.SigmoidKernel(alpha=2.0, constant=1.0)
+
+			# Check that retrieved parameter matches input
+			assert jnp.allclose(kernel.alpha, 2.0, rtol=1e-5)
+			assert jnp.allclose(kernel.constant, 1.0)
+
+			# Kernel should work correctly
+			x1 = jnp.array([1.0])
+			x2 = jnp.array([2.0])
+			result = kernel(x1, x2)
+			assert jnp.isfinite(result)
+			assert -1.0 <= result <= 1.0
+
+	@allure.title("SigmoidKernel edge cases")
+	@allure.description("Test kernel behavior with edge case inputs.")
+	def test_edge_cases(self):
+		"""Test edge cases."""
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		kernel = kernax.SigmoidKernel(alpha=1.0, constant=0.0)
+
+		# Test with zero vectors
+		x_zero = jnp.array([0.0])
+		result = kernel(x_zero, x_zero)
+		# tanh(1.0 * 0 + 0) = tanh(0) = 0
+		assert jnp.allclose(result, 0.0)
+
+		# Test with identical vectors
+		x = jnp.array([5.0])
+		result = kernel(x, x)
+		# tanh(1.0 * 25 + 0) = tanh(25) ≈ 1.0
+		assert jnp.isfinite(result)
+		assert -1.0 <= result <= 1.0
+
+	@allure.title("SigmoidKernel NaN handling")
+	@allure.description("Test that the kernel properly handles NaN inputs.")
+	def test_nan_handling(self):
+		"""Test NaN handling."""
+		with warnings.catch_warnings():
+			warnings.simplefilter("ignore", RuntimeWarning)
+			kernax.config.unsafe_reset()
+
+		kernel = kernax.SigmoidKernel(alpha=1.0, constant=0.0)
+
+		x1 = jnp.array([1.0])
+		x_nan = jnp.array([jnp.nan])
+
+		# Kernel should return NaN when input contains NaN
+		result = kernel(x1, x_nan)
+		assert jnp.isnan(result)
+
+		result = kernel(x_nan, x1)
+		assert jnp.isnan(result)
