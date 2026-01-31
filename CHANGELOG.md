@@ -11,6 +11,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.4.0-alpha] - 2025-01-31
+
+### Added
+- **Parameter Transform System:**
+  - Global configuration system (`kernax.config`) for parameter transformation modes
+  - Three transformation modes: `identity` (no transform), `exp` (log-exp trick), `softplus` (numerically stable)
+  - Config locking mechanism prevents changes after kernel instantiation (ensures JIT compatibility)
+  - `unsafe_reset()` method for testing and development environments
+- **Transforms Module** (`kernax/transforms.py`):
+  - `to_unconstrained()` and `to_constrained()` functions for bijective transformations
+  - Centralizes transformation logic for cleaner kernel implementations
+  - Supports positivity constraints for hyperparameter optimization
+- **New Kernels:**
+  - `SigmoidKernel`: Hyperbolic tangent kernel `tanh(α⟨x, x'⟩ + c)` with alpha parameter transformation
+- **Test Suite:**
+  - Comprehensive config system tests (14 tests, 100% coverage on config.py)
+  - Transform module tests (10 tests)
+  - SigmoidKernel tests (15 tests, 100% coverage on Sigmoid.py)
+  - All SigmoidKernel tests integrated into `test_base_kernels.py`
+
+### Changed
+- **Code Organization:**
+  - Reorganized kernels into family-specific directories:
+    - `kernax/stationary/`: SE, Matern (1/2, 3/2, 5/2), Periodic, RationalQuadratic
+    - `kernax/dotproduct/`: Linear, Polynomial, Sigmoid
+    - `kernax/other/`: Constant, WhiteNoise
+  - Updated all `__init__.py` files for new directory structure
+- **Kernel Architecture:**
+  - All stationary kernels now inherit from `StaticStationaryKernel` base class
+  - All dot-product kernels now inherit from `StaticDotProductKernel` base class
+  - Kernels use `cls.distance_func()` for distance computation (euclidean, squared_euclidean, or dot_product)
+- **Parameter System:**
+  - All kernels updated with parameter validation using `eqx.error_if`
+  - Positive parameters stored in unconstrained space with property-based access
+  - Parameters automatically transformed based on global config at instantiation time
+  - Kernels updated: SEKernel, Matern12/32/52, Periodic, RationalQuadratic, Polynomial, Sigmoid
+- **LinearKernel Special Case:**
+  - LinearKernel parameters NOT transformed (variances can be zero, incompatible with log-based transforms)
+  - Changed validation to `>= 0` instead of `> 0` for variance parameters
+- **AbstractKernel:**
+  - Added `__init__()` method to mark kernel instantiation for config locking
+
+### Fixed
+- **Transform Compatibility:**
+  - Fixed LinearKernel to work with all transform modes by not transforming parameters
+  - All 12 LinearKernel tests now pass
+- **Test Organization:**
+  - Removed separate `test_sigmoid_kernel.py`, integrated into `test_base_kernels.py`
+  - Added `sample_1d_data` fixture to `test_base_kernels.py`
+
+### Technical Details
+- **Config System:** Thread-safe configuration with lock mechanism after first kernel creation
+- **Property Pattern:** Kernels store `_unconstrained_param` and expose `param` property for constrained access
+- **JIT Compatibility:** All transformations occur at instantiation time, not during JIT tracing
+- **Backward Compatibility:** Default `identity` transform maintains existing behavior
+
 ## [0.3.1-alpha] - 2025-01-30
 
 ### Fixed
@@ -218,7 +274,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JAXlib >= 0.8.0
 - Equinox >= 0.11.0
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.3.1-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.4.0-alpha...HEAD
+[0.4.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.3.1-alpha...v0.4.0-alpha
 [0.3.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.3.0-alpha...v0.3.1-alpha
 [0.3.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.2.1-alpha...v0.3.0-alpha
 [0.2.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.2.0-alpha...v0.2.1-alpha

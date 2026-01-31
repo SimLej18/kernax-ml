@@ -111,6 +111,9 @@ ard_kernel = ARDKernel(SEKernel(length_scale=1.0), length_scales=length_scales)
 - **`PolynomialKernel`**
   - Hyperparameters: `degree`, `gamma`, `constant`
 
+- **`SigmoidKernel`** (Hyperbolic Tangent)
+  - Hyperparameters: `alpha`, `constant`
+
 - **`WhiteNoiseKernel`**
   - Convenient shortcut for `DiagKernel(ConstantKernel(value))`
   - Hyperparameters: `value`
@@ -221,7 +224,7 @@ Check the [changelog](CHANGELOG.md) for details.
 
 ### ✅ Completed
 
-- Core kernel implementations (SE, Linear, Matern, Periodic, etc.)
+- Core kernel implementations (SE, Linear, Matern, Periodic, Sigmoid, etc.)
 - Kernel composition via operators
 - Equinox Module integration
 - NaN-aware computations
@@ -229,15 +232,16 @@ Check the [changelog](CHANGELOG.md) for details.
 - ARDKernel wrapper using input scaling
 - ActiveDimsKernel wrapper for dimension selection
 - BlockKernel for block-matrix covariances
-- Comprehensive test suite
+- StationaryKernel and DotProductKernel base classes with proper inheritance
+- Parameter transform system (identity, exp, softplus) for optimization stability
+- Parameter positivity constraints with config-based transformation
+- Comprehensive test suite (94% coverage)
 - Benchmark architecture
 - PyPI package distribution
 
 ### 🚧 In Progress / Planned
 
-- Rewrite inheritance with StationaryKernel and IsotropicKernel base classes
 - Add computation engines for special cases (diagonal-only, etc.)
-- OptimKernel to use the log-exp trick to stabilise hyperparameter optimisation and ensure constraints (positivity, ...)
 - Parameter freezing for optimisation
 - Comprehensive benchmarks with multiple kernels and input scenarios
 - Expanded documentation and tutorials
