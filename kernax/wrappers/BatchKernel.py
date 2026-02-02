@@ -1,7 +1,8 @@
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jax import Array, jit, vmap
+from jax import Array, vmap
+from equinox import filter_jit
 
 from ..AbstractKernel import AbstractKernel
 from .WrapperKernel import WrapperKernel
@@ -27,7 +28,7 @@ class BatchKernel(WrapperKernel):
 	batch_in_axes: bool = eqx.field(static=True)
 	batch_over_inputs: int | None = eqx.field(static=True)
 
-	def __init__(self, inner_kernel, batch_size, batch_in_axes=None, batch_over_inputs=True):
+	def __init__(self, inner_kernel, batch_size, batch_in_axes=None, batch_over_inputs=True, **kwargs):
 		"""
 		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel
 		:param batch_size: the size of the batch (int)
@@ -40,7 +41,7 @@ class BatchKernel(WrapperKernel):
 		:param batch_over_inputs: whether to expect inputs of shape (B, N, I) (True) or (N, I) (False)
 		"""
 		# Initialize the WrapperKernel
-		super().__init__(inner_kernel=inner_kernel)
+		super().__init__(inner_kernel=inner_kernel, **kwargs)
 		self.batch_size = batch_size
 
 		# Default: all array hyperparameters are shared (None for all array leaves)
@@ -64,7 +65,7 @@ class BatchKernel(WrapperKernel):
 			self.batch_in_axes,
 		)
 
-	@jit
+	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		"""
 		Compute the kernel over batched inputs using vmap.

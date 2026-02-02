@@ -1,6 +1,7 @@
 from typing import Optional
 
-from jax import Array, jit
+from jax import Array
+from equinox import filter_jit
 
 from .OperatorKernel import OperatorKernel
 
@@ -8,7 +9,7 @@ from .OperatorKernel import OperatorKernel
 class SumKernel(OperatorKernel):
 	"""Sum kernel that sums the outputs of two kernels."""
 
-	@jit
+	@filter_jit
 	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
 		if x2 is None:
 			x2 = x1

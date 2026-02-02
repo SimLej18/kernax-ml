@@ -10,8 +10,8 @@ class WhiteNoiseKernel(DiagKernel):
 
 	static_class = StaticDiagKernel
 
-	def __init__(self, noise=None):
-		super().__init__(inner_kernel=ConstantKernel(noise))
+	def __init__(self, noise=None, **kwargs):
+		super().__init__(inner_kernel=ConstantKernel(noise), **kwargs)
 
 	def __str__(self):
 		return f"WhiteNoise({self.inner_kernel})"

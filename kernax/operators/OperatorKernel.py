@@ -10,7 +10,7 @@ class OperatorKernel(AbstractKernel):
 	left_kernel: AbstractKernel = eqx.field()
 	right_kernel: AbstractKernel = eqx.field()
 
-	def __init__(self, left_kernel, right_kernel):
+	def __init__(self, left_kernel, right_kernel, **kwargs):
 		"""
 		Instantiates a sum kernel with the given kernels.
 
@@ -23,6 +23,6 @@ class OperatorKernel(AbstractKernel):
 		if not isinstance(right_kernel, AbstractKernel):
 			right_kernel = ConstantKernel(value=right_kernel)
 
-		super().__init__()
+		super().__init__(**kwargs)
 		self.left_kernel = left_kernel
 		self.right_kernel = right_kernel

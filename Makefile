@@ -2,19 +2,19 @@
 
 help:
 	@echo "Available commands:"
-	@echo "  make install       - Install package"
-	@echo "  make install-dev   - Install package with development dependencies"
-	@echo "  make test          - Run tests"
-	@echo "  make test-cov      - Run tests with coverage report"
-	@echo "  make test-allure   - Run tests and generate an allure one-file HTML report"
+	@echo "  make install            - Install package"
+	@echo "  make install-dev        - Install package with development dependencies"
+	@echo "  make test               - Run tests"
+	@echo "  make test-cov           - Run tests with coverage report"
+	@echo "  make test-allure        - Run tests and generate an allure one-file HTML report"
 	@echo "  make benchmarks         - Run performance benchmarks"
 	@echo "  make benchmarks-compare - Run cross-library comparison benchmarks"
-	@echo "  make lint          - Run linters (ruff, mypy)"
-	@echo "  make format        - Format code with tabs (ruff)"
-	@echo "  make clean         - Remove build artifacts"
-	@echo "  make build         - Build distribution packages"
-	@echo "  make upload        - Upload package to PyPI (requires credentials)"
-	@echo "  make docs          - Build documentation"
+	@echo "  make lint               - Run linters (ruff, mypy)"
+	@echo "  make format             - Format code with tabs (ruff)"
+	@echo "  make clean              - Remove build artifacts"
+	@echo "  make build              - Build distribution packages"
+	@echo "  make upload             - Upload package to PyPI (requires credentials)"
+	@echo "  make docs               - Build documentation"
 
 install:
 	pip install -e .

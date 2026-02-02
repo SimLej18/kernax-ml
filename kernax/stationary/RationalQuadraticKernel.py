@@ -42,7 +42,7 @@ class RationalQuadraticKernel(AbstractKernel):
 	_unconstrained_alpha: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticRationalQuadraticKernel
 
-	def __init__(self, length_scale, alpha):
+	def __init__(self, length_scale, alpha, **kwargs):
 		"""
 		Initialize the Rational Quadratic kernel.
 
@@ -63,7 +63,7 @@ class RationalQuadraticKernel(AbstractKernel):
 		alpha = eqx.error_if(alpha, jnp.any(alpha <= 0), "alpha must be positive.")
 
 		# Initialize parent (locks config)
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Transform to unconstrained space
 		from ..transforms import to_unconstrained

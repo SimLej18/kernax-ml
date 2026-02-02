@@ -43,7 +43,7 @@ class PeriodicKernel(AbstractKernel):
 	_unconstrained_period: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticPeriodicKernel
 
-	def __init__(self, length_scale, variance, period):
+	def __init__(self, length_scale, variance, period, **kwargs):
 		"""
 		Initialize the Periodic kernel.
 
@@ -67,7 +67,7 @@ class PeriodicKernel(AbstractKernel):
 		period = eqx.error_if(period, jnp.any(period <= 0), "period must be positive.")
 
 		# Initialize parent (locks config)
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Transform to unconstrained space
 		from ..transforms import to_unconstrained

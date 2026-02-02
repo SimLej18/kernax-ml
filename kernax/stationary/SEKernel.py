@@ -6,6 +6,7 @@ from jax import numpy as jnp
 from ..AbstractKernel import AbstractKernel
 from .StationaryKernel import StaticStationaryKernel
 from ..distances import squared_euclidean_distance
+from ..transforms import to_constrained, to_unconstrained
 
 
 class StaticSEKernel(StaticStationaryKernel):
@@ -38,7 +39,7 @@ class SEKernel(AbstractKernel):
 	_unconstrained_length_scale: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticSEKernel
 
-	def __init__(self, length_scale):
+	def __init__(self, length_scale, **kwargs):
 		"""
 		Initialize the SE kernel with a length scale parameter.
 
@@ -46,6 +47,7 @@ class SEKernel(AbstractKernel):
 			length_scale: Length scale parameter (must be positive). This is provided
 				in the constrained space (positive values) and will be converted to
 				the appropriate unconstrained space based on config.parameter_transform.
+			**kwargs: Additional arguments passed to AbstractKernel (e.g., computation_engine)
 
 		Raises:
 			ValueError: If length_scale is not positive
@@ -55,10 +57,7 @@ class SEKernel(AbstractKernel):
 		length_scale = eqx.error_if(length_scale, jnp.any(length_scale <= 0), "length_scale must be positive.")
 
 		# Initialize parent (marks kernels as instantiated, locks config)
-		super().__init__()
-
-		# Import transformation utilities
-		from ..transforms import to_unconstrained
+		super().__init__(**kwargs)
 
 		# Transform to unconstrained space
 		self._unconstrained_length_scale = to_unconstrained(jnp.asarray(length_scale))
@@ -74,8 +73,6 @@ class SEKernel(AbstractKernel):
 		Returns:
 			Length scale parameter (positive)
 		"""
-		from ..transforms import to_constrained
-
 		return to_constrained(self._unconstrained_length_scale)
 
 

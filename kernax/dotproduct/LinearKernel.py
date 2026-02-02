@@ -46,7 +46,7 @@ class LinearKernel(AbstractKernel):
 	offset_c: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticLinearKernel
 
-	def __init__(self, variance_b, variance_v, offset_c):
+	def __init__(self, variance_b, variance_v, offset_c, **kwargs):
 		"""
 		Initialize the Linear kernel.
 
@@ -70,7 +70,7 @@ class LinearKernel(AbstractKernel):
 		)
 
 		# Initialize parent (locks config)
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Store parameters as-is (no transformation)
 		# Variances can be 0, which is incompatible with log-based transforms

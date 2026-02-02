@@ -9,28 +9,37 @@ from jax import Array, vmap
 from jax.lax import cond
 
 from .utils import format_jax_array
+from .engines import ComputationEngine, DenseEngine
 
 if TYPE_CHECKING:
 	pass
 
 
 class AbstractKernel(eqx.Module):
-	static_class: ClassVar[Optional[Type[StaticAbstractKernel]]] = (
-		None  # Must be defined in sub-class
+	static_class: ClassVar[Optional[Type[StaticAbstractKernel]]] = None
+	computation_engine: Type[ComputationEngine] = eqx.field(
+		static=True, default=DenseEngine, kw_only=True
 	)
 
-	def __init__(self):
+	def __init__(self, computation_engine=DenseEngine, **kwargs):
 		"""
 		Initialize the kernel and mark that a kernel has been instantiated.
 
 		This locks the parameter_transform config setting to prevent inconsistencies
 		with JIT-compiled code.
+
+		Args:
+			computation_engine: The computation engine to use for covariance calculations
+			**kwargs: Additional keyword arguments (for subclass compatibility)
 		"""
 		# Import here to avoid circular dependency
 		from .config import config
 
 		# Mark that kernels have been instantiated (locks parameter_transform)
 		config._mark_kernel_instantiated()
+
+		# Set the computation engine
+		self.computation_engine = computation_engine
 
 	@filter_jit
 	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
@@ -46,13 +55,13 @@ class AbstractKernel(eqx.Module):
 
 		# Call the appropriate method
 		if jnp.ndim(x1) == 1 and jnp.ndim(x2) == 1:
-			return self.static_class.pairwise_cov_if_not_nan(self, x1, x2)
+			return self.computation_engine.pairwise_cov_if_not_nan(self, x1, x2)
 		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 1:
-			return self.static_class.cross_cov_vector_if_not_nan(self, x1, x2)
+			return self.computation_engine.cross_cov_vector_if_not_nan(self, x1, x2)
 		elif jnp.ndim(x1) == 1 and jnp.ndim(x2) == 2:
-			return self.static_class.cross_cov_vector_if_not_nan(self, x2, x1)
+			return self.computation_engine.cross_cov_vector_if_not_nan(self, x2, x1)
 		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 2:
-			return self.static_class.cross_cov_matrix(self, x1, x2)
+			return self.computation_engine.cross_cov_matrix(self, x1, x2)
 		else:
 			raise ValueError(
 				f"Invalid input dimensions: x1 has shape {x1.shape}, x2 has shape {x2.shape}. "
@@ -129,7 +138,7 @@ class StaticAbstractKernel:
 	@filter_jit
 	def pairwise_cov_if_not_nan(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
 		"""
-		Returns NaN if either x1 or x2 is NaN, otherwise calls the compute_scalar method.
+		Returns NaN if either x1 or x2 is NaN, otherwise calls the pairwise_cov method.
 
 		:param kern: kernel instance containing the hyperparameters
 		:param x1: scalar array
@@ -162,7 +171,7 @@ class StaticAbstractKernel:
 		cls, kern: AbstractKernel, x1: Array, x2: Array, **kwargs
 	) -> Array:
 		"""
-		Returns an array of NaN if scalar is NaN, otherwise calls the compute_vector method.
+		Returns an array of NaN if scalar is NaN, otherwise calls the cross_cov_vector method.
 
 		:param kern: kernel instance containing the hyperparameters
 		:param x1: vector array (N, )

@@ -35,14 +35,14 @@ class ConstantKernel(AbstractKernel):
 	value: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticConstantKernel
 
-	def __init__(self, value=1.0):
+	def __init__(self, value=1.0, **kwargs):
 		"""
 		Initialize the Constant kernel.
 
 		Args:
 			value: The constant value to return (can be any real number)
 		"""
-		super().__init__()
+		super().__init__(**kwargs)
 		self.value = jnp.asarray(value)
 
 	def __str__(self):

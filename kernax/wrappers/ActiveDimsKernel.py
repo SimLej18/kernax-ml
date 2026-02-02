@@ -1,6 +1,9 @@
+from typing import Tuple
+
 import equinox as eqx
 import jax.numpy as jnp
-from jax import Array, jit
+from jax import Array
+from equinox import filter_jit, error_if
 
 from .WrapperKernel import WrapperKernel
 
@@ -24,19 +27,21 @@ class ActiveDimsKernel(WrapperKernel):
 	```
 	"""
 
-	active_dims: Array = eqx.field(static=True, converter=jnp.asarray)
+	active_dims: Tuple[int, ...] = eqx.field(static=True)
 
-	def __init__(self, inner_kernel, active_dims):
+	def __init__(self, inner_kernel, active_dims: Tuple[int, ...], **kwargs):
 		"""
 		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel
 		:param active_dims: the indices of the active dimensions to select from the inputs (1D array of integers)
 		"""
-		super().__init__(inner_kernel=inner_kernel)
-		self.active_dims = active_dims
+		super().__init__(inner_kernel=inner_kernel, **kwargs)
+		self.active_dims = tuple(int(dim) for dim in active_dims)
 
-	@jit
+	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
-		# TODO: add runtime error if active_dims doesn't match input dimensions
+		x1 = error_if(x1, jnp.any(jnp.array(self.active_dims) >= x1.shape[-1]),
+		              "active_dims contains indices out of bounds for x1.")
+
 		if x2 is None:
 			x2 = x1
 

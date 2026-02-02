@@ -9,12 +9,14 @@ class WrapperKernel(AbstractKernel):
 
 	inner_kernel: AbstractKernel = eqx.field()
 
-	def __init__(self, inner_kernel=None):
+	def __init__(self, inner_kernel=None, **kwargs):
 		"""
 		Instantiates a wrapper kernel with the given inner kernel.
 
 		:param inner_kernel: the inner kernel to wrap
 		"""
+		super().__init__(**kwargs)
+
 		# If the inner kernel is not a kernel, we try to convert it to a ConstantKernel
 		if not isinstance(inner_kernel, AbstractKernel):
 			inner_kernel = ConstantKernel(value=inner_kernel)

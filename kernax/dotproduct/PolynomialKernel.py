@@ -39,7 +39,7 @@ class PolynomialKernel(AbstractKernel):
 
 	static_class = StaticPolynomialKernel
 
-	def __init__(self, degree: int, gamma: float = 1.0, constant: float = 0.0):
+	def __init__(self, degree: int, gamma: float = 1.0, constant: float = 0.0, **kwargs):
 		"""
 		Initialize the Polynomial kernel.
 
@@ -60,7 +60,7 @@ class PolynomialKernel(AbstractKernel):
 		gamma_array = eqx.error_if(gamma_array, jnp.any(gamma_array <= 0), "gamma must be positive.")
 
 		# Initialize parent (locks config)
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Set static degree
 		self.degree = degree

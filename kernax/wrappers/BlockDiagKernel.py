@@ -18,8 +18,8 @@ class BlockDiagKernel(BatchKernel):
 	This class uses vmap to vectorize the kernel computation of each block, then resize the result into a block matrix.
 	"""
 
-	def __init__(self, inner_kernel, nb_blocks, block_in_axes=None, block_over_inputs=True):
-		super().__init__(inner_kernel, nb_blocks, block_in_axes, block_over_inputs)
+	def __init__(self, inner_kernel, nb_blocks, block_in_axes=None, block_over_inputs=True, **kwargs):
+		super().__init__(inner_kernel, nb_blocks, block_in_axes, block_over_inputs, **kwargs)
 
 	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:  # type: ignore[override]

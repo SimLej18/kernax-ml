@@ -40,7 +40,7 @@ class Matern32Kernel(AbstractKernel):
 	_unconstrained_length_scale: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticMatern32Kernel
 
-	def __init__(self, length_scale):
+	def __init__(self, length_scale, **kwargs):
 		"""
 		Initialize the Matern 3/2 kernel with a length scale parameter.
 
@@ -57,7 +57,7 @@ class Matern32Kernel(AbstractKernel):
 		)
 
 		# Initialize parent (locks config)
-		super().__init__()
+		super().__init__(**kwargs)
 
 		# Transform to unconstrained space
 		from ..transforms import to_unconstrained

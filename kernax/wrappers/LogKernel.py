@@ -1,5 +1,6 @@
 import jax.numpy as jnp
-from jax import Array, jit
+from jax import Array
+from equinox import filter_jit
 
 from .WrapperKernel import WrapperKernel
 
@@ -9,7 +10,7 @@ class LogKernel(WrapperKernel):
 	Kernel that applies the logarithm operator to the output of another kernel.
 	"""
 
-	@jit
+	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		if x2 is None:
 			x2 = x1

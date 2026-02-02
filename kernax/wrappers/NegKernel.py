@@ -1,10 +1,11 @@
-from jax import Array, jit
+from jax import Array
+from equinox import filter_jit
 
 from .WrapperKernel import WrapperKernel
 
 
 class NegKernel(WrapperKernel):
-	@jit
+	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		if x2 is None:
 			x2 = x1

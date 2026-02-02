@@ -26,7 +26,7 @@ class BlockKernel(WrapperKernel):
 	block_in_axes: bool = eqx.field(static=True)
 	block_over_inputs: int | None = eqx.field(static=True)
 
-	def __init__(self, inner_kernel, nb_blocks, block_in_axes=None, block_over_inputs=True):
+	def __init__(self, inner_kernel, nb_blocks, block_in_axes=None, block_over_inputs=True, **kwargs):
 		"""
 		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel
 		:param nb_blocks: the number of blocks
@@ -42,7 +42,7 @@ class BlockKernel(WrapperKernel):
 		A good example is a multi-output (convolutional) kernel in GPs, which usually have two distinct lengthscales (and variances) depending on which output dimension is considered.
 		"""
 		# Initialize the WrapperKernel
-		super().__init__(inner_kernel=inner_kernel)
+		super().__init__(inner_kernel=inner_kernel, **kwargs)
 
 		# TODO: explicit error message when nb_blocks is 1, as vmap is not needed then
 		# TODO: check that at least one hyperparameter varies across rows and one across columns

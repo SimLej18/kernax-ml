@@ -1,7 +1,8 @@
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jax import Array, jit
+from jax import Array
+from equinox import filter_jit
 
 from .WrapperKernel import WrapperKernel
 
@@ -25,15 +26,15 @@ class ARDKernel(WrapperKernel):
 
 		return jtu.tree_map_with_path(map_func, kernel)
 
-	def __init__(self, inner_kernel, length_scales):
+	def __init__(self, inner_kernel, length_scales, **kwargs):
 		"""
 		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel
 		:param length_scales: the length scales for each input dimension (1D array of floats)
 		"""
-		super().__init__(inner_kernel=inner_kernel)
+		super().__init__(inner_kernel=inner_kernel, **kwargs)
 		self.length_scales = length_scales
 
-	@jit
+	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		# TODO: add runtime error if length_scales doesn't match input dimensions
 		if x2 is None:
