@@ -62,13 +62,20 @@ The `AbstractKernel` class (kernax/AbstractKernel.py:10-63) extends `eqx.Module`
    - `ExpKernel`: Applies exponential
    - `LogKernel`: Applies logarithm
    - `NegKernel`: Negates output
-   - `DiagKernel`: Returns value only when inputs are equal (creates diagonal matrices)
    - `BatchKernel`: Adds batch handling with distinct hyperparameters per batch element
    - `BlockKernel`: Constructs block covariance matrices for grouped data with optional block structure over inputs/hyperparameters
    - `BlockDiagKernel`: Creates block-diagonal covariance matrices, specialized version of BlockKernel for diagonal block structure
    - `ActiveDimsKernel`: Selects specific input dimensions before kernel computation
    - `ARDKernel`: Applies Automatic Relevance Determination (different length scale per dimension)
    - Transform wrappers auto-convert non-kernel arguments to `ConstantKernel`
+
+4. **Computation Engines** (kernax/engines.py): Control how covariance matrices are computed
+   - `DenseEngine` (default): Computes full covariance matrices
+   - `SafeDiagonalEngine`: Returns diagonal matrices (uses conditional check for input equality)
+   - `FastDiagonalEngine`: Returns diagonal matrices (assumes x1 == x2, faster but requires constraint)
+   - `SafeRegularGridEngine`: Exploits regular grid structure with runtime checks
+   - `FastRegularGridEngine`: Exploits regular grid structure without checks (faster but requires constraint)
+   - All kernels accept a `computation_engine` parameter for specialized computation patterns
 
 ## Development Commands
 
@@ -183,7 +190,7 @@ The test suite uses pytest with Allure reporting and achieves 94% code coverage.
   - Complex compositions and mathematical properties (associativity, distributivity)
 
 - **test_wrapper_kernels.py**: Tests for wrapper kernel implementations
-  - DiagKernel, BatchKernel, BlockKernel, BlockDiagKernel
+  - BatchKernel, BlockKernel, BlockDiagKernel
   - ActiveDimsKernel, ARDKernel
   - Batch handling and dimension selection
   - Block structure verification

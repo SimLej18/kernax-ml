@@ -12,7 +12,6 @@ import pytest
 import kernax
 from kernax import (
 	ConstantKernel,
-	DiagKernel,
 	LinearKernel,
 	Matern12Kernel,
 	Matern32Kernel,
@@ -1148,7 +1147,7 @@ class TestWhiteNoiseKernel:
 	@allure.description("Test that WhiteNoise kernel can be instantiated.")
 	def test_instantiation(self):
 		kernel = WhiteNoiseKernel(noise=1.0)
-		assert kernel.inner_kernel.value == 1.0
+		assert kernel.value == 1.0
 
 	@allure.title("WhiteNoiseKernel string representation")
 	@allure.description("Test that WhiteNoise kernel has a valid string representation.")
@@ -1159,11 +1158,13 @@ class TestWhiteNoiseKernel:
 		assert len(str_repr) > 0
 
 	@pytest.mark.parametrize("noise", [0.5, 1.0, 2.0])
-	@allure.title("WhiteNoiseKernel comparison with Diag(Constant())")
-	@allure.description("Compare WhiteNoiseKernel results against Diag(Constant()).")
+	@allure.title("WhiteNoiseKernel comparison with ConstantKernel + SafeDiagonalEngine")
+	@allure.description("Compare WhiteNoiseKernel results against ConstantKernel with SafeDiagonalEngine.")
 	def test_against_diag(self, sample_1d_data, noise):
+		from kernax.engines import SafeDiagonalEngine
+
 		white_noise_kernel = WhiteNoiseKernel(noise=noise)
-		diag_const_kernel = DiagKernel(noise)
+		diag_const_kernel = ConstantKernel(value=noise, computation_engine=SafeDiagonalEngine)
 
 		x1, _ = sample_1d_data
 		result = white_noise_kernel(x1)

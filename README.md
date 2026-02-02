@@ -57,7 +57,7 @@ pip install -e .
 
 ```python
 import jax.numpy as jnp
-from kernax import SEKernel, LinearKernel, DiagKernel, ExpKernel, BatchKernel, ARDKernel
+from kernax import SEKernel, LinearKernel, WhiteNoiseKernel, ExpKernel, BatchKernel, ARDKernel
 
 # Create a simple Squared Exponential kernel
 kernel = SEKernel(length_scale=1.0)
@@ -72,7 +72,7 @@ X = jnp.array([[1.0], [2.0], [3.0]])
 K = kernel(X, X)  # Returns 3x3 covariance matrix
 
 # Compose kernels using operators
-composite_kernel = SEKernel(length_scale=1.0) + DiagKernel(ExpKernel(0.1))  # SE + noise
+composite_kernel = SEKernel(length_scale=1.0) + WhiteNoiseKernel(0.1)  # SE + noise
 
 # Use BatchKernel for distinct hyperparameters per batch
 base_kernel = SEKernel(length_scale=1.0)
@@ -115,8 +115,9 @@ ard_kernel = ARDKernel(SEKernel(length_scale=1.0), length_scales=length_scales)
   - Hyperparameters: `alpha`, `constant`
 
 - **`WhiteNoiseKernel`**
-  - Convenient shortcut for `DiagKernel(ConstantKernel(value))`
-  - Hyperparameters: `value`
+  - Diagonal noise kernel (returns constant value only on diagonal)
+  - Implemented as `ConstantKernel` with `SafeDiagonalEngine`
+  - Hyperparameters: `noise`
 
 ### Composite Kernels
 
@@ -127,7 +128,6 @@ ard_kernel = ARDKernel(SEKernel(length_scale=1.0), length_scales=length_scales)
 
 Transform or modify kernel behavior:
 
-- **`DiagKernel`**: Returns value only when inputs are equal (creates diagonal matrices)
 - **`ExpKernel`**: Applies exponential to kernel output
 - **`LogKernel`**: Applies logarithm to kernel output
 - **`NegKernel`**: Negates kernel output (use `-kernel`)
@@ -135,6 +135,28 @@ Transform or modify kernel behavior:
 - **`BlockKernel`**: Constructs block covariance matrices for grouped data
 - **`ActiveDimsKernel`**: Selects specific input dimensions before kernel computation
 - **`ARDKernel`**: Applies Automatic Relevance Determination (different length scale per dimension)
+
+### Computation Engines
+
+Computation engines control how covariance matrices are computed. All kernels accept a `computation_engine` parameter:
+
+- **`DenseEngine`** (default): Computes full covariance matrices
+- **`SafeDiagonalEngine`**: Returns diagonal matrices (uses conditional check for input equality)
+- **`FastDiagonalEngine`**: Returns diagonal matrices (assumes x1 == x2, faster but requires constraint)
+- **`SafeRegularGridEngine`**: Exploits regular grid structure with runtime checks
+- **`FastRegularGridEngine`**: Exploits regular grid structure without checks (faster but requires constraint)
+
+Example:
+```python
+from kernax import SEKernel
+from kernax.engines import SafeDiagonalEngine, FastRegularGridEngine
+
+# Diagonal computation
+diagonal_kernel = SEKernel(length_scale=1.0, computation_engine=SafeDiagonalEngine)
+
+# Regular grid optimization
+grid_kernel = SEKernel(length_scale=1.0, computation_engine=FastRegularGridEngine)
+```
 
 ## Architecture
 
@@ -235,13 +257,13 @@ Check the [changelog](CHANGELOG.md) for details.
 - StationaryKernel and DotProductKernel base classes with proper inheritance
 - Parameter transform system (identity, exp, softplus) for optimization stability
 - Parameter positivity constraints with config-based transformation
+- Computation engines for special cases (diagonal, regular grids)
 - Comprehensive test suite (94% coverage)
 - Benchmark architecture
 - PyPI package distribution
 
 ### 🚧 In Progress / Planned
 
-- Add computation engines for special cases (diagonal-only, etc.)
 - Parameter freezing for optimisation
 - Comprehensive benchmarks with multiple kernels and input scenarios
 - Expanded documentation and tutorials

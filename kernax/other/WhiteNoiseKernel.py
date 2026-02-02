@@ -1,17 +1,22 @@
-from ..wrappers import DiagKernel, StaticDiagKernel
-from .ConstantKernel import ConstantKernel
+from .ConstantKernel import ConstantKernel, StaticConstantKernel
+from ..engines import SafeDiagonalEngine
 
 
-class WhiteNoiseKernel(DiagKernel):
+class WhiteNoiseKernel(ConstantKernel):
 	"""
-	Kernel that returns a value only if the inputs are equal, otherwise returns 0.
-	This results in a diagonal cross-covariance matrix.
+	White noise kernel that returns a constant value only on the diagonal.
+
+	This kernel is equivalent to a ConstantKernel with a SafeDiagonalEngine computation engine.
+	It returns the noise value when inputs are equal, and 0 otherwise, resulting in a diagonal
+	covariance matrix.
 	"""
 
-	static_class = StaticDiagKernel
+	static_class = StaticConstantKernel
 
-	def __init__(self, noise=None, **kwargs):
-		super().__init__(inner_kernel=ConstantKernel(noise), **kwargs)
+	def __init__(self, noise=1.0, **kwargs):
+		# Set the computation engine to SafeDiagonalEngine for diagonal computation
+		kwargs['computation_engine'] = SafeDiagonalEngine
+		super().__init__(value=noise, **kwargs)
 
 	def __str__(self):
-		return f"WhiteNoise({self.inner_kernel})"
+		return f"WhiteNoise({self.value})"

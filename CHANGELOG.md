@@ -163,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New Kernels:**
   - `PolynomialKernel`: Polynomial kernel for non-stationary modeling
   - `RBFKernel`: Convenient alias for `SEKernel` (common in ML literature)
-  - `WhiteNoiseKernel`: Convenient shortcut for `DiagKernel(ConstantKernel(value))`
+  - `WhiteNoiseKernel`: Diagonal noise kernel (returns constant value only on diagonal)
 - **Testing Infrastructure:**
   - Allure test reporting integration for comprehensive test analytics
   - Cross-library validation tests comparing against scikit-learn, GPyTorch, and GPJax

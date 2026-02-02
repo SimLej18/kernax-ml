@@ -8,7 +8,6 @@ import pytest
 
 from kernax import (
 	ConstantKernel,
-	DiagKernel,
 	ExpKernel,
 	LogKernel,
 	NegKernel,
@@ -499,12 +498,14 @@ class TestComplexCompositions:
 		assert isinstance(str(diff_kernel), str)
 		assert len(str(diff_kernel)) > 0
 
-	@allure.title("Complex composition with DiagKernel")
-	@allure.description("Test kernel with multiple composition operations including DiagKernel.")
+	@allure.title("Complex composition with diagonal computation engine")
+	@allure.description("Test kernel with multiple composition operations including diagonal engine.")
 	def test_multiple_operations_with_diag(self, sample_1d_data):
+		from kernax.engines import SafeDiagonalEngine
+
 		k1 = SEKernel(length_scale=1.0)
 		k2 = ConstantKernel(value=0.5)
-		k3 = DiagKernel(ExpKernel(0.1))
+		k3 = ExpKernel(0.1, computation_engine=SafeDiagonalEngine)
 
 		# Create: (RBF + Constant) * DiagExp
 		kernel = (k1 + k2) * k3
@@ -523,9 +524,11 @@ class TestComplexCompositions:
 	@allure.title("Realistic GP kernel composition")
 	@allure.description("Test a realistic GP kernel: RBF + noise.")
 	def test_realistic_gp_kernel(self, sample_1d_data):
+		from kernax.engines import SafeDiagonalEngine
+
 		# Common pattern: signal kernel + noise on diagonal
 		signal = SEKernel(length_scale=1.0)
-		noise = DiagKernel(ExpKernel(0.1))
+		noise = ExpKernel(0.1, computation_engine=SafeDiagonalEngine)
 		kernel = signal + noise
 
 		x1, _ = sample_1d_data

@@ -210,8 +210,42 @@ class SafeDiagonalEngine(ComputationEngine):
 	@filter_jit
 	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
 		return cond(  # type: ignore[no-any-return]
-			jnp.all(x1 == x2), lambda _: kern.inner_kernel(x1, x2), lambda _: jnp.array(0.0), None
+			jnp.all(x1 == x2), lambda _: kern.static_class.pairwise_cov(kern, x1, x2), lambda _: jnp.array(0.0), None
 		)
+
+	@classmethod
+	@filter_jit
+	def cross_cov_matrix(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
+		"""
+		Compute diagonal covariance matrix with conditional checks for input equality.
+		Returns kernel value when x1[i] == x2[i], otherwise 0.
+
+		:param kern: kernel instance containing the hyperparameters
+		:param x1: vector array (N, )
+		:param x2: vector array (M, )
+		:return: diagonal matrix array (N, N) where off-diagonal elements are 0
+		"""
+		# Import here to avoid circular imports
+		from .stationary.StationaryKernel import StaticStationaryKernel
+		from .other.ConstantKernel import ConstantKernel
+
+		# For efficiency with same inputs, check if all inputs are identical
+		all_same = jnp.all(x1 == x2)
+
+		def compute_full_diagonal():
+			# Compute diagonal elements where x1[i] == x2[i], 0 otherwise
+			return jnp.eye(x1.shape[0]) * vmap(cls.pairwise_cov, in_axes=(None, 0, 0))(kern, x1, x2)
+
+		def compute_fast_diagonal():
+			# All inputs are same, can optimize
+			if isinstance(kern.static_class, StaticStationaryKernel) or isinstance(kern, ConstantKernel):
+				# Single covariance value for all diagonal elements
+				return jnp.eye(x1.shape[0]) * kern.static_class.pairwise_cov(kern, x1[0], x2[0])
+			else:
+				# Compute all diagonal elements
+				return jnp.eye(x1.shape[0]) * vmap(kern.static_class.pairwise_cov, in_axes=(None, 0, 0))(kern, x1, x2)
+
+		return cond(all_same, lambda _: compute_fast_diagonal(), lambda _: compute_full_diagonal(), None)  # type: ignore[no-any-return]
 
 
 class FastRegularGridEngine(ComputationEngine):

@@ -16,7 +16,7 @@ from equinox import error_if
 import copy
 
 from benchmarks.input_generators import generate_1d_regular_grid
-from kernax import SEKernel, ConstantKernel, DiagKernel
+from kernax import SEKernel, WhiteNoiseKernel
 from kernax.engines import SafeRegularGridEngine, FastRegularGridEngine
 
 
@@ -110,7 +110,7 @@ class BenchmarkRegularGridCompositeKernel:
 				self.key, subkey = jr.split(self.key)
 				# Classical approach: signal + noise with default DenseEngine
 				signal_kernel = variance * SEKernel(length_scale=1.0)
-				noise_kernel = DiagKernel(ConstantKernel(noise))
+				noise_kernel = WhiteNoiseKernel(noise)
 				kernel = signal_kernel + noise_kernel
 				x = generate_1d_regular_grid(n_points=10000)
 				# Warmup JIT with exact input dimensions
@@ -127,7 +127,7 @@ class BenchmarkRegularGridCompositeKernel:
 				self.key, subkey = jr.split(self.key)
 				# Create composite kernel
 				signal_kernel = variance * SEKernel(length_scale=1.0)
-				noise_kernel = DiagKernel(ConstantKernel(noise))
+				noise_kernel = WhiteNoiseKernel(noise)
 				kernel = signal_kernel + noise_kernel
 				# Deepcopy and modify computation_engine (before any JIT compilation)
 				kernel = copy.deepcopy(kernel)
@@ -147,7 +147,7 @@ class BenchmarkRegularGridCompositeKernel:
 				self.key, subkey = jr.split(self.key)
 				# Create composite kernel
 				signal_kernel = variance * SEKernel(length_scale=1.0)
-				noise_kernel = DiagKernel(ConstantKernel(noise))
+				noise_kernel = WhiteNoiseKernel(noise)
 				kernel = signal_kernel + noise_kernel
 				# Deepcopy and modify computation_engine (before any JIT compilation)
 				kernel = copy.deepcopy(kernel)

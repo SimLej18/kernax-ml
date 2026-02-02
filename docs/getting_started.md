@@ -64,10 +64,10 @@ kernel = k1 * k2
 A common pattern is to add noise on the diagonal:
 
 ```python
-from kernax import RBFKernel, DiagKernel, ExpKernel
+from kernax import RBFKernel, WhiteNoiseKernel
 
 signal = RBFKernel(length_scale=1.0, variance=1.0)
-noise = DiagKernel(ExpKernel(0.1))
+noise = WhiteNoiseKernel(0.1)
 kernel = signal + noise
 ```
 
