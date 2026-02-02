@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from equinox import filter_jit, error_if
+from typing import TYPE_CHECKING
+
+import jax.numpy as jnp
+from equinox import error_if, filter_jit
 from jax import Array, vmap
 from jax.lax import cond
-import jax.numpy as jnp
-from abc import ABC
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
 	from .AbstractKernel import AbstractKernel
-	from .stationary.StationaryKernel import StaticStationaryKernel
-	from .other.ConstantKernel import ConstantKernel
 
-class ComputationEngine(ABC):
+class ComputationEngine:
 	"""
 	Superclass for all computation engines.
 
@@ -60,7 +58,7 @@ class ComputationEngine(ABC):
 		:param x2: scalar array
 		:return: scalar array
 		"""
-		return kern.static_class.pairwise_cov(kern, x1, x2)
+		return kern.static_class.pairwise_cov(kern, x1, x2)  # type: ignore[union-attr]
 
 	@classmethod
 	@filter_jit
@@ -73,7 +71,7 @@ class ComputationEngine(ABC):
 		:param x2: scalar array
 		:return: scalar array
 		"""
-		return kern.static_class.pairwise_cov_if_not_nan(kern, x1, x2)
+		return kern.static_class.pairwise_cov_if_not_nan(kern, x1, x2)  # type: ignore[union-attr]
 
 	@classmethod
 	@filter_jit
@@ -86,7 +84,7 @@ class ComputationEngine(ABC):
 		:param x2: scalar array
 		:return: vector array (N, )
 		"""
-		return kern.static_class.cross_cov_vector(kern, x1, x2)
+		return kern.static_class.cross_cov_vector(kern, x1, x2)  # type: ignore[union-attr]
 
 	@classmethod
 	@filter_jit
@@ -102,7 +100,7 @@ class ComputationEngine(ABC):
 		:param kwargs: hyperparameters of the kernel
 		:return: vector array (N, )
 		"""
-		return kern.static_class.cross_cov_vector_if_not_nan(kern, x1, x2, **kwargs)
+		return kern.static_class.cross_cov_vector_if_not_nan(kern, x1, x2, **kwargs)  # type: ignore[union-attr]
 
 	@classmethod
 	@filter_jit
@@ -115,7 +113,7 @@ class ComputationEngine(ABC):
 		:param x2: vector array (M, )
 		:return: matrix array (N, M)
 		"""
-		return kern.static_class.cross_cov_matrix(kern, x1, x2)
+		return kern.static_class.cross_cov_matrix(kern, x1, x2)  # type: ignore[union-attr]
 
 	@classmethod
 	@filter_jit
@@ -156,7 +154,7 @@ class FastDiagonalEngine(ComputationEngine):
 	@filter_jit
 	def pairwise_cov(cls, kern, x1: Array, x2: Array) -> Array:
 		# It is assumed that x1 == x2
-		return kern.static_class.pairwise_cov(kern, x1, x2)
+		return kern.static_class.pairwise_cov(kern, x1, x2)  # type: ignore[no-any-return]
 
 	@classmethod
 	@filter_jit
@@ -171,8 +169,8 @@ class FastDiagonalEngine(ComputationEngine):
 		:return: vector array (min(N, M), ) containing the diagonal elements
 		"""
 		# Import here to avoid circular imports
-		from .stationary.StationaryKernel import StaticStationaryKernel
 		from .other.ConstantKernel import ConstantKernel
+		from .stationary.StationaryKernel import StaticStationaryKernel
 
 		# Check whether kern inherits from StationaryKernel or ConstantKernel for speedup
 		if isinstance(kern.static_class, StaticStationaryKernel) or isinstance(kern, ConstantKernel):
@@ -195,6 +193,7 @@ class FastDiagonalEngine(ComputationEngine):
 		"""
 		# Check that the two sets of inputs are identical
 		x1 = error_if(x1, jnp.any(x1 != x2), "Inputs in x1 and x2 do not match")
+		return True
 
 
 class SafeDiagonalEngine(ComputationEngine):
@@ -226,8 +225,8 @@ class SafeDiagonalEngine(ComputationEngine):
 		:return: diagonal matrix array (N, N) where off-diagonal elements are 0
 		"""
 		# Import here to avoid circular imports
-		from .stationary.StationaryKernel import StaticStationaryKernel
 		from .other.ConstantKernel import ConstantKernel
+		from .stationary.StationaryKernel import StaticStationaryKernel
 
 		# For efficiency with same inputs, check if all inputs are identical
 		all_same = jnp.all(x1 == x2)
@@ -243,7 +242,7 @@ class SafeDiagonalEngine(ComputationEngine):
 				return jnp.eye(x1.shape[0]) * kern.static_class.pairwise_cov(kern, x1[0], x2[0])
 			else:
 				# Compute all diagonal elements
-				return jnp.eye(x1.shape[0]) * vmap(kern.static_class.pairwise_cov, in_axes=(None, 0, 0))(kern, x1, x2)
+				return jnp.eye(x1.shape[0]) * vmap(kern.static_class.pairwise_cov, in_axes=(None, 0, 0))(kern, x1, x2)  # type: ignore[union-attr]
 
 		return cond(all_same, lambda _: compute_fast_diagonal(), lambda _: compute_full_diagonal(), None)  # type: ignore[no-any-return]
 
@@ -264,7 +263,7 @@ class FastRegularGridEngine(ComputationEngine):
 		# We create a circulant matrix from the first row
 		n = x1.shape[0]
 		g = jnp.arange(n)
-		vec = kern.static_class.cross_cov_vector_if_not_nan(kern, x1, x2[0])
+		vec = kern.static_class.cross_cov_vector_if_not_nan(kern, x1, x2[0])  # type: ignore[union-attr]
 		return vmap(lambda i: vec[(g + i)%n])(g)
 
 
@@ -285,9 +284,10 @@ class FastRegularGridEngine(ComputationEngine):
 		"""
 		# Check that the inputs are on a regular grid according to kern.distance_func, meaning that
 		# the distances between consecutive points are all identical
-		diag_covs = vmap(kern.static_class.pairwise_cov, in_axes=(None, 0, 0))(kern, x1[:-1], x2[1:])
+		diag_covs = vmap(kern.static_class.pairwise_cov, in_axes=(None, 0, 0))(kern, x1[:-1], x2[1:])  # type: ignore[union-attr]
 		error_if(diag_covs, jnp.any(diag_covs != diag_covs[0]),
 		         "Inputs are not on a regular grid or the kernel is not stationary.")
+		return True
 
 
 class SafeRegularGridEngine(FastRegularGridEngine):

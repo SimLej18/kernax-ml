@@ -2,8 +2,8 @@ from typing import Tuple
 
 import equinox as eqx
 import jax.numpy as jnp
+from equinox import error_if, filter_jit
 from jax import Array
-from equinox import filter_jit, error_if
 
 from .WrapperKernel import WrapperKernel
 

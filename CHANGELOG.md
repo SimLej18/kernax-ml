@@ -11,6 +11,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.4.1-alpha] - 2026-02-02
+
+### Fixed
+- **SafeRegularGridEngine:** Fixed critical bug in `check_constraints` method
+  - Corrected `vmap` call to include `kern` argument with proper axis specification
+  - Changed from `vmap(kern.static_class.pairwise_cov)(x1[:-1], x2[1:])` to `vmap(kern.static_class.pairwise_cov, in_axes=(None, 0, 0))(kern, x1[:-1], x2[1:])`
+  - This bug prevented SafeRegularGridEngine from functioning correctly
+- **SafeDiagonalEngine:** Fixed and enhanced implementation
+  - Corrected `pairwise_cov` to use `kern.static_class.pairwise_cov` instead of non-existent `kern.inner_kernel`
+  - Added complete `cross_cov_matrix` implementation that properly creates diagonal matrices
+  - Now correctly returns 0 for off-diagonal elements and kernel values on diagonal
+  - Optimizes computation when all inputs are identical
+
+### Removed
+- **DiagKernel wrapper:** Removed in favor of computation engines
+  - DiagKernel functionality now achieved using `SafeDiagonalEngine` or `FastDiagonalEngine`
+  - Cleaner architecture with separation of computation strategy from kernel composition
+  - All tests and benchmarks updated to use computation engines
+
+### Changed
+- **WhiteNoiseKernel:** Reimplemented using computation engines
+  - Now inherits from `ConstantKernel` instead of `DiagKernel`
+  - Uses `SafeDiagonalEngine` as its computation engine
+  - More efficient and follows the new architecture pattern
+  - API remains compatible: `WhiteNoiseKernel(noise=1.0)`
+- **Documentation:** Major updates across all documentation files
+  - README.md: Removed DiagKernel references, added "Computation Engines" section with examples
+  - CLAUDE.md: Updated kernel categories, added computation engines documentation
+  - docs/getting_started.md: Updated examples to use WhiteNoiseKernel instead of DiagKernel
+  - CHANGELOG.md: Updated kernel descriptions
+- **Tests:** Updated test suite to reflect new architecture
+  - Removed `TestDiagKernel` class from test_wrapper_kernels.py
+  - Updated test_base_kernels.py to test WhiteNoiseKernel with new structure
+  - Updated test_kernel_compositions.py to use computation engines
+  - Updated test_kernel_formatting.ipynb with new patterns
+- **Benchmarks:** Updated benchmark suite
+  - compare_regular_grid_engines.py: Now uses WhiteNoiseKernel
+  - compare_diagonal_engines.py: Removed DiagKernel comparison, focuses on engine performance
+
+### Technical Details
+- **Computation Engines:** The removal of DiagKernel completes the transition to computation engines
+- **SafeDiagonalEngine:** Now a fully functional engine that works with any kernel type
+- **Architecture:** Cleaner separation between kernel behavior (what to compute) and computation strategy (how to compute)
+
 ## [0.4.0-alpha] - 2025-01-31
 
 ### Added

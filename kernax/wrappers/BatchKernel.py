@@ -1,8 +1,8 @@
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from jax import Array, vmap
 from equinox import filter_jit
+from jax import Array, vmap
 
 from ..AbstractKernel import AbstractKernel
 from .WrapperKernel import WrapperKernel

@@ -22,7 +22,7 @@ class BlockDiagKernel(BatchKernel):
 		super().__init__(inner_kernel, nb_blocks, block_in_axes, block_over_inputs, **kwargs)
 
 	@filter_jit
-	def __call__(self, x1: Array, x2: None | Array = None) -> Array:  # type: ignore[override]
+	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		"""
 		Compute the kernel over batched inputs using vmap.
 

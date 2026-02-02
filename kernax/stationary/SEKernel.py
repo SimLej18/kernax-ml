@@ -4,9 +4,9 @@ from jax import Array
 from jax import numpy as jnp
 
 from ..AbstractKernel import AbstractKernel
-from .StationaryKernel import StaticStationaryKernel
 from ..distances import squared_euclidean_distance
 from ..transforms import to_constrained, to_unconstrained
+from .StationaryKernel import StaticStationaryKernel
 
 
 class StaticSEKernel(StaticStationaryKernel):

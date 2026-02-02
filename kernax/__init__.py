@@ -6,24 +6,40 @@ Gaussian Process models, with support for automatic differentiation, JIT
 compilation, and composable kernel operations.
 """
 
-__version__ = "0.4.0-alpha"
+__version__ = "0.4.1-alpha"
 __author__ = "S. Lejoly"
 __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"
 
+# Import transformation utilities
+from . import transforms
 from .AbstractKernel import AbstractKernel, StaticAbstractKernel
 
 # Import configuration system
 from .config import config
 
-# Import transformation utilities
-from . import transforms
+# Import dot-product kernels
+from .dotproduct import (
+	LinearKernel,
+	PolynomialKernel,
+	SigmoidKernel,
+	StaticLinearKernel,
+	StaticPolynomialKernel,
+	StaticSigmoidKernel,
+)
 
 # Import operator kernels
 from .operators import (
 	OperatorKernel,
 	ProductKernel,
 	SumKernel,
+)
+
+# Import other kernels
+from .other import (
+	ConstantKernel,
+	StaticConstantKernel,
+	WhiteNoiseKernel,
 )
 
 # Import stationary kernels
@@ -41,23 +57,6 @@ from .stationary import (
 	StaticPeriodicKernel,
 	StaticRationalQuadraticKernel,
 	StaticSEKernel,
-)
-
-# Import dot-product kernels
-from .dotproduct import (
-	LinearKernel,
-	PolynomialKernel,
-	SigmoidKernel,
-	StaticLinearKernel,
-	StaticPolynomialKernel,
-	StaticSigmoidKernel,
-)
-
-# Import other kernels
-from .other import (
-	ConstantKernel,
-	StaticConstantKernel,
-	WhiteNoiseKernel,
 )
 
 # Import wrapper kernels

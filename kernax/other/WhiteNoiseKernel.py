@@ -1,5 +1,5 @@
-from .ConstantKernel import ConstantKernel, StaticConstantKernel
 from ..engines import SafeDiagonalEngine
+from .ConstantKernel import ConstantKernel, StaticConstantKernel
 
 
 class WhiteNoiseKernel(ConstantKernel):

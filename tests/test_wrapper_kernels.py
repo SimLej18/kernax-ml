@@ -11,7 +11,6 @@ from kernax import (
 	BatchKernel,
 	BlockDiagKernel,
 	BlockKernel,
-	ConstantKernel,
 	SEKernel,
 )
 

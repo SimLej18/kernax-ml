@@ -27,7 +27,7 @@ class StaticRationalQuadraticKernel(StaticStationaryKernel):
 
 		base = 1 + squared_dist / (2 * kern.alpha * kern.length_scale**2)  # type: ignore[attr-defined]
 
-		return jnp.power(base, -kern.alpha)  # type: ignore[no-any-return,attr-defined]
+		return jnp.power(base, -kern.alpha)  # type: ignore[attr-defined]
 
 
 class RationalQuadraticKernel(AbstractKernel):

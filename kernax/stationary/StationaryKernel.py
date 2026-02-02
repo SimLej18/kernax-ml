@@ -1,6 +1,3 @@
-import equinox as eqx
-from jax import Array
-from jax import numpy as jnp
 
 from ..AbstractKernel import StaticAbstractKernel
 from ..distances import squared_euclidean_distance

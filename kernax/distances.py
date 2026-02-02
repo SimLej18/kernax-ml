@@ -1,7 +1,8 @@
 """ Defines distances/comparisons between input vectors, used in different families of kernels. """
 
 import jax.numpy as jnp
-from jax import jit, Array
+from jax import Array, jit
+
 
 @jit
 def euclidean_distance(x1: Array, x2: Array) -> Array:
@@ -12,7 +13,7 @@ def euclidean_distance(x1: Array, x2: Array) -> Array:
 	:param x2: Second input vector.
 	:return: Euclidean distance between x1 and x2.
 	"""
-	return jnp.linalg.norm(x1 - x2)
+	return jnp.linalg.norm(x1 - x2)  # type: ignore[no-any-return]
 
 @jit
 def squared_euclidean_distance(x1: Array, x2: Array) -> Array:
@@ -59,7 +60,7 @@ def cosine_distance(x1: Array, x2: Array) -> Array:
 	dot_product = jnp.dot(x1, x2)
 	norm_x1 = jnp.linalg.norm(x1)
 	norm_x2 = jnp.linalg.norm(x2)
-	return 1.0 - (dot_product / (norm_x1 * norm_x2))
+	return 1.0 - (dot_product / (norm_x1 * norm_x2))  # type: ignore[no-any-return]
 
 @jit
 def minkowski_distance(x1: Array, x2: Array, p: float) -> Array:

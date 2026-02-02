@@ -24,7 +24,7 @@ from typing import Any, Literal
 ParameterTransform = Literal["identity", "exp", "softplus"]
 
 # Context variable to store thread-local configuration
-_config_context: ContextVar[dict[str, Any]] = ContextVar("kernax_config", default={})
+_config_context: ContextVar[dict[str, Any] | None] = ContextVar("kernax_config", default=None)
 
 
 class Config:
@@ -64,7 +64,7 @@ class Config:
 		Returns:
 			The current parameter transform: "identity", "exp", or "softplus"
 		"""
-		return self._get_value("parameter_transform")
+		return self._get_value("parameter_transform")  # type: ignore[no-any-return]
 
 	@parameter_transform.setter
 	def parameter_transform(self, value: ParameterTransform) -> None:
@@ -119,7 +119,7 @@ class Config:
 			The configuration value
 		"""
 		context_config = _config_context.get()
-		if key in context_config:
+		if context_config is not None and key in context_config:
 			return context_config[key]
 		return self._global_config[key]
 
@@ -131,7 +131,9 @@ class Config:
 			Dictionary of all configuration values
 		"""
 		config = self._global_config.copy()
-		config.update(_config_context.get())
+		context_config = _config_context.get()
+		if context_config is not None:
+			config.update(context_config)
 		return config
 
 	def set_config(self, **kwargs: Any) -> ConfigContext:
@@ -169,7 +171,7 @@ class Config:
 			)
 
 		# Validate all keys and values before creating context
-		for key, value in kwargs.items():
+		for key, _value in kwargs.items():
 			if key not in self._global_config:
 				raise ValueError(
 					f"Unknown configuration key: {key}. "
@@ -252,17 +254,21 @@ class ConfigContext:
 			overrides: Configuration values to override temporarily
 		"""
 		self.overrides = overrides
-		self.token = None
+		self.token: Any = None
 
 	def __enter__(self) -> ConfigContext:
 		"""Enter the context and apply configuration overrides."""
 		# Get current context config and merge with new overrides
-		current_context = _config_context.get().copy()
+		current_context = _config_context.get()
+		if current_context is None:
+			current_context = {}
+		else:
+			current_context = current_context.copy()
 		current_context.update(self.overrides)
 		self.token = _config_context.set(current_context)
 		return self
 
-	def __exit__(self, exc_type, exc_val, exc_tb) -> None:  # type: ignore[no-untyped-def]
+	def __exit__(self, exc_type, exc_val, exc_tb) -> None:
 		"""Exit the context and restore previous configuration."""
 		if self.token is not None:
 			_config_context.reset(self.token)

@@ -21,7 +21,6 @@ from kernax import (
 	RationalQuadraticKernel,
 	RBFKernel,
 	SEKernel,
-	SigmoidKernel,
 	WhiteNoiseKernel,
 )
 
@@ -1285,10 +1284,10 @@ class TestSigmoidKernel:
 			kernax.config.unsafe_reset()
 
 		# Alpha must be positive
-		with pytest.raises(Exception):  # eqx.error_if raises EquinoxRuntimeError
+		with pytest.raises((ValueError, RuntimeError)):  # eqx.error_if raises runtime errors
 			kernax.SigmoidKernel(alpha=0.0)
 
-		with pytest.raises(Exception):
+		with pytest.raises((ValueError, RuntimeError)):
 			kernax.SigmoidKernel(alpha=-1.0)
 
 		# Constant can be any value (no error expected)
@@ -1397,7 +1396,7 @@ class TestSigmoidKernel:
 			kernax.config.unsafe_reset()
 
 		try:
-			from sklearn.gaussian_process.kernels import DotProduct
+			import sklearn.gaussian_process.kernels  # noqa: F401
 		except ImportError:
 			pytest.skip("scikit-learn not installed")
 

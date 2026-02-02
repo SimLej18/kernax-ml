@@ -8,8 +8,8 @@ from equinox import filter_jit
 from jax import Array, vmap
 from jax.lax import cond
 
-from .utils import format_jax_array
 from .engines import ComputationEngine, DenseEngine
+from .utils import format_jax_array
 
 if TYPE_CHECKING:
 	pass

@@ -4,7 +4,6 @@ from jax import Array
 from jax import numpy as jnp
 
 from ..AbstractKernel import AbstractKernel
-from ..distances import dot_product
 from .DotProductKernel import StaticDotProductKernel
 
 

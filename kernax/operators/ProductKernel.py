@@ -1,7 +1,7 @@
 from typing import Optional
 
-from jax import Array
 from equinox import filter_jit
+from jax import Array
 
 from .OperatorKernel import OperatorKernel
 

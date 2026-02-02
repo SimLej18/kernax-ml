@@ -1,6 +1,6 @@
 import jax.numpy as jnp
-from jax import Array
 from equinox import filter_jit
+from jax import Array
 
 from .WrapperKernel import WrapperKernel
 
