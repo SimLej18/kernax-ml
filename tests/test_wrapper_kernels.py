@@ -356,6 +356,52 @@ class TestBlockKernel:
 					block_ij, block_00, rtol=1e-6
 				), f"Block ({i},{j}) differs from block (0,0)"
 
+	@allure.title("BlockKernel with FeatureKernel and shared hyperparameters and shared inputs")
+	@allure.description(
+		"Test BlockKernel with FeatureKernel using block_in_axes=None and block_over_inputs=False. "
+		"This tests the case where scalar hyperparameters should work correctly."
+	)
+	def test_shared_hyperparameters_shared_inputs_with_feature_kernel(self):
+		# Use FeatureKernel with scalar hyperparameters
+		base_kernel = FeatureKernel(length_scale=1.0, length_scale_u=1.0, variance=1.0)
+		nb_blocks = 2
+		n_points = 3
+
+		# Shared hyperparameters AND shared inputs
+		block_kernel = BlockKernel(
+			base_kernel,
+			nb_blocks=nb_blocks,
+			block_in_axes=None,  # Shared hyperparameters
+			block_over_inputs=False,  # Shared inputs
+		)
+
+		# Non-blocked inputs
+		x1 = jnp.array([[1.0], [2.0], [3.0]])
+		x2 = jnp.array([[1.5], [2.5], [3.5]])
+
+		result = block_kernel(x1, x2)
+
+		# Result should be a block matrix of shape (nb_blocks*N, nb_blocks*M)
+		expected_shape = (nb_blocks * x1.shape[0], nb_blocks * x2.shape[0])
+		assert result.shape == expected_shape
+		assert jnp.all(jnp.isfinite(result))
+
+		# Compute the expected block (same for all blocks)
+		expected_block = base_kernel(x1, x2)
+
+		# All blocks should be identical (same HPs + same inputs)
+		for i in range(nb_blocks):
+			for j in range(nb_blocks):
+				start_i = i * n_points
+				end_i = (i + 1) * n_points
+				start_j = j * n_points
+				end_j = (j + 1) * n_points
+
+				block_ij = result[start_i:end_i, start_j:end_j]
+				assert jnp.allclose(
+					block_ij, expected_block, rtol=1e-6
+				), f"Block ({i},{j}) differs from expected"
+
 
 class TestBlockDiagKernel:
 	"""Tests for BlockDiagKernel wrapper."""

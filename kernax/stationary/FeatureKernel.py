@@ -27,15 +27,25 @@ class StaticFeatureKernel(StaticStationaryKernel):
 		"""
 		kern = eqx.combine(kern)
 
+		# If length_scale or variance is a scalar, convert it to 2-element array for consistency
+		if kern.length_scale.ndim == 0:
+			kern_length_scale = jnp.array([kern.length_scale, kern.length_scale])
+		else:
+			kern_length_scale = kern.length_scale
+		if kern.variance.ndim == 0:
+			kern_variance = jnp.array([kern.variance, kern.variance])
+		else:
+			kern_variance = kern.variance
+
 		# As the formula only involves diagonal matrices, we can compute directly with vectors
-		sigma_diag = kern.length_scale[0] + kern.length_scale[1] + kern.length_scale_u  # Σ
+		sigma_diag = kern_length_scale[0] + kern_length_scale[1] + kern.length_scale_u  # Σ
 		sigma_det = jnp.prod(sigma_diag)  # |Σ|
 
 		# Compute the quadratic form: (x - x')^T Sigma^{-1} (x - x')
 		# Since Sigma^{-1} is diagonal, this simplifies to sum of (diff_i^2 * sigma_inv_diag_i)
 		quadratic_form = cls.distance_func(x1, x2) / sigma_diag
 
-		return kern.variance[0] * kern.variance[1] / (((2 * jnp.pi)**(len(x1)/2)) * jnp.sqrt(sigma_det)) * jnp.exp(-0.5 * quadratic_form)
+		return kern_variance[0] * kern_variance[1] / (((2 * jnp.pi)**(len(x1)/2)) * jnp.sqrt(sigma_det)) * jnp.exp(-0.5 * quadratic_form)
 
 
 class FeatureKernel(AbstractKernel):
