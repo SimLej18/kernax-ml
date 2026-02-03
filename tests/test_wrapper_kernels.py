@@ -2,6 +2,8 @@
 Tests for wrapper kernels (BatchKernel, ActiveDimsKernel, ARDKernel).
 """
 
+from copy import deepcopy
+
 import allure
 import jax.numpy as jnp
 
@@ -11,6 +13,7 @@ from kernax import (
 	BatchKernel,
 	BlockDiagKernel,
 	BlockKernel,
+	FeatureKernel,
 	SEKernel,
 )
 
@@ -142,11 +145,15 @@ class TestBlockKernel:
 	@allure.title("BlockKernel Instantiation")
 	@allure.description("Test that BlockKernel can be instantiated.")
 	def test_instantiation(self):
-		import jax.tree_util as jtu
+		# Use FeatureKernel since it's compatible with varying hyperparameters
+		base_kernel = FeatureKernel(length_scale=1.0, length_scale_u=1.0, variance=1.0)
 
-		base_kernel = SEKernel(length_scale=1.0)
-		# Create a pytree with block_in_axes=0 for all hyperparameters
-		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
+		# Create block_in_axes by copying the kernel and setting which params vary
+		block_in_axes = deepcopy(base_kernel)
+		block_in_axes._unconstrained_length_scale = 0
+		block_in_axes._unconstrained_length_scale_u = None
+		block_in_axes._unconstrained_variance = 0
+
 		block_kernel = BlockKernel(
 			base_kernel, nb_blocks=3, block_in_axes=block_in_axes, block_over_inputs=True
 		)
@@ -156,15 +163,15 @@ class TestBlockKernel:
 	@allure.title("BlockKernel block over hyperparameters")
 	@allure.description("Test blocking with distinct hyperparameters per block.")
 	def test_block_over_hyperparameters(self):
-		import jax.tree_util as jtu
-
-		# Create base kernel with single length_scale
-		base_kernel = SEKernel(length_scale=1.0)
+		# Use FeatureKernel since it's compatible with varying hyperparameters
+		base_kernel = FeatureKernel(length_scale=1.0, length_scale_u=1.0, variance=1.0)
 		nb_blocks = 3
 
-		# Create a pytree where hyperparameters vary across rows (0) and columns (1)
-		# For a valid block covariance matrix, we need different HPs for rows and cols
-		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)  # Vary across rows
+		# Create block_in_axes by copying the kernel and setting which params vary
+		block_in_axes = deepcopy(base_kernel)
+		block_in_axes._unconstrained_length_scale = 0
+		block_in_axes._unconstrained_length_scale_u = None
+		block_in_axes._unconstrained_variance = 0
 
 		# Wrap in BlockKernel to handle blocked hyperparameters
 		block_kernel = BlockKernel(
@@ -189,14 +196,16 @@ class TestBlockKernel:
 	@allure.title("BlockKernel block over inputs and hyperparameters")
 	@allure.description("Test blocking over both inputs and hyperparameters.")
 	def test_block_over_inputs_and_hyperparameters(self, sample_batched_data):
-		base_kernel = SEKernel(length_scale=1.0)
+		# Use FeatureKernel since it's compatible with varying hyperparameters
+		base_kernel = FeatureKernel(length_scale=1.0, length_scale_u=1.0, variance=1.0)
 		x1_batched, x2_batched = sample_batched_data
 		nb_blocks = x1_batched.shape[0]
 
-		# Use a pytree to specify different axes for different hyperparameters
-		import jax.tree_util as jtu
-
-		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
+		# Create block_in_axes by copying the kernel and setting which params vary
+		block_in_axes = deepcopy(base_kernel)
+		block_in_axes._unconstrained_length_scale = 0
+		block_in_axes._unconstrained_length_scale_u = None
+		block_in_axes._unconstrained_variance = 0
 
 		block_kernel = BlockKernel(
 			base_kernel, nb_blocks=nb_blocks, block_in_axes=block_in_axes, block_over_inputs=True

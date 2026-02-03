@@ -19,6 +19,8 @@ class BlockKernel(WrapperKernel):
 	- or work on inputs of shape (B, N, I), producing covariance matrices of shape (B*N, B*N). This is useful when inputs are different for each block, regardless of whether the hyperparameters are shared between blocks or not.
 
 	This class uses vmap to vectorize the kernel computation of each block, then resize the result into a block matrix.
+
+	N.b: when hyper-parameters are different from one block to another, the inner_kernel must do its computations on a kernel instance containing two pairs of hyper-parameters (one per block dimension). For example, a blocked SEKernel would receive two distinct lengthscales and variances, one specific to the row of the block, the other specific to the column of the block. Not all kernels are designed to handle such cases, so be careful when using this class with varying hyper-parameters. A good example of a kernel designed for this is the `MultiFeatureKernel`.
 	"""
 
 	inner_kernel: AbstractKernel = eqx.field()
@@ -28,25 +30,19 @@ class BlockKernel(WrapperKernel):
 
 	def __init__(self, inner_kernel, nb_blocks, block_in_axes=None, block_over_inputs=True, **kwargs):
 		"""
-		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel
-		:param nb_blocks: the number of blocks
+		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel associated to a static_class that can handle two pairs of hyper-parameters when needed.
+		:param nb_blocks: the number of blocks, B
 		:param block_in_axes: a pytree indicating which hyperparameters change across blocks.
-								If 0, the hyperparameter changes across the columns of the block matrix.
-								If 1, the hyperparameter changes across the rows of the block matrix.
+								If 0, the hyperparameter changes across blocks of the matrix.
 								If None, the hyperparameter is shared across all blocks.
-								To compute the block matrix, the kernel needs to have at least one of its hyperparameters changing across rows and one across columns.
 		:param block_over_inputs: whether to expect inputs of shape (B, N, I) (True) or (N, I) (False)
 
-		N.b: the result of this kernel is not always a valid covariance matrix! For example, an RBF kernel with a varying lengthscale across rows and a varying amplitude across column will not produce a symmetric matrix, hence giving an invalid covariance matrix.
+		N.b: the result of this kernel is not always a valid covariance matrix!
 		Usually, you want to use this kernel with an appropriate inner_kernel, calculating a function where two hyper-parameters have symmetric roles.
-		A good example is a multi-output (convolutional) kernel in GPs, which usually have two distinct lengthscales (and variances) depending on which output dimension is considered.
+		A good example is a multi-output (convolutional) kernel in GPs, which usually have two distinct length_scales (and variances) depending on which output dimension is considered.
 		"""
 		# Initialize the WrapperKernel
 		super().__init__(inner_kernel=inner_kernel, **kwargs)
-
-		# TODO: explicit error message when nb_blocks is 1, as vmap is not needed then
-		# TODO: check that at least one hyperparameter varies across rows and one across columns
-
 		self.nb_blocks = nb_blocks
 
 		# Default: all array hyperparameters are shared (None for all array leaves)
@@ -91,11 +87,10 @@ class BlockKernel(WrapperKernel):
 			# Use vmap when we have blocked hyperparameters or blocked inputs
 			rows, cols = jnp.triu_indices(self.nb_blocks)
 
-			full_kernel = jtu.tree_map(
-				lambda param, block_in_ax: param[rows]
+			pair_kernel = jtu.tree_map(
+				lambda param, block_in_ax:
+				jnp.swapaxes(jnp.array([param[rows], param[cols]]), 0, 1)
 				if block_in_ax == 0
-				else param[cols]
-				if block_in_ax == 1
 				else param,
 				self.inner_kernel,
 				self.block_in_axes,
@@ -108,13 +103,13 @@ class BlockKernel(WrapperKernel):
 			# Each block element gets its own version of inner_kernel with corresponding hyperparameters
 			return self.symmetric_blocks_to_matrix(  # type: ignore[no-any-return]
 				vmap(
-					lambda kernel, x1, x2: kernel(x1, x2),
+					lambda kernel, x_1, x_2: kernel(x_1, x_2),
 					in_axes=(
-						jtu.tree_map(lambda x: None if x is None else 0, self.block_in_axes),
+						self.block_in_axes,
 						self.block_over_inputs,
 						self.block_over_inputs,
 					),
-				)(full_kernel, x1_indexed, x2_indexed)
+				)(pair_kernel, x1_indexed, x2_indexed)
 			)
 		else:
 			# All hyperparameters and inputs are shared: create a block matrix with identical blocks

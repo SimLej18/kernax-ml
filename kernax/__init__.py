@@ -51,12 +51,14 @@ from .stationary import (
 	RationalQuadraticKernel,
 	RBFKernel,
 	SEKernel,
+	FeatureKernel,
 	StaticMatern12Kernel,
 	StaticMatern32Kernel,
 	StaticMatern52Kernel,
 	StaticPeriodicKernel,
 	StaticRationalQuadraticKernel,
 	StaticSEKernel,
+	StaticFeatureKernel,
 )
 
 # Import wrapper kernels
@@ -102,6 +104,8 @@ __all__ = [
 	"StaticSigmoidKernel",
 	"SigmoidKernel",
 	"WhiteNoiseKernel",
+	"StaticFeatureKernel",
+	"FeatureKernel",
 	# Matern family
 	"StaticMatern12Kernel",
 	"Matern12Kernel",
