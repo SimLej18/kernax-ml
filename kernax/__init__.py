@@ -6,7 +6,7 @@ Gaussian Process models, with support for automatic differentiation, JIT
 compilation, and composable kernel operations.
 """
 
-__version__ = "0.4.1-alpha"
+__version__ = "0.4.2-alpha"
 __author__ = "S. Lejoly"
 __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"

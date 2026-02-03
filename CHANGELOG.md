@@ -11,6 +11,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.4.2-alpha] - 2026-02-03
+
+### Added
+- **FeatureKernel:** New kernel compatible with BlockKernel for multi-output Gaussian Processes
+  - Designed to work with BlockKernel when hyperparameters vary between blocks
+  - Implements specialized covariance computation for feature-based kernels
+  - Supports `length_scale`, `length_scale_u`, and `variance` hyperparameters
+  - All parameters constrained to be positive via transform system
+  - Includes both `StaticFeatureKernel` and `FeatureKernel` classes following dual-class pattern
+
+### Changed
+- **BlockKernel API:** Major refactoring of block kernel implementation
+  - `block_in_axes` parameter now expects a pytree indicating which hyperparameters vary across blocks
+    - Set to `0` for hyperparameters that change across blocks
+    - Set to `None` for hyperparameters shared across all blocks
+  - Inner kernels must support two pairs of hyperparameters when `block_in_axes` contains `0` values
+  - `FeatureKernel` is the recommended inner kernel for varying hyperparameters
+  - SEKernel and other standard kernels still work with `block_in_axes=None` (shared hyperparameters)
+  - More flexible and efficient architecture for multi-output GPs
+- **Test Suite:** Updated BlockKernel tests to use FeatureKernel
+  - `test_instantiation`: Now uses FeatureKernel for compatibility
+  - `test_block_over_hyperparameters`: Now uses FeatureKernel
+  - `test_block_over_inputs_and_hyperparameters`: Now uses FeatureKernel
+  - Tests with shared hyperparameters continue to use SEKernel
+
+### Fixed
+- **Package Exports:** Fixed missing comma in `__all__` list between `StaticFeatureKernel` and `FeatureKernel`
+
+### Technical Details
+- **BlockKernel Architecture:** The new API supports specialized kernels that can handle row and column hyperparameters separately, enabling proper multi-output covariance computations
+- **FeatureKernel Design:** Uses indexed hyperparameters (`length_scale[0]`, `length_scale[1]`, `variance[0]`, `variance[1]`) for row/column distinction
+
 ## [0.4.1-alpha] - 2026-02-02
 
 ### Fixed
@@ -318,7 +350,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JAXlib >= 0.8.0
 - Equinox >= 0.11.0
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.4.0-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.4.2-alpha...HEAD
+[0.4.2-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.1-alpha...v0.4.2-alpha
+[0.4.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.0-alpha...v0.4.1-alpha
 [0.4.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.3.1-alpha...v0.4.0-alpha
 [0.3.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.3.0-alpha...v0.3.1-alpha
 [0.3.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.2.1-alpha...v0.3.0-alpha
