@@ -144,15 +144,19 @@ class AbstractKernel(eqx.Module):
 		return ProductKernel(other, self)
 
 	def __str__(self):
-		# FIXME: do not call `format_jax_array` when the pytree is filled with non-float values
-		#  For example, try to print the `batch_in_axes` property of a BatchKernel
+		from kernax.transforms import to_constrained
+
 		# Print parameters, aka elements of __dict__ that are jax arrays
 		return f"{self.__class__.__name__}({
 			', '.join(
 				[
-					f'{key}={format_jax_array(value)}'
+					f'{key}={format_jax_array(value)}' if '_raw_' not in key else f'{key[5:]}={format_jax_array(to_constrained(value))}'
 					for key, value in self.__dict__.items()
 					if isinstance(value, Array)
+				]
+				+
+				[
+					f'{key}={value}' for key, value in self.__dict__.items() if isinstance(value, (int, float, str))
 				]
 			)
 		})"

@@ -17,6 +17,3 @@ class WhiteNoiseKernel(ConstantKernel):
 		# Set the computation engine to SafeDiagonalEngine for diagonal computation
 		kwargs['computation_engine'] = SafeDiagonalEngine
 		super().__init__(value=noise, **kwargs)
-
-	def __str__(self):
-		return f"WhiteNoise({self.value})"
