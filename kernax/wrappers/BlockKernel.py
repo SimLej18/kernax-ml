@@ -49,6 +49,9 @@ class BlockKernel(WrapperKernel):
 		if block_in_axes is None:
 			# Extract only array leaves and map them to None
 			self.block_in_axes = jtu.tree_map(lambda _: None, inner_kernel)
+		elif block_in_axes == 0:
+			# All hyperparameters are blocked
+			self.block_in_axes = jtu.tree_map(lambda _: 0, inner_kernel)
 		else:
 			self.block_in_axes = block_in_axes
 

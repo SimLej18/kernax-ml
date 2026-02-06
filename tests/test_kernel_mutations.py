@@ -9,7 +9,7 @@ from equinox import EquinoxRuntimeError
 
 from kernax import BatchKernel, ConstantKernel, PeriodicKernel, PolynomialKernel, SEKernel
 from kernax.operators import SumKernel
-from kernax.wrappers import ExpKernel
+from kernax.wrappers import BlockKernel, ExpKernel
 
 
 class TestReplaceMethod:
@@ -254,3 +254,65 @@ class TestReplaceOperatorKernel:
 		assert jnp.allclose(new_kernel.left_kernel.length_scale, 1.0)
 		assert new_kernel.right_kernel.degree == 3
 		assert jnp.allclose(new_kernel.right_kernel.gamma, 2.0)
+
+
+class TestReplaceBlockKernel:
+	"""Tests for replace() on BlockKernel."""
+
+	@allure.title("Replace with scalar broadcasts to block dimension")
+	@allure.description("Test that scalar values are automatically broadcast to nb_blocks.")
+	def test_replace_scalar_broadcasts(self):
+		inner = SEKernel(length_scale=1.0)
+		block_kernel = BlockKernel(inner, nb_blocks=3, block_in_axes=0)
+
+		new_kernel = block_kernel.replace(length_scale=2.0)
+
+		# Should broadcast scalar to (3,)
+		expected = jnp.array([2.0, 2.0, 2.0])
+		assert new_kernel.inner_kernel._raw_length_scale.shape[0] == 3
+		assert jnp.allclose(new_kernel.inner_kernel.length_scale, expected)
+
+	@allure.title("Replace with correct block dimensions")
+	@allure.description("Test that values with correct block dimensions are used directly.")
+	def test_replace_correct_dimensions(self):
+		inner = SEKernel(length_scale=1.0)
+		block_kernel = BlockKernel(inner, nb_blocks=3, block_in_axes=0)
+
+		new_values = jnp.array([1.0, 2.0, 3.0])
+		new_kernel = block_kernel.replace(length_scale=new_values)
+
+		assert jnp.allclose(new_kernel.inner_kernel.length_scale, new_values)
+
+	@allure.title("Replace shared parameters in BlockKernel")
+	@allure.description("Test replace() when block_in_axes=None (shared parameters).")
+	def test_replace_shared_parameters(self):
+		inner = SEKernel(length_scale=1.0)
+		block_kernel = BlockKernel(inner, nb_blocks=3, block_in_axes=None)
+
+		new_kernel = block_kernel.replace(length_scale=2.0)
+
+		# Shared parameter should remain scalar
+		assert new_kernel.inner_kernel.length_scale.shape == ()
+		assert jnp.allclose(new_kernel.inner_kernel.length_scale, 2.0)
+
+
+class TestReplaceImmutableFields:
+	"""Tests for immutability of structural parameters (batch_size, nb_blocks)."""
+
+	@allure.title("BatchKernel batch_size is immutable")
+	@allure.description("Test that attempting to modify batch_size raises an error.")
+	def test_batch_size_immutable(self):
+		inner = SEKernel(length_scale=1.0)
+		batch_kernel = BatchKernel(inner, batch_size=3, batch_in_axes=0)
+
+		with pytest.raises((ValueError, TypeError, AttributeError)):
+			batch_kernel.replace(batch_size=5)
+
+	@allure.title("BlockKernel nb_blocks is immutable")
+	@allure.description("Test that attempting to modify nb_blocks raises an error.")
+	def test_nb_blocks_immutable(self):
+		inner = SEKernel(length_scale=1.0)
+		block_kernel = BlockKernel(inner, nb_blocks=3, block_in_axes=0)
+
+		with pytest.raises((ValueError, TypeError, AttributeError)):
+			block_kernel.replace(nb_blocks=5)
