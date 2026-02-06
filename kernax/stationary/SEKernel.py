@@ -36,7 +36,7 @@ class SEKernel(AbstractKernel):
 	configuration, which improves optimization stability.
 	"""
 
-	_unconstrained_length_scale: Array = eqx.field(converter=jnp.asarray)
+	_raw_length_scale: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticSEKernel
 
 	def __init__(self, length_scale, **kwargs):
@@ -60,7 +60,7 @@ class SEKernel(AbstractKernel):
 		super().__init__(**kwargs)
 
 		# Transform to unconstrained space
-		self._unconstrained_length_scale = to_unconstrained(jnp.asarray(length_scale))
+		self._raw_length_scale = to_unconstrained(jnp.asarray(length_scale))
 
 	@property
 	def length_scale(self) -> Array:
@@ -73,7 +73,7 @@ class SEKernel(AbstractKernel):
 		Returns:
 			Length scale parameter (positive)
 		"""
-		return to_constrained(self._unconstrained_length_scale)
+		return to_constrained(self._raw_length_scale)
 
 
 class RBFKernel(SEKernel):

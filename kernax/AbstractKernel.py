@@ -41,6 +41,44 @@ class AbstractKernel(eqx.Module):
 		# Set the computation engine
 		self.computation_engine = computation_engine
 
+	def replace(self, **kwargs):
+		"""API de modification fonctionnelle (Setter idiomatique)."""
+		from .transforms import to_unconstrained
+
+		# Adapter les paramètres contraints et broadcaster si nécessaire
+		adapted = {}
+		for k, v in kwargs.items():
+			raw_field = f"_raw_{k}"
+
+			if hasattr(self, raw_field):
+				# Paramètre contraint : valider, broadcaster, transformer
+				v = jnp.asarray(v)
+				v = eqx.error_if(v, jnp.any(v <= 0), f"{k} must be positive.")
+
+				# Broadcaster à la shape actuelle si nécessaire
+				current = getattr(self, raw_field)
+				if current.shape != v.shape:
+					v = jnp.broadcast_to(v, current.shape)
+
+				adapted[raw_field] = to_unconstrained(v)
+			else:
+				# Paramètre non-contraint : broadcaster si nécessaire pour les Arrays
+				if hasattr(self, k):
+					current = getattr(self, k)
+
+					# Broadcaster uniquement si current et v sont des Arrays
+					if isinstance(current, Array):
+						v = jnp.asarray(v) if not isinstance(v, Array) else v
+
+						# Broadcaster si shapes différentes
+						if current.shape != v.shape:
+							v = jnp.broadcast_to(v, current.shape)
+
+				adapted[k] = v
+
+		where = lambda s: [getattr(s, k) for k in adapted.keys()]
+		return eqx.tree_at(where, self, list(adapted.values()))
+
 	@filter_jit
 	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
 		# If no x2 is provided, we compute the covariance between x1 and itself

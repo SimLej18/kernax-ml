@@ -150,9 +150,9 @@ class TestBlockKernel:
 
 		# Create block_in_axes by copying the kernel and setting which params vary
 		block_in_axes = deepcopy(base_kernel)
-		block_in_axes._unconstrained_length_scale = 0
-		block_in_axes._unconstrained_length_scale_u = None
-		block_in_axes._unconstrained_variance = 0
+		block_in_axes._raw_length_scale = 0
+		block_in_axes._raw_length_scale_u = None
+		block_in_axes._raw_variance = 0
 
 		block_kernel = BlockKernel(
 			base_kernel, nb_blocks=3, block_in_axes=block_in_axes, block_over_inputs=True
@@ -169,9 +169,9 @@ class TestBlockKernel:
 
 		# Create block_in_axes by copying the kernel and setting which params vary
 		block_in_axes = deepcopy(base_kernel)
-		block_in_axes._unconstrained_length_scale = 0
-		block_in_axes._unconstrained_length_scale_u = None
-		block_in_axes._unconstrained_variance = 0
+		block_in_axes._raw_length_scale = 0
+		block_in_axes._raw_length_scale_u = None
+		block_in_axes._raw_variance = 0
 
 		# Wrap in BlockKernel to handle blocked hyperparameters
 		block_kernel = BlockKernel(
@@ -203,9 +203,9 @@ class TestBlockKernel:
 
 		# Create block_in_axes by copying the kernel and setting which params vary
 		block_in_axes = deepcopy(base_kernel)
-		block_in_axes._unconstrained_length_scale = 0
-		block_in_axes._unconstrained_length_scale_u = None
-		block_in_axes._unconstrained_variance = 0
+		block_in_axes._raw_length_scale = 0
+		block_in_axes._raw_length_scale_u = None
+		block_in_axes._raw_variance = 0
 
 		block_kernel = BlockKernel(
 			base_kernel, nb_blocks=nb_blocks, block_in_axes=block_in_axes, block_over_inputs=True

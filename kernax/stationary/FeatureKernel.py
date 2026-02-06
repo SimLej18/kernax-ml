@@ -56,9 +56,9 @@ class FeatureKernel(AbstractKernel):
 	are constrained to be positive.
 	"""
 
-	_unconstrained_length_scale: Array = eqx.field(converter=jnp.asarray)
-	_unconstrained_length_scale_u: Array = eqx.field(converter=jnp.asarray)
-	_unconstrained_variance: Array = eqx.field(converter=jnp.asarray)
+	_raw_length_scale: Array = eqx.field(converter=jnp.asarray)
+	_raw_length_scale_u: Array = eqx.field(converter=jnp.asarray)
+	_raw_variance: Array = eqx.field(converter=jnp.asarray)
 
 	static_class = StaticFeatureKernel
 
@@ -83,21 +83,21 @@ class FeatureKernel(AbstractKernel):
 		super().__init__(**kwargs)
 
 		# Store in unconstrained space
-		self._unconstrained_length_scale = to_unconstrained(jnp.asarray(length_scale))
-		self._unconstrained_length_scale_u = to_unconstrained(jnp.asarray(length_scale_u))
-		self._unconstrained_variance = to_unconstrained(jnp.asarray(variance))
+		self._raw_length_scale = to_unconstrained(jnp.asarray(length_scale))
+		self._raw_length_scale_u = to_unconstrained(jnp.asarray(length_scale_u))
+		self._raw_variance = to_unconstrained(jnp.asarray(variance))
 
 	@property
 	def length_scale(self) -> Array:
 		"""Get length_scale_1 in constrained (positive) space."""
-		return to_constrained(self._unconstrained_length_scale)
+		return to_constrained(self._raw_length_scale)
 
 	@property
 	def length_scale_u(self) -> Array:
 		"""Get length_scale_u in constrained (positive) space."""
-		return to_constrained(self._unconstrained_length_scale_u)
+		return to_constrained(self._raw_length_scale_u)
 
 	@property
 	def variance(self) -> Array:
 		"""Get variance_1 in constrained (positive) space."""
-		return to_constrained(self._unconstrained_variance)
+		return to_constrained(self._raw_variance)

@@ -26,3 +26,48 @@ class OperatorKernel(AbstractKernel):
 		super().__init__(**kwargs)
 		self.left_kernel = left_kernel
 		self.right_kernel = right_kernel
+
+	def replace(self, **kwargs):
+		"""
+		Replace parameters in both left and right kernels.
+
+		If replacing left_kernel or right_kernel directly, those are updated.
+		Otherwise, parameters are forwarded to both sub-kernels (ignoring if not applicable).
+		"""
+		# Separate direct kernel replacements from parameter modifications
+		operator_kwargs = {}
+		param_kwargs = {}
+
+		for k, v in kwargs.items():
+			if k in ["left_kernel", "right_kernel"]:
+				operator_kwargs[k] = v
+			else:
+				param_kwargs[k] = v
+
+		# Start with current kernel
+		result = self
+
+		# Apply direct kernel replacements
+		if operator_kwargs:
+			result = super().replace(**operator_kwargs)
+
+		# Apply parameter changes to both left and right kernels
+		if param_kwargs:
+			# Try to apply to left kernel (may silently fail if parameter doesn't exist)
+			try:
+				new_left = result.left_kernel.replace(**param_kwargs)
+			except (AttributeError, TypeError):
+				new_left = result.left_kernel
+
+			# Try to apply to right kernel (may silently fail if parameter doesn't exist)
+			try:
+				new_right = result.right_kernel.replace(**param_kwargs)
+			except (AttributeError, TypeError):
+				new_right = result.right_kernel
+
+			# Update both kernels
+			result = eqx.tree_at(
+				lambda s: (s.left_kernel, s.right_kernel), result, (new_left, new_right)
+			)
+
+		return result

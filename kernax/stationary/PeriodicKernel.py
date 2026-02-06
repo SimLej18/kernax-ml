@@ -38,9 +38,9 @@ class PeriodicKernel(AbstractKernel):
 	Internally, they may be stored in unconstrained space.
 	"""
 
-	_unconstrained_length_scale: Array = eqx.field(converter=jnp.asarray)
-	_unconstrained_variance: Array = eqx.field(converter=jnp.asarray)
-	_unconstrained_period: Array = eqx.field(converter=jnp.asarray)
+	_raw_length_scale: Array = eqx.field(converter=jnp.asarray)
+	_raw_variance: Array = eqx.field(converter=jnp.asarray)
+	_raw_period: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticPeriodicKernel
 
 	def __init__(self, length_scale, variance, period, **kwargs):
@@ -72,27 +72,27 @@ class PeriodicKernel(AbstractKernel):
 		# Transform to unconstrained space
 		from ..transforms import to_unconstrained
 
-		self._unconstrained_length_scale = to_unconstrained(jnp.asarray(length_scale))
-		self._unconstrained_variance = to_unconstrained(jnp.asarray(variance))
-		self._unconstrained_period = to_unconstrained(jnp.asarray(period))
+		self._raw_length_scale = to_unconstrained(jnp.asarray(length_scale))
+		self._raw_variance = to_unconstrained(jnp.asarray(variance))
+		self._raw_period = to_unconstrained(jnp.asarray(period))
 
 	@property
 	def length_scale(self) -> Array:
 		"""Get the length scale in constrained space (always positive)."""
 		from ..transforms import to_constrained
 
-		return to_constrained(self._unconstrained_length_scale)
+		return to_constrained(self._raw_length_scale)
 
 	@property
 	def variance(self) -> Array:
 		"""Get the variance in constrained space (always positive)."""
 		from ..transforms import to_constrained
 
-		return to_constrained(self._unconstrained_variance)
+		return to_constrained(self._raw_variance)
 
 	@property
 	def period(self) -> Array:
 		"""Get the period in constrained space (always positive)."""
 		from ..transforms import to_constrained
 
-		return to_constrained(self._unconstrained_period)
+		return to_constrained(self._raw_period)

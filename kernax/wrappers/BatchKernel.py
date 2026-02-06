@@ -94,6 +94,10 @@ class BatchKernel(WrapperKernel):
 				),
 			)(self.inner_kernel, x1, x2)
 		else:
+			if self.batch_size == 1:
+				# If batch size is 1, we can just call the inner kernel without repeating
+				return self.inner_kernel(x1, x2)[None, ...]  # Add batch dimension
+
 			# Repeat the same matrix when all hyperparameters and inputs are shared
 			return jnp.repeat(
 				jnp.expand_dims(self.inner_kernel(x1, x2), 0),

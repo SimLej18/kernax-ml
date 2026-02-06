@@ -36,7 +36,7 @@ class SigmoidKernel(AbstractKernel):
 	Parameter constant can be any real value.
 	"""
 
-	_unconstrained_alpha: Array = eqx.field(converter=jnp.asarray)
+	_raw_alpha: Array = eqx.field(converter=jnp.asarray)
 	constant: Array = eqx.field(converter=jnp.asarray)
 	static_class = StaticSigmoidKernel
 
@@ -61,7 +61,7 @@ class SigmoidKernel(AbstractKernel):
 		# Transform alpha to unconstrained space
 		from ..transforms import to_unconstrained
 
-		self._unconstrained_alpha = to_unconstrained(jnp.asarray(alpha_array))
+		self._raw_alpha = to_unconstrained(jnp.asarray(alpha_array))
 
 		# constant can be any value, no transformation needed
 		self.constant = jnp.asarray(constant)
@@ -71,4 +71,4 @@ class SigmoidKernel(AbstractKernel):
 		"""Get the alpha parameter in constrained space (always positive)."""
 		from ..transforms import to_constrained
 
-		return to_constrained(self._unconstrained_alpha)
+		return to_constrained(self._raw_alpha)

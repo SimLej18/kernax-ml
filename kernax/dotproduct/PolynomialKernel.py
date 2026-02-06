@@ -34,7 +34,7 @@ class PolynomialKernel(AbstractKernel):
 	"""
 
 	degree: int = eqx.field(static=True)
-	_unconstrained_gamma: Array = eqx.field(converter=jnp.asarray)
+	_raw_gamma: Array = eqx.field(converter=jnp.asarray)
 	constant: Array = eqx.field(converter=jnp.asarray)
 
 	static_class = StaticPolynomialKernel
@@ -68,7 +68,7 @@ class PolynomialKernel(AbstractKernel):
 		# Transform gamma to unconstrained space
 		from ..transforms import to_unconstrained
 
-		self._unconstrained_gamma = to_unconstrained(jnp.asarray(gamma_array))
+		self._raw_gamma = to_unconstrained(jnp.asarray(gamma_array))
 
 		# constant can be any value, no transformation needed
 		self.constant = jnp.asarray(constant)
@@ -78,4 +78,4 @@ class PolynomialKernel(AbstractKernel):
 		"""Get the gamma parameter in constrained space (always positive)."""
 		from ..transforms import to_constrained
 
-		return to_constrained(self._unconstrained_gamma)
+		return to_constrained(self._raw_gamma)
