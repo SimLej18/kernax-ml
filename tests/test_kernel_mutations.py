@@ -9,6 +9,7 @@ from equinox import EquinoxRuntimeError
 
 from kernax import BatchKernel, ConstantKernel, PeriodicKernel, PolynomialKernel, SEKernel
 from kernax.operators import SumKernel
+from kernax.other import WhiteNoiseKernel
 from kernax.wrappers import BlockKernel, ExpKernel
 
 
@@ -316,3 +317,26 @@ class TestReplaceImmutableFields:
 
 		with pytest.raises((ValueError, TypeError, AttributeError)):
 			block_kernel.replace(nb_blocks=5)
+
+
+class TestReplaceWhiteNoiseKernel:
+	"""Tests for replace() on WhiteNoiseKernel with special noise/value properties."""
+
+	@allure.title("Replace noise parameter")
+	@allure.description("Test that replace() correctly modifies the 'noise' parameter.")
+	def test_replace_noise(self):
+		kernel = WhiteNoiseKernel(noise=1.0)
+		new_kernel = kernel.replace(noise=2.5)
+
+		assert jnp.allclose(kernel.noise, 1.0), "Original unchanged"
+		assert jnp.allclose(new_kernel.noise, 2.5), "New noise value applied"
+		assert jnp.allclose(new_kernel.value, 2.5), "Value property also reflects new noise"
+		assert kernel is not new_kernel, "Returns new instance"
+
+	@allure.title("Replace noise validates constraints")
+	@allure.description("Test that replace() rejects negative values for noise parameter.")
+	def test_replace_noise_validation(self):
+		kernel = WhiteNoiseKernel(noise=1.0)
+
+		with pytest.raises(EquinoxRuntimeError):
+			kernel.replace(noise=-1.0)

@@ -39,6 +39,7 @@ from .operators import (
 from .other import (
 	ConstantKernel,
 	StaticConstantKernel,
+	VarianceKernel,
 	WhiteNoiseKernel,
 )
 
@@ -103,6 +104,7 @@ __all__ = [
 	"PolynomialKernel",
 	"StaticSigmoidKernel",
 	"SigmoidKernel",
+	"VarianceKernel",
 	"WhiteNoiseKernel",
 	"StaticFeatureKernel",
 	"FeatureKernel",

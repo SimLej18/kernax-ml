@@ -16,6 +16,7 @@ from kernax import (
 	RationalQuadraticKernel,
 	SEKernel,
 	SumKernel,
+	VarianceKernel,
 )
 
 
@@ -199,16 +200,16 @@ class TestKernelMultiplication:
 	@allure.description("Test that ProductKernel can be instantiated explicitly.")
 	def test_product_kernel_instantiation(self):
 		k1 = SEKernel(length_scale=1.0)
-		k2 = ConstantKernel(value=0.5)
+		k2 = VarianceKernel(variance=0.5)
 		kernel = ProductKernel(k1, k2)
 		assert isinstance(kernel.left_kernel, SEKernel)
-		assert isinstance(kernel.right_kernel, ConstantKernel)
+		assert isinstance(kernel.right_kernel, VarianceKernel)
 
 	@allure.title("Kernel multiplication with * operator")
 	@allure.description("Test kernel multiplication using __mul__.")
 	def test_kernel_mul(self):
 		kernel1 = SEKernel(length_scale=1.0)
-		kernel2 = ConstantKernel(value=2.0)
+		kernel2 = VarianceKernel(variance=2.0)
 		combined = kernel1 * kernel2
 		assert isinstance(combined, ProductKernel)
 
@@ -249,7 +250,7 @@ class TestKernelMultiplication:
 		assert jnp.allclose(result, expected)
 
 	@pytest.mark.parametrize(
-		"length_scale,constant_value",
+		"length_scale,variance_value",
 		[
 			(0.5, 0.5),
 			(1.0, 1.0),
@@ -258,9 +259,9 @@ class TestKernelMultiplication:
 	)
 	@allure.title("ProductKernel computation with different parameters")
 	@allure.description("Test product kernel with various parameter combinations.")
-	def test_computation_parametrized(self, sample_1d_data, length_scale, constant_value):
+	def test_computation_parametrized(self, sample_1d_data, length_scale, variance_value):
 		k1 = SEKernel(length_scale=length_scale)
-		k2 = ConstantKernel(value=constant_value)
+		k2 = VarianceKernel(variance=variance_value)
 		kernel = k1 * k2
 		x1, x2 = sample_1d_data
 
@@ -285,7 +286,7 @@ class TestKernelMultiplication:
 	@allure.description("Test that product kernel preserves mathematical properties.")
 	def test_math_properties(self, sample_1d_data):
 		k1 = SEKernel(length_scale=1.0)
-		k2 = ConstantKernel(value=2.0)
+		k2 = VarianceKernel(variance=2.0)
 		kernel = k1 * k2
 		x1, _ = sample_1d_data
 		K = kernel(x1)
