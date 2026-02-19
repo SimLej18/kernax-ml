@@ -11,6 +11,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.4.4-alpha] - 2026-02-06
+
+### Added
+- **VarianceKernel:** New kernel representing variance as a scalar constant
+  - Simplifies kernel composition when variance needs to be separate from base kernels
+  - Useful for building composite kernels where variance is a standalone component
+  - Integrated into package exports and test suite
+
+- **Kernel Modification API:** New methods to modify kernel hyperparameters immutably
+  - `AbstractKernel.modify(**kwargs)` method for modifying kernel hyperparameters
+  - `OperatorKernel.modify_left(**kwargs)` and `modify_right(**kwargs)` for operator kernels
+  - `WrapperKernel.modify_inner(**kwargs)` for wrapper kernels
+  - All modifications return new kernel instances (immutable by design)
+  - Comprehensive test suite in `test_kernel_mutations.py` (256 tests covering all kernel types)
+  - Supports modification of nested kernel compositions (e.g., `(k1 + k2).modify_left(length_scale=2.0)`)
+
+### Changed
+- **WhiteNoiseKernel:** Enhanced implementation and design
+  - Now builds on top of VarianceKernel for cleaner architecture
+  - Better integration with kernel composition operations
+  - Improved behavior in complex kernel structures
+
+- **Printing System:** Major improvements to kernel string representations
+  - `__str__()` now displays constrained parameter values instead of raw/unconstrained values
+  - More accurate and user-friendly output across all kernel types
+  - Multiple formatting fixes for edge cases and special parameter combinations
+  - Better readability when inspecting kernel configurations
+
+- **Parameter Naming:** Internal refactoring for consistency (non-breaking)
+  - Renamed `_unconstrained_*` attributes to `_raw_*` throughout the codebase
+  - Affects internal implementation of: SEKernel, Matern family, PeriodicKernel, RationalQuadraticKernel, PolynomialKernel, SigmoidKernel, FeatureKernel
+  - Public API unchanged - this is purely internal naming consistency
+  - Clarifies that raw parameters are pre-transformation, not necessarily unconstrained
+
+### Fixed
+- **BlockKernel:** Now fully supports kernel modification API
+  - `modify_inner(**kwargs)` method properly implemented
+  - Correctly propagates modifications to inner kernel
+  - Full test coverage for BlockKernel modifications with complex structures
+
+### Enhanced
+- **BatchKernel Performance:** Minor speed-up when `batch_size=1`
+  - Optimized internal logic for single-batch operations
+  - More efficient vmap usage in edge cases
+  - Reduces unnecessary overhead for non-batched scenarios
+
+### Technical Details
+- **Modification API Design:** All modification methods return new kernel instances following functional programming principles
+- **Test Coverage:** Added 256 comprehensive tests for kernel mutation API across all kernel types
+- **Immutability:** Kernel objects remain immutable - modifications create new instances
+
+## [0.4.3-alpha] - 2026-02-05
+
+### Added
+- Support for kernel modifications (initial implementation)
+
+### Fixed
+- Bug in FeatureKernel hyperparameter handling
+
 ## [0.4.2-alpha] - 2026-02-03
 
 ### Added
@@ -350,7 +409,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JAXlib >= 0.8.0
 - Equinox >= 0.11.0
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.4.2-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.4.4-alpha...HEAD
+[0.4.4-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.3-alpha...v0.4.4-alpha
+[0.4.3-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.2-alpha...v0.4.3-alpha
 [0.4.2-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.1-alpha...v0.4.2-alpha
 [0.4.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.0-alpha...v0.4.1-alpha
 [0.4.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.3.1-alpha...v0.4.0-alpha

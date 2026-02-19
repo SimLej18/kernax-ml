@@ -119,6 +119,83 @@ make format
 
 All test outputs (htmlcov, allure-results, allure-report) are saved in `tests/out/` directory.
 
+## Version Management
+
+### Upgrading to a New Version
+
+When the user asks to "upgrade the project to version X.Y.Z" or "prepare for release vX.Y.Z-alpha", follow this procedure:
+
+1. **Review Git History**
+   ```bash
+   # Check commits since last version tag
+   git log --oneline <last-version-tag>..HEAD
+
+   # Get detailed stats for each commit
+   git show <commit-hash> --stat
+   ```
+
+2. **Update Version Numbers** (in order):
+   - `pyproject.toml`: Update `version = "vX.Y.Z-alpha"` (line 7, with "v" prefix)
+   - `kernax/__init__.py`: Update `__version__ = "X.Y.Z-alpha"` (line 9, without "v" prefix)
+
+3. **Update CHANGELOG.md**:
+   - Add new version section under `## [Unreleased]` with format: `## [X.Y.Z-alpha] - YYYY-MM-DD`
+   - Group changes by category (use git commit messages as guide):
+     - **Added**: New features, kernels, or capabilities
+     - **Changed**: Modifications to existing functionality
+     - **Fixed**: Bug fixes and corrections
+     - **Enhanced**: Performance improvements or optimizations
+     - **Removed**: Deprecated features removed
+     - **Technical Details**: Implementation notes for developers
+   - Use descriptive bullet points with context (not just "fixed bug X")
+   - Reference affected files/classes when relevant
+   - Include test coverage information for new features
+   - Add comparison link at bottom: `[X.Y.Z-alpha]: https://github.com/SimLej18/kernax-ml/compare/vPREV...vX.Y.Z-alpha`
+   - Update `[Unreleased]` link to point to new version
+
+4. **Changelog Writing Guidelines**:
+   - Start with user-facing impact, then technical details
+   - Use present tense for descriptions ("Adds", "Fixes", "Changes")
+   - Include code examples for new APIs when helpful
+   - Mention breaking changes prominently at the top of relevant sections
+   - Group related changes together (e.g., all printing improvements in one bullet)
+   - Cross-reference related changes across sections when applicable
+
+5. **Version Number Format**:
+   - Alpha releases: `vX.Y.Z-alpha` (development/testing)
+   - Beta releases: `vX.Y.Z-beta` (feature complete, testing)
+   - Release candidates: `vX.Y.Z-rc.N` (final testing)
+   - Stable releases: `vX.Y.Z` (production ready)
+   - Follow semantic versioning:
+     - X (major): Breaking changes
+     - Y (minor): New features, backward compatible
+     - Z (patch): Bug fixes, backward compatible
+
+6. **Pre-Release Checklist**:
+   - Ensure all tests pass (`make test`)
+   - Verify linting passes (`make lint`)
+   - Check test coverage remains above 90%
+   - Review CHANGELOG for completeness and accuracy
+   - Confirm all new features are documented
+   - Verify version numbers are consistent across files
+
+7. **Do NOT automatically**:
+   - Create git tags (wait for user confirmation)
+   - Push to remote repository
+   - Build/publish packages to PyPI
+   - Update documentation sites
+
+### Version History Reference
+
+Check `CHANGELOG.md` for full version history. Recent versions:
+- **v0.4.4-alpha** (2026-02-06): Kernel modification API, VarianceKernel, printing improvements
+- **v0.4.3-alpha** (2026-02-05): Initial kernel modification support
+- **v0.4.2-alpha** (2026-02-03): FeatureKernel, BlockKernel API refactoring
+- **v0.4.1-alpha** (2026-02-02): Computation engine fixes, DiagKernel removal
+- **v0.4.0-alpha** (2025-01-31): Parameter transform system
+- **v0.3.1-alpha** (2025-01-30): BatchKernel and BlockKernel fixes
+- **v0.3.0-alpha** (2025-01-28): Benchmark infrastructure
+
 ## Implementation Guidelines
 
 ### Adding a New Kernel
