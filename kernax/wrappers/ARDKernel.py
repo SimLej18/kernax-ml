@@ -4,10 +4,10 @@ import jax.tree_util as jtu
 from equinox import filter_jit
 from jax import Array
 
-from .WrapperKernel import WrapperKernel
+from .WrapperModule import WrapperModule
 
 
-class ARDKernel(WrapperKernel):
+class ARDKernel(WrapperModule):
 	"""
 	Wrapper kernel to apply Automatic Relevance Determination (ARD) to the inputs before passing them to the inner kernel.
 	Each input dimension is scaled by a separate length scale hyperparameter.
@@ -26,12 +26,12 @@ class ARDKernel(WrapperKernel):
 
 		return jtu.tree_map_with_path(map_func, kernel)
 
-	def __init__(self, inner_kernel, length_scales, **kwargs):
+	def __init__(self, inner, length_scales, **kwargs):
 		"""
-		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel
+		:param inner: the kernel to wrap, must be an instance of AbstractKernel
 		:param length_scales: the length scales for each input dimension (1D array of floats)
 		"""
-		super().__init__(inner_kernel=inner_kernel, **kwargs)
+		super().__init__(inner=inner, **kwargs)
 		self.length_scales = length_scales
 
 	@filter_jit
@@ -43,6 +43,6 @@ class ARDKernel(WrapperKernel):
 		# FIXME: if used in an optimisation setting, inner length_scales can still have other values.
 		#  Freezing the inner at every call may be costly/slow down learning.
 		#  We should find a proper way to freeze these parameters.
-		return self._freeze_inner_lengthscales(self.inner_kernel)(  # type: ignore[no-any-return]
+		return self._freeze_inner_lengthscales(self.inner)(  # type: ignore[no-any-return]
 			x1 / self.length_scales, x2 / self.length_scales
 		)

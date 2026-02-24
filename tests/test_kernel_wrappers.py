@@ -1,5 +1,5 @@
 """
-Tests for wrapper kernels (BatchKernel, ActiveDimsKernel, ARDKernel).
+Tests for wrapper kernels (BatchModule, ActiveDimsModule, ARDKernel).
 """
 
 from copy import deepcopy
@@ -8,9 +8,9 @@ import allure
 import jax.numpy as jnp
 
 from kernax import (
-	ActiveDimsKernel,
+	ActiveDimsModule,
 	ARDKernel,
-	BatchKernel,
+	BatchModule,
 	BlockDiagKernel,
 	BlockKernel,
 	FeatureKernel,
@@ -18,28 +18,28 @@ from kernax import (
 )
 
 
-class TestBatchKernel:
-	"""Tests for BatchKernel wrapper."""
+class TestBatchModule:
+	"""Tests for BatchModule wrapper."""
 
-	@allure.title("BatchKernel Instantiation")
-	@allure.description("Test that BatchKernel can be instantiated.")
+	@allure.title("BatchModule Instantiation")
+	@allure.description("Test that BatchModule can be instantiated.")
 	def test_instantiation(self):
 		base_kernel = SEKernel(length_scale=1.0)
-		batch_kernel = BatchKernel(
+		batch_kernel = BatchModule(
 			base_kernel, batch_size=5, batch_in_axes=0, batch_over_inputs=True
 		)
-		assert batch_kernel.inner_kernel is not None
+		assert batch_kernel.inner is not None
 		assert batch_kernel.batch_over_inputs == 0
 
-	@allure.title("BatchKernel batch over hyperparameters")
+	@allure.title("BatchModule batch over hyperparameters")
 	@allure.description("Test batching with distinct hyperparameters per batch element.")
 	def test_batch_over_hyperparameters(self):
 		# Create base kernel with single length_scale
 		base_kernel = SEKernel(length_scale=1.0)
 		batch_size = 3
 
-		# Wrap in BatchKernel to handle batched hyperparameters
-		batch_kernel = BatchKernel(
+		# Wrap in BatchModule to handle batched hyperparameters
+		batch_kernel = BatchModule(
 			base_kernel,
 			batch_size=batch_size,
 			batch_in_axes=0,  # Batch over all hyperparameters
@@ -57,14 +57,14 @@ class TestBatchKernel:
 		assert result.shape == (batch_size, x1.shape[0], x2.shape[0])
 		assert jnp.all(jnp.isfinite(result))
 
-	@allure.title("BatchKernel batch over inputs and hyperparameters")
+	@allure.title("BatchModule batch over inputs and hyperparameters")
 	@allure.description("Test batching over both inputs and hyperparameters.")
 	def test_batch_over_inputs_and_hyperparameters(self, sample_batched_data):
 		base_kernel = SEKernel(length_scale=1.0)
 		x1_batched, x2_batched = sample_batched_data
 		batch_size = x1_batched.shape[0]
 
-		batch_kernel = BatchKernel(
+		batch_kernel = BatchModule(
 			base_kernel, batch_size=batch_size, batch_in_axes=0, batch_over_inputs=True
 		)
 
@@ -78,7 +78,7 @@ class TestBatchKernel:
 		for i in range(batch_size):
 			assert jnp.allclose(result[i], result[i].T)
 
-	@allure.title("BatchKernel batch over inputs only")
+	@allure.title("BatchModule batch over inputs only")
 	@allure.description("Test batching over inputs with shared hyperparameters.")
 	def test_batch_over_inputs_only(self, sample_batched_data):
 		base_kernel = SEKernel(length_scale=1.0)
@@ -86,7 +86,7 @@ class TestBatchKernel:
 		batch_size = x_batched.shape[0]
 
 		# Batch over inputs but share hyperparameters
-		batch_kernel = BatchKernel(
+		batch_kernel = BatchModule(
 			base_kernel,
 			batch_size=batch_size,
 			batch_in_axes=None,  # Shared hyperparameters
@@ -98,9 +98,9 @@ class TestBatchKernel:
 		assert result.shape == (batch_size, x_batched.shape[1], x_batched.shape[1])
 		assert jnp.all(jnp.isfinite(result))
 
-	@allure.title("BatchKernel with shared hyperparameters and shared inputs")
+	@allure.title("BatchModule with shared hyperparameters and shared inputs")
 	@allure.description(
-		"Test BatchKernel with batch_in_axes=None and batch_over_inputs=False. "
+		"Test BatchModule with batch_in_axes=None and batch_over_inputs=False. "
 		"All batch matrices should be identical since same HPs and inputs are used."
 	)
 	def test_shared_hyperparameters_shared_inputs(self):
@@ -108,7 +108,7 @@ class TestBatchKernel:
 		batch_size = 4
 
 		# Shared hyperparameters AND shared inputs
-		batch_kernel = BatchKernel(
+		batch_kernel = BatchModule(
 			base_kernel,
 			batch_size=batch_size,
 			batch_in_axes=None,  # Shared hyperparameters
@@ -157,7 +157,7 @@ class TestBlockKernel:
 		block_kernel = BlockKernel(
 			base_kernel, nb_blocks=3, block_in_axes=block_in_axes, block_over_inputs=True
 		)
-		assert block_kernel.inner_kernel is not None
+		assert block_kernel.inner is not None
 		assert block_kernel.nb_blocks == 3
 
 	@allure.title("BlockKernel block over hyperparameters")
@@ -417,7 +417,7 @@ class TestBlockDiagKernel:
 		block_diag_kernel = BlockDiagKernel(
 			base_kernel, nb_blocks=3, block_in_axes=block_in_axes, block_over_inputs=True
 		)
-		assert block_diag_kernel.inner_kernel is not None
+		assert block_diag_kernel.inner is not None
 		assert block_diag_kernel.batch_over_inputs == 0
 
 	@allure.title("BlockDiagKernel block over hyperparameters")
@@ -586,8 +586,8 @@ class TestBlockDiagKernel:
 			expected_block = base_kernel(x_batched[i], x_batched[i])
 			assert jnp.allclose(diag_block, expected_block)
 
-	@allure.title("BlockDiagKernel comparison with BatchKernel")
-	@allure.description("Test that BlockDiagKernel produces same diagonal blocks as BatchKernel.")
+	@allure.title("BlockDiagKernel comparison with BatchModule")
+	@allure.description("Test that BlockDiagKernel produces same diagonal blocks as BatchModule.")
 	def test_comparison_with_batch_kernel(self, sample_batched_data):
 		base_kernel = SEKernel(length_scale=1.0)
 		x_batched, _ = sample_batched_data
@@ -602,7 +602,7 @@ class TestBlockDiagKernel:
 			block_over_inputs=True,
 		)
 
-		batch_kernel = BatchKernel(
+		batch_kernel = BatchModule(
 			base_kernel,
 			batch_size=nb_blocks,
 			batch_in_axes=None,
@@ -612,7 +612,7 @@ class TestBlockDiagKernel:
 		block_diag_result = block_diag_kernel(x_batched, x_batched)
 		batch_result = batch_kernel(x_batched, x_batched)
 
-		# Extract diagonal blocks from BlockDiagKernel and compare with BatchKernel output
+		# Extract diagonal blocks from BlockDiagKernel and compare with BatchModule output
 		for i in range(nb_blocks):
 			start_i = i * n_points
 			end_i = (i + 1) * n_points
@@ -688,27 +688,27 @@ class TestBlockDiagKernel:
 					), f"Off-diagonal block ({i},{j}) is not zero"
 
 
-class TestActiveDimsKernel:
-	"""Tests for ActiveDimsKernel wrapper."""
+class TestActiveDimsModule:
+	"""Tests for ActiveDimsModule wrapper."""
 
-	@allure.title("ActiveDimsKernel Instantiation")
-	@allure.description("Test that ActiveDimsKernel can be instantiated.")
+	@allure.title("ActiveDimsModule Instantiation")
+	@allure.description("Test that ActiveDimsModule can be instantiated.")
 	def test_instantiation(self):
 		base_kernel = SEKernel(length_scale=1.0)
 		active_dims = jnp.array([0, 2])
-		kernel = ActiveDimsKernel(base_kernel, active_dims=active_dims)
+		kernel = ActiveDimsModule(base_kernel, active_dims=active_dims)
 
-		assert kernel.inner_kernel is not None
+		assert kernel.inner is not None
 		assert jnp.array_equal(kernel.active_dims, active_dims)
 
-	@allure.title("ActiveDimsKernel dimension selection")
+	@allure.title("ActiveDimsModule dimension selection")
 	@allure.description("Test that kernel only uses specified dimensions.")
 	def test_dimension_selection(self):
 		base_kernel = SEKernel(length_scale=1.0)
 
 		# Only use first and third dimensions
 		active_dims = jnp.array([0, 2])
-		kernel = ActiveDimsKernel(base_kernel, active_dims=active_dims)
+		kernel = ActiveDimsModule(base_kernel, active_dims=active_dims)
 
 		# Create 3D input
 		x1 = jnp.array([[1.0, 5.0, 2.0]])  # Shape: (1, 3)
@@ -726,8 +726,8 @@ class TestActiveDimsKernel:
 		assert jnp.allclose(result, expected)
 		assert jnp.isfinite(result)
 
-	@allure.title("ActiveDimsKernel with matrix inputs")
-	@allure.description("Test ActiveDimsKernel with matrix inputs.")
+	@allure.title("ActiveDimsModule with matrix inputs")
+	@allure.description("Test ActiveDimsModule with matrix inputs.")
 	def test_with_matrix_inputs(self, sample_2d_data):
 		base_kernel = SEKernel(length_scale=1.0)
 		active_dims = jnp.array([1])
@@ -738,7 +738,7 @@ class TestActiveDimsKernel:
 		x1_expanded = jnp.concatenate([x1, jnp.ones((x1.shape[0], 3))], axis=1)
 		x2_expanded = jnp.concatenate([x2, jnp.ones((x2.shape[0], 3))], axis=1)
 
-		kernel = ActiveDimsKernel(base_kernel, active_dims=active_dims)
+		kernel = ActiveDimsModule(base_kernel, active_dims=active_dims)
 
 		result = kernel(x1_expanded, x2_expanded)
 
@@ -746,12 +746,12 @@ class TestActiveDimsKernel:
 		assert result.shape == (x1.shape[0], x2.shape[0])
 		assert jnp.all(jnp.isfinite(result))
 
-	@allure.title("ActiveDimsKernel with single dimension")
-	@allure.description("Test ActiveDimsKernel with single active dimension.")
+	@allure.title("ActiveDimsModule with single dimension")
+	@allure.description("Test ActiveDimsModule with single active dimension.")
 	def test_single_dimension(self):
 		base_kernel = SEKernel(length_scale=1.0)
 		active_dims = jnp.array([2])  # Only third dimension
-		kernel = ActiveDimsKernel(base_kernel, active_dims=active_dims)
+		kernel = ActiveDimsModule(base_kernel, active_dims=active_dims)
 
 		x1 = jnp.array([[1.0, 2.0, 3.0, 4.0]])
 		x2 = jnp.array([[5.0, 6.0, 3.5, 8.0]])
@@ -776,7 +776,7 @@ class TestARDKernel:
 		length_scales = jnp.array([1.0, 2.0, 0.5])
 		kernel = ARDKernel(base_kernel, length_scales=length_scales)
 
-		assert kernel.inner_kernel is not None
+		assert kernel.inner is not None
 		assert jnp.array_equal(kernel.length_scales, length_scales)
 
 	@allure.title("ARDKernel different scales per dimension")
@@ -866,9 +866,9 @@ class TestARDKernel:
 class TestWrapperCombinations:
 	"""Test combinations of different wrapper kernels."""
 
-	@allure.title("Commutativity of BatchKernel and BlockKernel composition")
+	@allure.title("Commutativity of BatchModule and BlockKernel composition")
 	@allure.description(
-		"Test that BlockKernel(BatchKernel(inner)) and BatchKernel(BlockKernel(inner)) "
+		"Test that BlockKernel(BatchModule(inner)) and BatchModule(BlockKernel(inner)) "
 		"produce the same result when both use shared hyperparameters and shared inputs."
 	)
 	def test_batch_block_commutativity(self):
@@ -880,9 +880,9 @@ class TestWrapperCombinations:
 		x1 = jnp.array([[1.0], [2.0], [3.0]])
 		x2 = jnp.array([[1.5], [2.5], [3.5]])
 
-		# Composition 1: BlockKernel(BatchKernel(inner))
+		# Composition 1: BlockKernel(BatchModule(inner))
 		batch_then_block = BlockKernel(
-			BatchKernel(
+			BatchModule(
 				base_kernel,
 				batch_size=batch_size,
 				batch_in_axes=None,  # Shared HPs
@@ -893,8 +893,8 @@ class TestWrapperCombinations:
 			block_over_inputs=False,  # Shared inputs
 		)
 
-		# Composition 2: BatchKernel(BlockKernel(inner))
-		block_then_batch = BatchKernel(
+		# Composition 2: BatchModule(BlockKernel(inner))
+		block_then_batch = BatchModule(
 			BlockKernel(
 				base_kernel,
 				nb_blocks=nb_blocks,
@@ -921,7 +921,7 @@ class TestWrapperCombinations:
 
 		# Check values are identical (commutativity)
 		assert jnp.allclose(result1, result2, rtol=1e-6), (
-			"BlockKernel(BatchKernel) and BatchKernel(BlockKernel) should commute "
+			"BlockKernel(BatchModule) and BatchModule(BlockKernel) should commute "
 			"when both use shared hyperparameters and shared inputs"
 		)
 
@@ -957,7 +957,7 @@ class TestWrapperCombinations:
 
 		# ActiveDims must always be the outer-most kernel
 		active_dims = jnp.array([0, 2, 4])
-		active_kernel = ActiveDimsKernel(ard_kernel, active_dims=active_dims)
+		active_kernel = ActiveDimsModule(ard_kernel, active_dims=active_dims)
 
 		# Create 5D inputs
 		x1 = jnp.ones((5,))
@@ -979,7 +979,7 @@ class TestWrapperCombinations:
 
 		# Then batch
 		batch_size = 3
-		batch_kernel = BatchKernel(
+		batch_kernel = BatchModule(
 			ard_kernel,
 			batch_size=batch_size,
 			batch_in_axes=None,  # Shared ARD scales

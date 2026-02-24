@@ -5,10 +5,10 @@ from equinox import filter_jit
 from jax import Array, vmap
 
 from ..AbstractKernel import AbstractKernel
-from .WrapperKernel import WrapperKernel
+from .WrapperModule import WrapperModule
 
 
-class BlockKernel(WrapperKernel):
+class BlockKernel(WrapperModule):
 	"""
 	Wrapper kernel to build block covariance matrices using any kernel.
 
@@ -20,17 +20,17 @@ class BlockKernel(WrapperKernel):
 
 	This class uses vmap to vectorize the kernel computation of each block, then resize the result into a block matrix.
 
-	N.b: when hyper-parameters are different from one block to another, the inner_kernel must do its computations on a kernel instance containing two pairs of hyper-parameters (one per block dimension). For example, a blocked SEKernel would receive two distinct lengthscales and variances, one specific to the row of the block, the other specific to the column of the block. Not all kernels are designed to handle such cases, so be careful when using this class with varying hyper-parameters. A good example of a kernel designed for this is the `MultiFeatureKernel`.
+	N.b: when hyper-parameters are different from one block to another, the inner must do its computations on a kernel instance containing two pairs of hyper-parameters (one per block dimension). For example, a blocked SEKernel would receive two distinct lengthscales and variances, one specific to the row of the block, the other specific to the column of the block. Not all kernels are designed to handle such cases, so be careful when using this class with varying hyper-parameters. A good example of a kernel designed for this is the `MultiFeatureKernel`.
 	"""
 
-	inner_kernel: AbstractKernel = eqx.field()
+	inner: AbstractKernel = eqx.field()
 	nb_blocks: int = eqx.field(static=True)
 	block_in_axes: bool = eqx.field(static=True)
 	block_over_inputs: int | None = eqx.field(static=True)
 
-	def __init__(self, inner_kernel, nb_blocks, block_in_axes=None, block_over_inputs=True, **kwargs):
+	def __init__(self, inner, nb_blocks, block_in_axes=None, block_over_inputs=True, **kwargs):
 		"""
-		:param inner_kernel: the kernel to wrap, must be an instance of AbstractKernel associated to a static_class that can handle two pairs of hyper-parameters when needed.
+		:param inner: the kernel to wrap, must be an instance of AbstractKernel associated to a static_class that can handle two pairs of hyper-parameters when needed.
 		:param nb_blocks: the number of blocks, B
 		:param block_in_axes: a pytree indicating which hyperparameters change across blocks.
 								If 0, the hyperparameter changes across blocks of the matrix.
@@ -38,31 +38,31 @@ class BlockKernel(WrapperKernel):
 		:param block_over_inputs: whether to expect inputs of shape (B, N, I) (True) or (N, I) (False)
 
 		N.b: the result of this kernel is not always a valid covariance matrix!
-		Usually, you want to use this kernel with an appropriate inner_kernel, calculating a function where two hyper-parameters have symmetric roles.
+		Usually, you want to use this kernel with an appropriate inner, calculating a function where two hyper-parameters have symmetric roles.
 		A good example is a multi-output (convolutional) kernel in GPs, which usually have two distinct length_scales (and variances) depending on which output dimension is considered.
 		"""
 		# Initialize the WrapperKernel
-		super().__init__(inner_kernel=inner_kernel, **kwargs)
+		super().__init__(inner=inner, **kwargs)
 		self.nb_blocks = nb_blocks
 
 		# Default: all array hyperparameters are shared (None for all array leaves)
 		if block_in_axes is None:
 			# Extract only array leaves and map them to None
-			self.block_in_axes = jtu.tree_map(lambda _: None, inner_kernel)
+			self.block_in_axes = jtu.tree_map(lambda _: None, inner)
 		elif block_in_axes == 0:
 			# All hyperparameters are blocked
-			self.block_in_axes = jtu.tree_map(lambda _: 0, inner_kernel)
+			self.block_in_axes = jtu.tree_map(lambda _: 0, inner)
 		else:
 			self.block_in_axes = block_in_axes
 
 		self.block_over_inputs = 0 if block_over_inputs else None
 
 		# Add block dimension to parameters where batch_in_axes is 0
-		self.inner_kernel = jtu.tree_map(
+		self.inner = jtu.tree_map(
 			lambda param, block_in_ax: (
 				param if block_in_ax is None else jnp.repeat(param[None, ...], nb_blocks, axis=0)
 			),
-			self.inner_kernel,
+			self.inner,
 			self.block_in_axes,
 		)
 
@@ -95,15 +95,15 @@ class BlockKernel(WrapperKernel):
 				jnp.swapaxes(jnp.array([param[rows], param[cols]]), 0, 1)
 				if block_in_ax == 0
 				else param,
-				self.inner_kernel,
+				self.inner,
 				self.block_in_axes,
 			)
 
 			x1_indexed = x1[rows] if self.block_over_inputs == 0 else x1
 			x2_indexed = x2[cols] if self.block_over_inputs == 0 else x2
 
-			# vmap over the block dimension of inner_kernel and inputs
-			# Each block element gets its own version of inner_kernel with corresponding hyperparameters
+			# vmap over the block dimension of inner and inputs
+			# Each block element gets its own version of inner with corresponding hyperparameters
 			return self.symmetric_blocks_to_matrix(  # type: ignore[no-any-return]
 				vmap(
 					lambda kernel, x_1, x_2: kernel(x_1, x_2),
@@ -116,7 +116,7 @@ class BlockKernel(WrapperKernel):
 			)
 		else:
 			# All hyperparameters and inputs are shared: create a block matrix with identical blocks
-			single_block = self.inner_kernel(x1, x2)
+			single_block = self.inner(x1, x2)
 			# Tile the block to create the full block matrix
 			return jnp.tile(single_block, (self.nb_blocks, self.nb_blocks))
 
@@ -155,4 +155,4 @@ class BlockKernel(WrapperKernel):
 		)
 
 	def __str__(self):
-		return f"Block{self.inner_kernel}"
+		return f"Block{self.inner}"

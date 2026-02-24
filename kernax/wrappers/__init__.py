@@ -1,21 +1,21 @@
-from .ActiveDimsKernel import ActiveDimsKernel
+from .ActiveDimsModule import ActiveDimsModule
 from .ARDKernel import ARDKernel
-from .BatchKernel import BatchKernel
+from .BatchModule import BatchModule
 from .BlockDiagKernel import BlockDiagKernel
 from .BlockKernel import BlockKernel
-from .ExpKernel import ExpKernel
-from .LogKernel import LogKernel
-from .NegKernel import NegKernel
-from .WrapperKernel import WrapperKernel
+from .ExpModule import ExpModule
+from .LogModule import LogModule
+from .NegModule import NegModule
+from .WrapperModule import WrapperModule
 
 __all__ = [
-	"WrapperKernel",
-	"ExpKernel",
-	"LogKernel",
-	"NegKernel",
-	"BatchKernel",
+	"WrapperModule",
+	"ExpModule",
+	"LogModule",
+	"NegModule",
+	"ActiveDimsModule",
+	"BatchModule",
 	"BlockKernel",
 	"BlockDiagKernel",
-	"ActiveDimsKernel",
 	"ARDKernel",
 ]

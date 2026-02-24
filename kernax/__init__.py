@@ -13,7 +13,9 @@ __license__ = "MIT"
 
 # Import transformation utilities
 from . import transforms
+from .module import AbstractModule, StaticAbstractModule
 from .AbstractKernel import AbstractKernel, StaticAbstractKernel
+from .AbstractMean import AbstractMean, StaticAbstractMean
 
 # Import configuration system
 from .config import config
@@ -28,11 +30,11 @@ from .dotproduct import (
 	StaticSigmoidKernel,
 )
 
-# Import operator kernels
+# Import operator modules
 from .operators import (
-	OperatorKernel,
-	ProductKernel,
-	SumKernel,
+	OperatorModule,
+	ProductModule,
+	SumModule,
 )
 
 # Import other kernels
@@ -62,17 +64,29 @@ from .stationary import (
 	StaticFeatureKernel,
 )
 
-# Import wrapper kernels
+# Import wrapper modules/kernels
 from .wrappers import (
-	ActiveDimsKernel,
+	ActiveDimsModule,
 	ARDKernel,
-	BatchKernel,
+	BatchModule,
 	BlockDiagKernel,
 	BlockKernel,
-	ExpKernel,
-	LogKernel,
-	NegKernel,
-	WrapperKernel,
+	ExpModule,
+	LogModule,
+	NegModule,
+	WrapperModule,
+)
+
+# Import mean functions
+from .means import (
+	AffineMean,
+	ConstantMean,
+	LinearMean,
+	StaticAffineMean,
+	StaticConstantMean,
+	StaticLinearMean,
+	StaticZeroMean,
+	ZeroMean,
 )
 
 __all__ = [
@@ -86,8 +100,12 @@ __all__ = [
 	# Transformations
 	"transforms",
 	# Base classes
+	"StaticAbstractModule",
+	"AbstractModule",
 	"StaticAbstractKernel",
 	"AbstractKernel",
+	"StaticAbstractMean",
+	"AbstractMean",
 	# Base kernels
 	"StaticSEKernel",
 	"SEKernel",
@@ -115,18 +133,27 @@ __all__ = [
 	"Matern32Kernel",
 	"StaticMatern52Kernel",
 	"Matern52Kernel",
-	# Composite kernels
-	"OperatorKernel",
-	"SumKernel",
-	"ProductKernel",
-	# Wrapper kernels
-	"WrapperKernel",
-	"NegKernel",
-	"ExpKernel",
-	"LogKernel",
-	"BatchKernel",
-	"ActiveDimsKernel",
+	# Operator modules
+	"OperatorModule",
+	"SumModule",
+	"ProductModule",
+	# Wrapper modules/kernels
+	"WrapperModule",
+	"NegModule",
+	"ExpModule",
+	"LogModule",
+	"ActiveDimsModule",
 	"ARDKernel",
+	"BatchModule",
 	"BlockKernel",
 	"BlockDiagKernel",
+	# Mean functions
+	"StaticZeroMean",
+	"ZeroMean",
+	"StaticConstantMean",
+	"ConstantMean",
+	"StaticLinearMean",
+	"LinearMean",
+	"StaticAffineMean",
+	"AffineMean",
 ]

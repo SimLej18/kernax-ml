@@ -180,7 +180,7 @@ class Config:
 
 		return ConfigContext(kwargs)
 
-	def _mark_kernel_instantiated(self) -> None:
+	def _mark_module_instantiated(self) -> None:
 		"""
 		Mark that a kernel has been instantiated.
 

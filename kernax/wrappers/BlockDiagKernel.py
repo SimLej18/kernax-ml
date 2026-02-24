@@ -2,10 +2,10 @@ import jax.scipy as jsp
 from equinox import filter_jit
 from jax import Array
 
-from .BatchKernel import BatchKernel
+from .BatchModule import BatchModule
 
 
-class BlockDiagKernel(BatchKernel):
+class BlockDiagKernel(BatchModule):
 	"""
 	Wrapper kernel to build block-diagonal covariance matrices using any kernel.
 
@@ -18,8 +18,8 @@ class BlockDiagKernel(BatchKernel):
 	This class uses vmap to vectorize the kernel computation of each block, then resize the result into a block matrix.
 	"""
 
-	def __init__(self, inner_kernel, nb_blocks, block_in_axes=None, block_over_inputs=True, **kwargs):
-		super().__init__(inner_kernel, nb_blocks, block_in_axes, block_over_inputs, **kwargs)
+	def __init__(self, inner, nb_blocks, block_in_axes=None, block_over_inputs=True, **kwargs):
+		super().__init__(inner, nb_blocks, block_in_axes, block_over_inputs, **kwargs)
 
 	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
@@ -36,4 +36,4 @@ class BlockDiagKernel(BatchKernel):
 		return jsp.linalg.block_diag(*super().__call__(x1, x2))  # type: ignore[no-any-return]
 
 	def __str__(self):
-		return f"BlockDiag{self.inner_kernel}"
+		return f"BlockDiag{self.inner}"

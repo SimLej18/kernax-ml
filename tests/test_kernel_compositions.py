@@ -8,14 +8,14 @@ import pytest
 
 from kernax import (
 	ConstantKernel,
-	ExpKernel,
-	LogKernel,
-	NegKernel,
+	ExpModule,
+	LogModule,
+	NegModule,
 	PolynomialKernel,
-	ProductKernel,
+	ProductModule,
 	RationalQuadraticKernel,
 	SEKernel,
-	SumKernel,
+	SumModule,
 	VarianceKernel,
 )
 
@@ -23,14 +23,14 @@ from kernax import (
 class TestKernelAddition:
 	"""Tests for kernel addition operations."""
 
-	@allure.title("SumKernel instantiation with explicit constructor")
-	@allure.description("Test that SumKernel can be instantiated explicitly.")
+	@allure.title("SumModule instantiation with explicit constructor")
+	@allure.description("Test that SumModule can be instantiated explicitly.")
 	def test_sum_kernel_instantiation(self):
 		k1 = SEKernel(length_scale=1.0)
 		k2 = ConstantKernel(value=0.5)
-		kernel = SumKernel(k1, k2)
-		assert isinstance(kernel.left_kernel, SEKernel)
-		assert isinstance(kernel.right_kernel, ConstantKernel)
+		kernel = SumModule(k1, k2)
+		assert isinstance(kernel.left, SEKernel)
+		assert isinstance(kernel.right, ConstantKernel)
 
 	@allure.title("Kernel addition with + operator")
 	@allure.description("Test kernel addition using __add__.")
@@ -38,7 +38,7 @@ class TestKernelAddition:
 		kernel1 = SEKernel(length_scale=1.0)
 		kernel2 = SEKernel(length_scale=2.0)
 		combined = kernel1 + kernel2
-		assert isinstance(combined, SumKernel)
+		assert isinstance(combined, SumModule)
 
 		x1 = jnp.array([1.0])
 		x2 = jnp.array([2.0])
@@ -118,17 +118,17 @@ class TestKernelAddition:
 
 		assert jnp.allclose(result, expected)
 
-	@allure.title("SumKernel auto-conversion of scalars")
+	@allure.title("SumModule auto-conversion of scalars")
 	@allure.description("Test that scalars are automatically converted to ConstantKernel.")
 	def test_auto_convert_scalar(self):
 		k1 = SEKernel(length_scale=1.0)
 		# Constructor mode
-		kernel1 = SumKernel(k1, 2.0)
-		assert isinstance(kernel1.right_kernel, ConstantKernel)
+		kernel1 = SumModule(k1, 2.0)
+		assert isinstance(kernel1.right, ConstantKernel)
 
 		# Operator mode
 		kernel2 = k1 + 2.0
-		assert isinstance(kernel2.right_kernel, ConstantKernel)
+		assert isinstance(kernel2.right, ConstantKernel)
 
 	@allure.title("SumKernel mathematical properties")
 	@allure.description("Test that sum kernel preserves mathematical properties.")
@@ -196,14 +196,14 @@ class TestKernelSubtraction:
 class TestKernelMultiplication:
 	"""Tests for kernel multiplication operations."""
 
-	@allure.title("ProductKernel instantiation with explicit constructor")
-	@allure.description("Test that ProductKernel can be instantiated explicitly.")
+	@allure.title("ProductModule instantiation with explicit constructor")
+	@allure.description("Test that ProductModule can be instantiated explicitly.")
 	def test_product_kernel_instantiation(self):
 		k1 = SEKernel(length_scale=1.0)
 		k2 = VarianceKernel(variance=0.5)
-		kernel = ProductKernel(k1, k2)
-		assert isinstance(kernel.left_kernel, SEKernel)
-		assert isinstance(kernel.right_kernel, VarianceKernel)
+		kernel = ProductModule(k1, k2)
+		assert isinstance(kernel.left, SEKernel)
+		assert isinstance(kernel.right, VarianceKernel)
 
 	@allure.title("Kernel multiplication with * operator")
 	@allure.description("Test kernel multiplication using __mul__.")
@@ -211,7 +211,7 @@ class TestKernelMultiplication:
 		kernel1 = SEKernel(length_scale=1.0)
 		kernel2 = VarianceKernel(variance=2.0)
 		combined = kernel1 * kernel2
-		assert isinstance(combined, ProductKernel)
+		assert isinstance(combined, ProductModule)
 
 		x1 = jnp.array([1.0])
 		x2 = jnp.array([2.0])
@@ -270,17 +270,17 @@ class TestKernelMultiplication:
 
 		assert jnp.allclose(result, expected)
 
-	@allure.title("ProductKernel auto-conversion of scalars")
+	@allure.title("ProductModule auto-conversion of scalars")
 	@allure.description("Test that scalars are automatically converted to ConstantKernel.")
 	def test_auto_convert_scalar(self):
 		k1 = SEKernel(length_scale=1.0)
 		# Constructor mode
-		kernel1 = ProductKernel(k1, 2.0)
-		assert isinstance(kernel1.right_kernel, ConstantKernel)
+		kernel1 = ProductModule(k1, 2.0)
+		assert isinstance(kernel1.right, ConstantKernel)
 
 		# Operator mode
 		kernel2 = k1 * 2.0
-		assert isinstance(kernel2.right_kernel, ConstantKernel)
+		assert isinstance(kernel2.right, ConstantKernel)
 
 	@allure.title("ProductKernel mathematical properties")
 	@allure.description("Test that product kernel preserves mathematical properties.")
@@ -301,19 +301,19 @@ class TestKernelMultiplication:
 class TestKernelNegation:
 	"""Tests for kernel negation operation."""
 
-	@allure.title("NegKernel instantiation with explicit constructor")
-	@allure.description("Test that NegKernel can be instantiated explicitly.")
+	@allure.title("NegModule instantiation with explicit constructor")
+	@allure.description("Test that NegModule can be instantiated explicitly.")
 	def test_neg_kernel_instantiation(self):
 		inner = ConstantKernel(value=1.0)
-		kernel = NegKernel(inner)
-		assert isinstance(kernel.inner_kernel, ConstantKernel)
+		kernel = NegModule(inner)
+		assert isinstance(kernel.inner, ConstantKernel)
 
 	@allure.title("Kernel negation with - operator")
 	@allure.description("Test kernel negation using __neg__.")
 	def test_kernel_neg(self):
 		kernel = SEKernel(length_scale=1.0)
 		negated = -kernel
-		assert isinstance(negated, NegKernel)
+		assert isinstance(negated, NegModule)
 
 		x1 = jnp.array([1.0])
 		x2 = jnp.array([2.0])
@@ -337,7 +337,7 @@ class TestKernelNegation:
 		assert jnp.allclose(result, expected)
 
 	@pytest.mark.parametrize("constant_value", [0.5, 1.0, 2.0])
-	@allure.title("NegKernel computation with different parameters")
+	@allure.title("NegModule computation with different parameters")
 	@allure.description("Test negation with various parameter values.")
 	def test_computation_parametrized(self, sample_1d_data, constant_value):
 		inner = ConstantKernel(value=constant_value)
@@ -349,30 +349,30 @@ class TestKernelNegation:
 
 		assert jnp.allclose(result, expected)
 
-	@allure.title("NegKernel auto-conversion of scalars")
+	@allure.title("NegModule auto-conversion of scalars")
 	@allure.description("Test that scalars are automatically converted to ConstantKernel.")
 	def test_auto_convert_scalar(self):
-		kernel = NegKernel(2.0)
-		assert isinstance(kernel.inner_kernel, ConstantKernel)
-		assert kernel.inner_kernel.value == 2.0
+		kernel = NegModule(2.0)
+		assert isinstance(kernel.inner, ConstantKernel)
+		assert kernel.inner.value == 2.0
 
 
-class TestExpKernel:
+class TestExpModule:
 	"""Tests for exponential wrapper kernel."""
 
-	@allure.title("ExpKernel instantiation")
-	@allure.description("Test that ExpKernel can be instantiated.")
+	@allure.title("ExpModule instantiation")
+	@allure.description("Test that ExpModule can be instantiated.")
 	def test_instantiation(self):
 		inner = ConstantKernel(value=1.0)
-		kernel = ExpKernel(inner)
-		assert isinstance(kernel.inner_kernel, ConstantKernel)
+		kernel = ExpModule(inner)
+		assert isinstance(kernel.inner, ConstantKernel)
 
 	@pytest.mark.parametrize("constant_value", [0.5, 1.0, 2.0])
-	@allure.title("ExpKernel computation")
+	@allure.title("ExpModule computation")
 	@allure.description("Test that exp kernel applies exponential.")
 	def test_computation(self, sample_1d_data, constant_value):
 		inner = ConstantKernel(value=constant_value)
-		kernel = ExpKernel(inner)
+		kernel = ExpModule(inner)
 		x1, x2 = sample_1d_data
 
 		result = kernel(x1, x2)
@@ -380,30 +380,30 @@ class TestExpKernel:
 
 		assert jnp.allclose(result, expected)
 
-	@allure.title("ExpKernel auto-conversion of scalars")
+	@allure.title("ExpModule auto-conversion of scalars")
 	@allure.description("Test that scalars are automatically converted to ConstantKernel.")
 	def test_auto_convert_scalar(self):
-		kernel = ExpKernel(2.0)
-		assert isinstance(kernel.inner_kernel, ConstantKernel)
-		assert kernel.inner_kernel.value == 2.0
+		kernel = ExpModule(2.0)
+		assert isinstance(kernel.inner, ConstantKernel)
+		assert kernel.inner.value == 2.0
 
 
-class TestLogKernel:
+class TestLogModule:
 	"""Tests for logarithm wrapper kernel."""
 
-	@allure.title("LogKernel instantiation")
-	@allure.description("Test that LogKernel can be instantiated.")
+	@allure.title("LogModule instantiation")
+	@allure.description("Test that LogModule can be instantiated.")
 	def test_instantiation(self):
 		inner = ConstantKernel(value=2.0)
-		kernel = LogKernel(inner)
-		assert isinstance(kernel.inner_kernel, ConstantKernel)
+		kernel = LogModule(inner)
+		assert isinstance(kernel.inner, ConstantKernel)
 
 	@pytest.mark.parametrize("constant_value", [1.0, 2.0, 5.0])
-	@allure.title("LogKernel computation")
+	@allure.title("LogModule computation")
 	@allure.description("Test that log kernel applies logarithm.")
 	def test_computation(self, sample_1d_data, constant_value):
 		inner = ConstantKernel(value=constant_value)
-		kernel = LogKernel(inner)
+		kernel = LogModule(inner)
 		x1, x2 = sample_1d_data
 
 		result = kernel(x1, x2)
@@ -411,12 +411,12 @@ class TestLogKernel:
 
 		assert jnp.allclose(result, expected)
 
-	@allure.title("LogKernel auto-conversion of scalars")
+	@allure.title("LogModule auto-conversion of scalars")
 	@allure.description("Test that scalars are automatically converted to ConstantKernel.")
 	def test_auto_convert_scalar(self):
-		kernel = LogKernel(2.0)
-		assert isinstance(kernel.inner_kernel, ConstantKernel)
-		assert kernel.inner_kernel.value == 2.0
+		kernel = LogModule(2.0)
+		assert isinstance(kernel.inner, ConstantKernel)
+		assert kernel.inner.value == 2.0
 
 
 class TestComplexCompositions:
@@ -494,7 +494,7 @@ class TestComplexCompositions:
 		assert isinstance(str(neg_kernel), str)
 		assert len(str(neg_kernel)) > 0
 
-		# Test subtraction (which creates SumKernel with NegKernel)
+		# Test subtraction (which creates SumKernel with NegModule)
 		diff_kernel = k1 - k2
 		assert isinstance(str(diff_kernel), str)
 		assert len(str(diff_kernel)) > 0
@@ -506,7 +506,7 @@ class TestComplexCompositions:
 
 		k1 = SEKernel(length_scale=1.0)
 		k2 = ConstantKernel(value=0.5)
-		k3 = ExpKernel(0.1, computation_engine=SafeDiagonalEngine)
+		k3 = ExpModule(ConstantKernel(0.1))
 
 		# Create: (RBF + Constant) * DiagExp
 		kernel = (k1 + k2) * k3
@@ -529,7 +529,7 @@ class TestComplexCompositions:
 
 		# Common pattern: signal kernel + noise on diagonal
 		signal = SEKernel(length_scale=1.0)
-		noise = ExpKernel(0.1, computation_engine=SafeDiagonalEngine)
+		noise = ExpModule(ConstantKernel(0.1))
 		kernel = signal + noise
 
 		x1, _ = sample_1d_data
@@ -554,7 +554,7 @@ class TestComplexCompositions:
 		k2 = ConstantKernel(value=0.5)
 		k3 = ConstantKernel(value=2.0)
 
-		kernel = ExpKernel((k1 + k2) * k3)
+		kernel = ExpModule((k1 + k2) * k3)
 
 		x1, x2 = sample_1d_data
 		result = kernel(x1, x2)

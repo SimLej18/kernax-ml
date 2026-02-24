@@ -7,10 +7,10 @@ import jax.numpy as jnp
 import pytest
 from equinox import EquinoxRuntimeError
 
-from kernax import BatchKernel, ConstantKernel, PeriodicKernel, PolynomialKernel, SEKernel
-from kernax.operators import SumKernel
+from kernax import BatchModule, ConstantKernel, PeriodicKernel, PolynomialKernel, SEKernel
+from kernax.operators import SumModule
 from kernax.other import WhiteNoiseKernel
-from kernax.wrappers import BlockKernel, ExpKernel
+from kernax.wrappers import BlockKernel, ExpModule
 
 
 class TestReplaceMethod:
@@ -58,96 +58,96 @@ class TestReplaceMethod:
 
 
 class TestReplaceWrapperKernel:
-	"""Tests for replace() on WrapperKernels (ExpKernel, LogKernel, etc.)."""
+	"""Tests for replace() on WrapperKernels (ExpModule, LogModule, etc.)."""
 
 	@allure.title("Replace inner kernel parameter in simple wrapper")
-	@allure.description("Test that replace() forwards to inner_kernel for non-wrapper parameters.")
+	@allure.description("Test that replace() forwards to inner for non-wrapper parameters.")
 	def test_replace_inner_parameter(self):
 		inner = SEKernel(length_scale=1.0)
-		kernel = ExpKernel(inner)
+		kernel = ExpModule(inner)
 		new_kernel = kernel.replace(length_scale=2.0)
 
 		assert jnp.allclose(inner.length_scale, 1.0), "Original inner unchanged"
-		assert jnp.allclose(new_kernel.inner_kernel.length_scale, 2.0)
+		assert jnp.allclose(new_kernel.inner.length_scale, 2.0)
 
 	@allure.title("Replace inner kernel itself")
-	@allure.description("Test that replace() can replace the inner_kernel attribute directly.")
-	def test_replace_inner_kernel(self):
-		kernel = ExpKernel(SEKernel(length_scale=1.0))
+	@allure.description("Test that replace() can replace the inner attribute directly.")
+	def test_replace_inner(self):
+		kernel = ExpModule(SEKernel(length_scale=1.0))
 		new_inner = SEKernel(length_scale=3.0)
-		new_kernel = kernel.replace(inner_kernel=new_inner)
+		new_kernel = kernel.replace(inner=new_inner)
 
-		assert jnp.allclose(new_kernel.inner_kernel.length_scale, 3.0)
+		assert jnp.allclose(new_kernel.inner.length_scale, 3.0)
 
 	@allure.title("Replace in nested wrappers")
 	@allure.description("Test replace() with multiple levels of wrapping.")
 	def test_replace_nested_wrappers(self):
 		inner = SEKernel(length_scale=1.0)
-		wrapped = ExpKernel(inner)
-		double_wrapped = ExpKernel(wrapped)
+		wrapped = ExpModule(inner)
+		double_wrapped = ExpModule(wrapped)
 
 		new_kernel = double_wrapped.replace(length_scale=2.0)
 
 		# Should reach the innermost kernel
-		assert jnp.allclose(new_kernel.inner_kernel.inner_kernel.length_scale, 2.0)
+		assert jnp.allclose(new_kernel.inner.inner.length_scale, 2.0)
 
 
-class TestReplaceBatchKernel:
-	"""Tests for replace() on BatchKernel with broadcasting."""
+class TestReplaceBatchModule:
+	"""Tests for replace() on BatchModule with broadcasting."""
 
 	@allure.title("Replace with scalar broadcasts to batch dimension")
 	@allure.description("Test that scalar values are automatically broadcast to batch size.")
 	def test_replace_scalar_broadcasts(self):
 		inner = SEKernel(length_scale=1.0)
-		batch_kernel = BatchKernel(inner, batch_size=3, batch_in_axes=0)
+		batch_kernel = BatchModule(inner, batch_size=3, batch_in_axes=0)
 
 		new_kernel = batch_kernel.replace(length_scale=2.0)
 
 		# Should broadcast scalar to (3,)
 		expected = jnp.array([2.0, 2.0, 2.0])
-		assert new_kernel.inner_kernel._raw_length_scale.shape[0] == 3
-		assert jnp.allclose(new_kernel.inner_kernel.length_scale, expected)
+		assert new_kernel.inner._raw_length_scale.shape[0] == 3
+		assert jnp.allclose(new_kernel.inner.length_scale, expected)
 
 	@allure.title("Replace with correct batch dimensions")
 	@allure.description("Test that values with correct batch dimensions are used directly.")
 	def test_replace_correct_dimensions(self):
 		inner = SEKernel(length_scale=1.0)
-		batch_kernel = BatchKernel(inner, batch_size=3, batch_in_axes=0)
+		batch_kernel = BatchModule(inner, batch_size=3, batch_in_axes=0)
 
 		new_values = jnp.array([1.0, 2.0, 3.0])
 		new_kernel = batch_kernel.replace(length_scale=new_values)
 
-		assert jnp.allclose(new_kernel.inner_kernel.length_scale, new_values)
+		assert jnp.allclose(new_kernel.inner.length_scale, new_values)
 
 	@allure.title("Replace with incorrect dimensions broadcasts")
 	@allure.description("Test that values with wrong dimensions are broadcast to batch size.")
 	def test_replace_broadcasts_wrong_dimensions(self):
 		inner = SEKernel(length_scale=1.0)
-		batch_kernel = BatchKernel(inner, batch_size=4, batch_in_axes=0)
+		batch_kernel = BatchModule(inner, batch_size=4, batch_in_axes=0)
 
 		# Provide a single value that will be broadcast
 		new_kernel = batch_kernel.replace(length_scale=2.5)
 
 		expected = jnp.array([2.5, 2.5, 2.5, 2.5])
-		assert jnp.allclose(new_kernel.inner_kernel.length_scale, expected)
+		assert jnp.allclose(new_kernel.inner.length_scale, expected)
 
-	@allure.title("Replace shared parameters in BatchKernel")
+	@allure.title("Replace shared parameters in BatchModule")
 	@allure.description("Test replace() when batch_in_axes=None (shared parameters).")
 	def test_replace_shared_parameters(self):
 		inner = SEKernel(length_scale=1.0)
-		batch_kernel = BatchKernel(inner, batch_size=3, batch_in_axes=None)
+		batch_kernel = BatchModule(inner, batch_size=3, batch_in_axes=None)
 
 		new_kernel = batch_kernel.replace(length_scale=2.0)
 
 		# Shared parameter should remain scalar
-		assert new_kernel.inner_kernel.length_scale.shape == ()
-		assert jnp.allclose(new_kernel.inner_kernel.length_scale, 2.0)
+		assert new_kernel.inner.length_scale.shape == ()
+		assert jnp.allclose(new_kernel.inner.length_scale, 2.0)
 
 	@allure.title("Replace with incompatible broadcast dimensions raises error")
 	@allure.description("Test that incompatible array shapes raise a broadcasting error.")
 	def test_replace_incompatible_broadcast_raises(self):
 		inner = SEKernel(length_scale=1.0)
-		batch_kernel = BatchKernel(inner, batch_size=3, batch_in_axes=0)
+		batch_kernel = BatchModule(inner, batch_size=3, batch_in_axes=0)
 
 		# Try to replace with incompatible shape (2,) when batch_size is 3
 		with pytest.raises((ValueError, RuntimeError)):
@@ -157,104 +157,104 @@ class TestReplaceBatchKernel:
 		with pytest.raises((ValueError, RuntimeError)):
 			batch_kernel.replace(length_scale=jnp.array([1.0, 2.0, 3.0, 4.0]))
 
-	@allure.title("Replace in nested BatchKernels")
-	@allure.description("Test replace() with SEKernel wrapped in two consecutive BatchKernels.")
+	@allure.title("Replace in nested BatchModules")
+	@allure.description("Test replace() with SEKernel wrapped in two consecutive BatchModules.")
 	def test_replace_nested_batch_kernels(self):
-		# Create nested BatchKernels: BatchKernel(BatchKernel(SEKernel))
+		# Create nested BatchModules: BatchModule(BatchModule(SEKernel))
 		inner = SEKernel(length_scale=1.0)
-		batch1 = BatchKernel(inner, batch_size=2, batch_in_axes=0)
-		batch2 = BatchKernel(batch1, batch_size=3, batch_in_axes=0)
+		batch1 = BatchModule(inner, batch_size=2, batch_in_axes=0)
+		batch2 = BatchModule(batch1, batch_size=3, batch_in_axes=0)
 
 		# Replace with scalar - should broadcast to (3, 2)
 		new_kernel = batch2.replace(length_scale=2.0)
 
 		# Verify shape: outer batch (3,) wraps inner batch (2,)
-		inner_kernel = new_kernel.inner_kernel.inner_kernel
-		assert inner_kernel._raw_length_scale.shape == (3, 2)
-		assert jnp.allclose(inner_kernel.length_scale, jnp.full((3, 2), 2.0))
+		inner = new_kernel.inner.inner
+		assert inner._raw_length_scale.shape == (3, 2)
+		assert jnp.allclose(inner.length_scale, jnp.full((3, 2), 2.0))
 
 		# Replace with array matching full nested shape (3, 2)
 		new_values = jnp.array([[1.0, 1.5], [2.0, 2.5], [3.0, 3.5]])
 		new_kernel = batch2.replace(length_scale=new_values)
 
-		inner_kernel = new_kernel.inner_kernel.inner_kernel
-		assert jnp.allclose(inner_kernel.length_scale, new_values)
+		inner = new_kernel.inner.inner
+		assert jnp.allclose(inner.length_scale, new_values)
 
 		# Test that broadcasting from (1, 2) to (3, 2) works
 		new_kernel = batch2.replace(length_scale=jnp.array([[1.0, 2.0]]))
-		inner_kernel = new_kernel.inner_kernel.inner_kernel
+		inner = new_kernel.inner.inner
 		expected = jnp.array([[1.0, 2.0], [1.0, 2.0], [1.0, 2.0]])
-		assert jnp.allclose(inner_kernel.length_scale, expected)
+		assert jnp.allclose(inner.length_scale, expected)
 
 
 class TestReplaceOperatorKernel:
-	"""Tests for replace() on OperatorKernels (SumKernel, ProductKernel)."""
+	"""Tests for replace() on OperatorKernels (SumModule, ProductModule)."""
 
 	@allure.title("Replace common parameter in SE + SE")
 	@allure.description("Test that common parameters are modified on both left and right kernels.")
 	def test_replace_common_parameter_both_sides(self):
 		left = SEKernel(length_scale=1.0)
 		right = SEKernel(length_scale=2.0)
-		kernel = SumKernel(left, right)
+		kernel = SumModule(left, right)
 
 		new_kernel = kernel.replace(length_scale=3.0)
 
 		# Both sides should be updated
-		assert jnp.allclose(new_kernel.left_kernel.length_scale, 3.0)
-		assert jnp.allclose(new_kernel.right_kernel.length_scale, 3.0)
+		assert jnp.allclose(new_kernel.left.length_scale, 3.0)
+		assert jnp.allclose(new_kernel.right.length_scale, 3.0)
 
 	@allure.title("Replace parameter in SE + Polynomial")
 	@allure.description("Test that parameter only on right kernel is modified, left kernel ignores it.")
 	def test_replace_right_only_parameter(self):
 		left = SEKernel(length_scale=1.0)
 		right = PolynomialKernel(degree=2, gamma=1.0, constant=0.0)
-		kernel = SumKernel(left, right)
+		kernel = SumModule(left, right)
 
 		# Modify gamma (only exists on PolynomialKernel)
 		new_kernel = kernel.replace(gamma=2.0)
 
 		# Right kernel should be updated
-		assert jnp.allclose(new_kernel.right_kernel.gamma, 2.0)
+		assert jnp.allclose(new_kernel.right.gamma, 2.0)
 		# Left kernel should be unchanged (it doesn't have gamma)
-		assert jnp.allclose(new_kernel.left_kernel.length_scale, 1.0)
+		assert jnp.allclose(new_kernel.left.length_scale, 1.0)
 
 	@allure.title("Replace parameter in SE + Exp(Polynomial)")
 	@allure.description("Test that wrapping doesn't prevent parameter modification.")
 	def test_replace_through_wrapper_in_composite(self):
 		left = SEKernel(length_scale=1.0)
-		right = ExpKernel(PolynomialKernel(degree=2, gamma=1.0, constant=0.0))
-		kernel = SumKernel(left, right)
+		right = ExpModule(PolynomialKernel(degree=2, gamma=1.0, constant=0.0))
+		kernel = SumModule(left, right)
 
 		# Modify gamma (exists in wrapped PolynomialKernel)
 		new_kernel = kernel.replace(gamma=3.0)
 
-		# Should reach through ExpKernel to PolynomialKernel
-		assert jnp.allclose(new_kernel.right_kernel.inner_kernel.gamma, 3.0)
+		# Should reach through ExpModule to PolynomialKernel
+		assert jnp.allclose(new_kernel.right.inner.gamma, 3.0)
 		# Left kernel unchanged
-		assert jnp.allclose(new_kernel.left_kernel.length_scale, 1.0)
+		assert jnp.allclose(new_kernel.left.length_scale, 1.0)
 
 	@allure.title("Replace left_kernel in OperatorKernel")
 	@allure.description("Test that left_kernel can be replaced directly.")
 	def test_replace_left_kernel(self):
-		kernel = SumKernel(SEKernel(length_scale=1.0), SEKernel(length_scale=2.0))
+		kernel = SumModule(SEKernel(length_scale=1.0), SEKernel(length_scale=2.0))
 		new_left = SEKernel(length_scale=5.0)
 
-		new_kernel = kernel.replace(left_kernel=new_left)
+		new_kernel = kernel.replace(left=new_left)
 
-		assert jnp.allclose(new_kernel.left_kernel.length_scale, 5.0)
-		assert jnp.allclose(new_kernel.right_kernel.length_scale, 2.0)
+		assert jnp.allclose(new_kernel.left.length_scale, 5.0)
+		assert jnp.allclose(new_kernel.right.length_scale, 2.0)
 
 	@allure.title("Replace right_kernel in OperatorKernel")
 	@allure.description("Test that right_kernel can be replaced directly.")
 	def test_replace_right_kernel(self):
-		kernel = SumKernel(SEKernel(length_scale=1.0), SEKernel(length_scale=2.0))
+		kernel = SumModule(SEKernel(length_scale=1.0), SEKernel(length_scale=2.0))
 		new_right = PolynomialKernel(degree=3, gamma=2.0, constant=1.0)
 
-		new_kernel = kernel.replace(right_kernel=new_right)
+		new_kernel = kernel.replace(right=new_right)
 
-		assert jnp.allclose(new_kernel.left_kernel.length_scale, 1.0)
-		assert new_kernel.right_kernel.degree == 3
-		assert jnp.allclose(new_kernel.right_kernel.gamma, 2.0)
+		assert jnp.allclose(new_kernel.left.length_scale, 1.0)
+		assert new_kernel.right.degree == 3
+		assert jnp.allclose(new_kernel.right.gamma, 2.0)
 
 
 class TestReplaceBlockKernel:
@@ -270,8 +270,8 @@ class TestReplaceBlockKernel:
 
 		# Should broadcast scalar to (3,)
 		expected = jnp.array([2.0, 2.0, 2.0])
-		assert new_kernel.inner_kernel._raw_length_scale.shape[0] == 3
-		assert jnp.allclose(new_kernel.inner_kernel.length_scale, expected)
+		assert new_kernel.inner._raw_length_scale.shape[0] == 3
+		assert jnp.allclose(new_kernel.inner.length_scale, expected)
 
 	@allure.title("Replace with correct block dimensions")
 	@allure.description("Test that values with correct block dimensions are used directly.")
@@ -282,7 +282,7 @@ class TestReplaceBlockKernel:
 		new_values = jnp.array([1.0, 2.0, 3.0])
 		new_kernel = block_kernel.replace(length_scale=new_values)
 
-		assert jnp.allclose(new_kernel.inner_kernel.length_scale, new_values)
+		assert jnp.allclose(new_kernel.inner.length_scale, new_values)
 
 	@allure.title("Replace shared parameters in BlockKernel")
 	@allure.description("Test replace() when block_in_axes=None (shared parameters).")
@@ -293,18 +293,18 @@ class TestReplaceBlockKernel:
 		new_kernel = block_kernel.replace(length_scale=2.0)
 
 		# Shared parameter should remain scalar
-		assert new_kernel.inner_kernel.length_scale.shape == ()
-		assert jnp.allclose(new_kernel.inner_kernel.length_scale, 2.0)
+		assert new_kernel.inner.length_scale.shape == ()
+		assert jnp.allclose(new_kernel.inner.length_scale, 2.0)
 
 
 class TestReplaceImmutableFields:
 	"""Tests for immutability of structural parameters (batch_size, nb_blocks)."""
 
-	@allure.title("BatchKernel batch_size is immutable")
+	@allure.title("BatchModule batch_size is immutable")
 	@allure.description("Test that attempting to modify batch_size raises an error.")
 	def test_batch_size_immutable(self):
 		inner = SEKernel(length_scale=1.0)
-		batch_kernel = BatchKernel(inner, batch_size=3, batch_in_axes=0)
+		batch_kernel = BatchModule(inner, batch_size=3, batch_in_axes=0)
 
 		with pytest.raises((ValueError, TypeError, AttributeError)):
 			batch_kernel.replace(batch_size=5)
