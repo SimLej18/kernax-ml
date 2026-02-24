@@ -11,6 +11,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.5.0-alpha] - 2026-02-24
+
+### Added
+- **`AbstractModule` base class** (`kernax/module.py`): unified foundation for kernels and means
+  - Centralizes `replace()` functional API, operator overloading (`+`, `-`, `*`, unary `-`), and `__str__()` formatting
+  - Both `AbstractKernel` and `AbstractMean` now inherit from `AbstractModule` via `eqx.Module`
+  - Enables operators and wrappers to work transparently with kernels and means alike
+
+- **Mean function support** (`kernax/means/`): first-class mean functions for GP models
+  - `ZeroMean`: constant zero mean (no parameters)
+  - `ConstantMean(constant)`: constant (bias) mean
+  - `LinearMean(slope)`: linear mean `slope · x`, supports scalar and vector slopes
+  - `AffineMean(slope, intercept)`: affine mean `slope · x + intercept`
+  - All means handle 1D (scalar) and 2D (batch) inputs automatically via `vmap`
+  - All existing operators (`SumModule`, `ProductModule`) and wrappers (`ExpModule`, `LogModule`, `ActiveDimsModule`) work with means out of the box
+
+- **Comprehensive mean test suite** (4 new files):
+  - `test_mean_basics.py`: base mean function correctness (scalar, vector, multi-dim inputs)
+  - `test_mean_compositions.py`: mean composition via operators (sum, product, negation)
+  - `test_mean_mutations.py`: `replace()` API on mean parameters and composed means
+  - `test_mean_wrappers.py`: `ExpModule`, `LogModule`, `ActiveDimsModule` applied to means
+  - `test_mean_formatting.ipynb`: interactive formatting demonstration for mean expressions
+
+### Changed *(breaking)*
+- **Operator and wrapper classes renamed** to use `Module` suffix instead of `Kernel`:
+  - `OperatorKernel` → `OperatorModule`, `SumKernel` → `SumModule`, `ProductKernel` → `ProductModule`
+  - `WrapperKernel` → `WrapperModule`, `ExpKernel` → `ExpModule`, `LogKernel` → `LogModule`
+  - `NegKernel` → `NegModule`, `ActiveDimsKernel` → `ActiveDimsModule`, `BatchKernel` → `BatchModule`
+  - Classes are now truly generic (work on any `AbstractModule`, not just kernels)
+  - Old names are no longer exported — update imports accordingly
+- **`AbstractKernel`** refactored: computation logic (operators, `replace()`, formatting) moved to `AbstractModule`; `AbstractKernel` retains only kernel-specific concerns (covariance computation, `pairwise_cov`)
+- **Test files renamed** to reflect the kernel/mean distinction:
+  - `test_base_kernels.py` → `test_kernel_basics.py`
+  - `test_wrapper_kernels.py` → `test_kernel_wrappers.py`
+
+### Technical Details
+- **`AbstractModule` design:** `replace()`, operator overloading, and `__str__()` live in `AbstractModule`; subclasses (`AbstractKernel`, `AbstractMean`) only add domain-specific logic
+- **Mean architecture:** mirrors the kernel dual-class pattern — `StaticAbstractMean` provides JIT-compilable `scalar_mean` / `vector_mean` classmethods; `AbstractMean.__call__` dispatches on input dimensionality
+- **`_to_constant` helper in `OperatorModule`:** automatically converts scalars to `ConstantMean` when combined with a mean, and to `ConstantKernel` when combined with a kernel
+
 ## [0.4.4-alpha] - 2026-02-06
 
 ### Added
@@ -409,7 +449,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JAXlib >= 0.8.0
 - Equinox >= 0.11.0
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.4.4-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.5.0-alpha...HEAD
+[0.5.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.4-alpha...v0.5.0-alpha
 [0.4.4-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.3-alpha...v0.4.4-alpha
 [0.4.3-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.2-alpha...v0.4.3-alpha
 [0.4.2-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.1-alpha...v0.4.2-alpha
