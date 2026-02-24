@@ -12,7 +12,7 @@ class StaticLinearMean(StaticAbstractMean):
 	@classmethod
 	@filter_jit
 	def scalar_mean(cls, mean: AbstractMean, x: Array) -> Array:
-		return mean.slope * x
+		return jnp.sum(mean.slope * x)
 
 
 class LinearMean(AbstractMean):
