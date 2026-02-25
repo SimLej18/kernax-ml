@@ -11,6 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.5.2-alpha] - 2026-02-25
+
+### Added
+- **Hyperparameter sampling utility** (`kernax/hp_sampling.py`): new `sample_hps_from_uniform_priors(key, module, priors)` function for random initialization of kernel and mean hyperparameters
+  - Accepts any `AbstractModule` (kernel or mean) and a dict of `{hp_name: (low, high)}` prior bounds
+  - Handles both constrained HPs (stored as `_raw_*` — applies `to_unconstrained` after sampling) and unconstrained HPs (stored directly)
+  - Recursively traverses nested `eqx.Module` fields, so composite kernels (e.g., `VarianceKernel * SEKernel + WhiteNoiseKernel`) are fully covered in a single call
+  - Preserves the shape of batched HP arrays (e.g., `BatchModule` with `batch_size=B` → sampled HP has shape `(B,)`, each element drawn independently)
+  - HPs absent from the priors dict are left unchanged; unknown prior keys are silently ignored
+  - Returns a new module instance (immutable — input module is never mutated)
+  - Exported from the top-level `kernax` namespace as `kernax.sample_hps_from_uniform_priors`
+
+- **HP sampling test suite** (`tests/test_hp_sampling.py`): 14 tests covering all sampling scenarios
+  - Bounds checking for constrained and unconstrained HPs, single and multiple HPs
+  - Immutability guarantee (original module unchanged, new instance returned)
+  - Unspecified HPs left unchanged, unknown prior keys ignored
+  - Nested and deeply nested composite kernels
+  - Independent sampling across sub-modules sharing the same HP name
+  - Batched HP arrays: shape preservation, all elements within bounds, elements differ
+  - Determinism: same key → same values; different keys → different values
+  - Edge case: empty priors dict leaves module unchanged
+
 ## [0.5.1-alpha] - 2026-02-25
 
 ### Fixed
@@ -466,7 +488,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JAXlib >= 0.8.0
 - Equinox >= 0.11.0
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.5.1-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.5.2-alpha...HEAD
+[0.5.2-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.1-alpha...v0.5.2-alpha
 [0.5.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.0-alpha...v0.5.1-alpha
 [0.5.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.4-alpha...v0.5.0-alpha
 [0.4.4-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.3-alpha...v0.4.4-alpha
