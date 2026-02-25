@@ -77,6 +77,9 @@ from .wrappers import (
 	WrapperModule,
 )
 
+# Import HP sampling utilities
+from .hp_sampling import sample_hps_from_uniform_priors
+
 # Import mean functions
 from .means import (
 	AffineMean,
@@ -147,6 +150,8 @@ __all__ = [
 	"BatchModule",
 	"BlockKernel",
 	"BlockDiagKernel",
+	# HP sampling
+	"sample_hps_from_uniform_priors",
 	# Mean functions
 	"StaticZeroMean",
 	"ZeroMean",
