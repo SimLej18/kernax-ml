@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive documentation
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.5.1-alpha] - 2026-02-25
+
+### Fixed
+- **`BatchModule` compatibility with means:** `__call__` now dispatches on whether `x2` is `None`, calling `module(x1)` for single-input modules (means) and `module(x1, x2)` for two-input modules (kernels). The fix covers both the `vmap` path and the shared-everything `else` path.
+
+- **Explicit errors on immutable structural fields:** `replace()` overridden in `BatchModule`, `BlockKernel`, `BlockDiagKernel`, and `ActiveDimsModule` to raise a descriptive `ValueError` when the caller attempts to modify a static/structural parameter:
+  - `BatchModule`: `batch_size`, `batch_in_axes`, `batch_over_inputs`
+  - `BlockKernel`: `nb_blocks`, `block_in_axes`, `block_over_inputs`
+  - `BlockDiagKernel`: additionally intercepts `nb_blocks` (user-facing constructor alias for `batch_size`)
+  - `ActiveDimsModule`: `active_dims`
+  - Previously these modifications were silently ignored; callers now receive a clear message directing them to instantiate a new module instead.
+
+### Added
+- **`BatchModule` tests for means** (`test_mean_wrappers.py / TestBatchModuleWithMean`): all four batching scenarios now covered — batch over HPs only, batch over inputs only, batch over both, and fully-shared (all-`None`) configuration.
+- **`replace()` tests for `BatchModule` with means** (`test_mean_mutations.py / TestReplaceBatchMean`): scalar broadcast, correct-dimension replacement, shared-parameter replacement, and immutability checks.
+- **Immutability tests extended** (`test_kernel_mutations.py / TestReplaceImmutableFields`): added cases for `batch_in_axes`, `block_in_axes`, and `ActiveDimsModule.active_dims`; narrowed `pytest.raises` to `ValueError` with a `match` pattern.
+
 ## [0.5.0-alpha] - 2026-02-24
 
 ### Added
@@ -449,7 +466,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - JAXlib >= 0.8.0
 - Equinox >= 0.11.0
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.5.0-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.5.1-alpha...HEAD
+[0.5.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.0-alpha...v0.5.1-alpha
 [0.5.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.4-alpha...v0.5.0-alpha
 [0.4.4-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.3-alpha...v0.4.4-alpha
 [0.4.3-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.4.2-alpha...v0.4.3-alpha
