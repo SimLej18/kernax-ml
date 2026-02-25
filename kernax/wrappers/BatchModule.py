@@ -82,25 +82,54 @@ class BatchModule(WrapperModule):
 
 		if can_use_vmap:
 			# Use vmap when we have batched hyperparameters or batched inputs
-			return vmap(  # type: ignore[no-any-return]
-				lambda kernel, x1, x2: kernel(x1, x2),
+
+			# As inner can either be a Mean or a Kernel, we need to check if x2 is None to call the right function signature in vmap
+			if x2 is None:
+				return vmap(  # type: ignore[no-any-return]
+					lambda module, x1: module(x1),
 				in_axes=(
 					self.batch_in_axes,
-					self.batch_over_inputs,
-					self.batch_over_inputs if x2 is not None else None,
-				),
-			)(self.inner, x1, x2)
+					self.batch_over_inputs))(self.inner, x1)
+			else:
+				return vmap(  # type: ignore[no-any-return]
+					lambda module, x1, x2: module(x1, x2),
+					in_axes=(
+						self.batch_in_axes,
+						self.batch_over_inputs,
+						self.batch_over_inputs,
+					))(self.inner, x1, x2)
 		else:
 			if self.batch_size == 1:
+				if x2 is None:
+					return self.inner(x1)[None, ...]  # Add batch dimension
+
 				# If batch size is 1, we can just call the inner kernel without repeating
 				return self.inner(x1, x2)[None, ...]  # Add batch dimension
 
 			# Repeat the same matrix when all hyperparameters and inputs are shared
+			if x2 is None:
+				return jnp.repeat(
+					jnp.expand_dims(self.inner(x1), 0),
+					self.batch_size,
+					axis=0
+				)
 			return jnp.repeat(
 				jnp.expand_dims(self.inner(x1, x2), 0),
 				self.batch_size,
 				axis=0
 			)
+
+	def replace(self, **kwargs):
+		_STATIC_FIELDS = {"batch_size", "batch_in_axes", "batch_over_inputs"}
+		illegal = _STATIC_FIELDS & kwargs.keys()
+		if illegal:
+			names = ", ".join(f"'{f}'" for f in sorted(illegal))
+			raise ValueError(
+				f"{names} {'is' if len(illegal) == 1 else 'are'} structural "
+				f"parameter(s) of BatchModule and cannot be modified via replace(). "
+				f"Create a new BatchModule with the desired configuration."
+			)
+		return super().replace(**kwargs)
 
 	def __str__(self):
 		# just str of the inner kernel, as the batch info is in the parameters of the inner kernel

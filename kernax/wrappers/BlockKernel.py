@@ -154,5 +154,17 @@ class BlockKernel(WrapperModule):
 			self.nb_blocks * flat_blocks.shape[-2], self.nb_blocks * flat_blocks.shape[-1]
 		)
 
+	def replace(self, **kwargs):
+		_STATIC_FIELDS = {"nb_blocks", "block_in_axes", "block_over_inputs"}
+		illegal = _STATIC_FIELDS & kwargs.keys()
+		if illegal:
+			names = ", ".join(f"'{f}'" for f in sorted(illegal))
+			raise ValueError(
+				f"{names} {'is' if len(illegal) == 1 else 'are'} structural "
+				f"parameter(s) of BlockKernel and cannot be modified via replace(). "
+				f"Create a new BlockKernel with the desired configuration."
+			)
+		return super().replace(**kwargs)
+
 	def __str__(self):
 		return f"Block{self.inner}"

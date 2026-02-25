@@ -35,5 +35,15 @@ class BlockDiagKernel(BatchModule):
 		"""
 		return jsp.linalg.block_diag(*super().__call__(x1, x2))  # type: ignore[no-any-return]
 
+	def replace(self, **kwargs):
+		# 'nb_blocks' is stored as 'batch_size' (inherited from BatchModule), but users
+		# may refer to it by the constructor name — catch both.
+		if "nb_blocks" in kwargs:
+			raise ValueError(
+				"'nb_blocks' is a structural parameter of BlockDiagKernel and cannot be "
+				"modified via replace(). Create a new BlockDiagKernel with the desired configuration."
+			)
+		return super().replace(**kwargs)  # BatchModule.replace() handles batch_size etc.
+
 	def __str__(self):
 		return f"BlockDiag{self.inner}"

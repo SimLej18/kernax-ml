@@ -24,6 +24,14 @@ class ActiveDimsModule(WrapperModule):
 		super().__init__(inner=inner, **kwargs)
 		self.active_dims = tuple(int(dim) for dim in active_dims)
 
+	def replace(self, **kwargs):
+		if "active_dims" in kwargs:
+			raise ValueError(
+				"'active_dims' is a structural parameter of ActiveDimsModule and cannot be "
+				"modified via replace(). Create a new ActiveDimsModule with the desired active_dims."
+			)
+		return super().replace(**kwargs)
+
 	@filter_jit
 	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
 		x1 = error_if(x1, jnp.any(jnp.array(self.active_dims) >= x1.shape[-1]),

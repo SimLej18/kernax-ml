@@ -5,8 +5,11 @@ Tests for mean function mutation operations (replace method).
 import allure
 import jax.numpy as jnp
 
+import pytest
+
 from kernax import (
 	AffineMean,
+	BatchModule,
 	ConstantMean,
 	ExpModule,
 	LinearMean,
@@ -147,3 +150,53 @@ class TestReplaceOperatorMean:
 		# Should reach through ExpModule to AffineMean
 		assert jnp.allclose(new_composed.right.inner.intercept, 3.0)
 		assert jnp.allclose(new_composed.left.slope, 1.0)
+
+
+class TestReplaceBatchMean:
+	"""Tests for replace() on BatchModule wrapping a mean."""
+
+	@allure.title("Replace with scalar broadcasts to batch dimension")
+	@allure.description("Test that a scalar value is automatically broadcast to batch size.")
+	def test_replace_scalar_broadcasts(self):
+		batch_mean = BatchModule(ConstantMean(constant=1.0), batch_size=3, batch_in_axes=0)
+
+		new_mean = batch_mean.replace(constant=5.0)
+
+		assert new_mean.inner.constant.shape[0] == 3
+		assert jnp.allclose(new_mean.inner.constant, jnp.array([5.0, 5.0, 5.0]))
+
+	@allure.title("Replace with correct batch dimensions")
+	@allure.description("Test that a vector with matching batch size is applied directly.")
+	def test_replace_correct_dimensions(self):
+		batch_mean = BatchModule(ConstantMean(constant=1.0), batch_size=3, batch_in_axes=0)
+
+		new_values = jnp.array([1.0, 2.0, 3.0])
+		new_mean = batch_mean.replace(constant=new_values)
+
+		assert jnp.allclose(new_mean.inner.constant, new_values)
+
+	@allure.title("Replace shared parameters in BatchModule")
+	@allure.description("Test replace() when batch_in_axes=None (shared parameters).")
+	def test_replace_shared_parameters(self):
+		batch_mean = BatchModule(LinearMean(slope=1.0), batch_size=3, batch_in_axes=None)
+
+		new_mean = batch_mean.replace(slope=4.0)
+
+		assert new_mean.inner.slope.shape == ()
+		assert jnp.allclose(new_mean.inner.slope, 4.0)
+
+	@allure.title("BatchModule batch_size is immutable")
+	@allure.description("Test that attempting to modify batch_size raises a ValueError.")
+	def test_batch_size_immutable(self):
+		batch_mean = BatchModule(ConstantMean(constant=1.0), batch_size=3, batch_in_axes=0)
+
+		with pytest.raises(ValueError, match="batch_size"):
+			batch_mean.replace(batch_size=5)
+
+	@allure.title("BatchModule batch_in_axes is immutable")
+	@allure.description("Test that attempting to modify batch_in_axes raises a ValueError.")
+	def test_batch_in_axes_immutable(self):
+		batch_mean = BatchModule(LinearMean(slope=1.0), batch_size=3, batch_in_axes=0)
+
+		with pytest.raises(ValueError, match="batch_in_axes"):
+			batch_mean.replace(batch_in_axes=None)

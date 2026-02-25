@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import pytest
 from equinox import EquinoxRuntimeError
 
-from kernax import BatchModule, ConstantKernel, PeriodicKernel, PolynomialKernel, SEKernel
+from kernax import ActiveDimsModule, BatchModule, ConstantKernel, PeriodicKernel, PolynomialKernel, SEKernel
 from kernax.operators import SumModule
 from kernax.other import WhiteNoiseKernel
 from kernax.wrappers import BlockKernel, ExpModule
@@ -298,25 +298,47 @@ class TestReplaceBlockKernel:
 
 
 class TestReplaceImmutableFields:
-	"""Tests for immutability of structural parameters (batch_size, nb_blocks)."""
+	"""Tests for immutability of structural parameters."""
 
 	@allure.title("BatchModule batch_size is immutable")
-	@allure.description("Test that attempting to modify batch_size raises an error.")
+	@allure.description("Test that attempting to modify batch_size raises a ValueError.")
 	def test_batch_size_immutable(self):
-		inner = SEKernel(length_scale=1.0)
-		batch_kernel = BatchModule(inner, batch_size=3, batch_in_axes=0)
+		batch_kernel = BatchModule(SEKernel(length_scale=1.0), batch_size=3, batch_in_axes=0)
 
-		with pytest.raises((ValueError, TypeError, AttributeError)):
+		with pytest.raises(ValueError, match="batch_size"):
 			batch_kernel.replace(batch_size=5)
 
-	@allure.title("BlockKernel nb_blocks is immutable")
-	@allure.description("Test that attempting to modify nb_blocks raises an error.")
-	def test_nb_blocks_immutable(self):
-		inner = SEKernel(length_scale=1.0)
-		block_kernel = BlockKernel(inner, nb_blocks=3, block_in_axes=0)
+	@allure.title("BatchModule batch_in_axes is immutable")
+	@allure.description("Test that attempting to modify batch_in_axes raises a ValueError.")
+	def test_batch_in_axes_immutable(self):
+		batch_kernel = BatchModule(SEKernel(length_scale=1.0), batch_size=3, batch_in_axes=0)
 
-		with pytest.raises((ValueError, TypeError, AttributeError)):
+		with pytest.raises(ValueError, match="batch_in_axes"):
+			batch_kernel.replace(batch_in_axes=None)
+
+	@allure.title("BlockKernel nb_blocks is immutable")
+	@allure.description("Test that attempting to modify nb_blocks raises a ValueError.")
+	def test_nb_blocks_immutable(self):
+		block_kernel = BlockKernel(SEKernel(length_scale=1.0), nb_blocks=3, block_in_axes=0)
+
+		with pytest.raises(ValueError, match="nb_blocks"):
 			block_kernel.replace(nb_blocks=5)
+
+	@allure.title("BlockKernel block_in_axes is immutable")
+	@allure.description("Test that attempting to modify block_in_axes raises a ValueError.")
+	def test_block_in_axes_immutable(self):
+		block_kernel = BlockKernel(SEKernel(length_scale=1.0), nb_blocks=3, block_in_axes=0)
+
+		with pytest.raises(ValueError, match="block_in_axes"):
+			block_kernel.replace(block_in_axes=None)
+
+	@allure.title("ActiveDimsModule active_dims is immutable")
+	@allure.description("Test that attempting to modify active_dims raises a ValueError.")
+	def test_active_dims_immutable(self):
+		kernel = ActiveDimsModule(SEKernel(length_scale=1.0), active_dims=jnp.array([0, 1]))
+
+		with pytest.raises(ValueError, match="active_dims"):
+			kernel.replace(active_dims=jnp.array([0]))
 
 
 class TestReplaceWhiteNoiseKernel:

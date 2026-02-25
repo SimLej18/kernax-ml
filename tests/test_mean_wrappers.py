@@ -1,8 +1,7 @@
 """
-Tests for wrapper modules applied to mean functions (ExpModule, LogModule, ActiveDimsModule).
+Tests for wrapper modules applied to mean functions (ExpModule, LogModule, ActiveDimsModule, BatchModule).
 
-Note: BlockKernel, BlockDiagKernel, ARDKernel, and BatchModule are kernel-specific and
-are not tested here, as they are not compatible with the AbstractMean calling interface.
+Note: BlockKernel, BlockDiagKernel, and ARDKernel are kernel-specific and are not tested here.
 """
 
 import allure
@@ -10,6 +9,7 @@ import jax.numpy as jnp
 
 from kernax import (
 	ActiveDimsModule,
+	BatchModule,
 	ConstantMean,
 	ExpModule,
 	LinearMean,
@@ -176,3 +176,94 @@ class TestWrapperMeanCombinations:
 		assert len(str(ExpModule(LinearMean(slope=1.0)))) > 0
 		assert isinstance(str(LogModule(ConstantMean(constant=2.0))), str)
 		assert isinstance(str(ActiveDimsModule(LinearMean(slope=1.0), active_dims=jnp.array([0]))), str)
+
+
+class TestBatchModuleWithMean:
+	"""Tests for BatchModule wrapping a mean function — all four batching scenarios."""
+
+	@allure.title("BatchModule with mean: batch over hyperparameters only")
+	@allure.description(
+		"batch_in_axes=0, batch_over_inputs=False: same inputs for all batch elements, "
+		"each element has its own hyperparameters."
+	)
+	def test_batch_over_hyperparameters(self):
+		batch_size = 3
+		batch_mean = BatchModule(ConstantMean(constant=1.0), batch_size=batch_size, batch_in_axes=0, batch_over_inputs=False)
+
+		x = jnp.array([[0.0], [1.0], [2.0]])  # shape (3, 1)
+		result = batch_mean(x)
+
+		# Output: (B, N) — B mean vectors, one per batch element
+		assert result.shape == (batch_size, x.shape[0])
+		assert jnp.all(jnp.isfinite(result))
+
+	@allure.title("BatchModule with mean: batch over inputs only")
+	@allure.description(
+		"batch_in_axes=None, batch_over_inputs=True: distinct inputs per batch element, "
+		"shared hyperparameters."
+	)
+	def test_batch_over_inputs(self):
+		batch_size = 4
+		batch_mean = BatchModule(LinearMean(slope=2.0), batch_size=batch_size, batch_in_axes=None, batch_over_inputs=True)
+
+		x_batched = jnp.ones((batch_size, 3, 1))  # shape (B, N, D)
+		result = batch_mean(x_batched)
+
+		assert result.shape == (batch_size, 3)
+		assert jnp.all(jnp.isfinite(result))
+		# All batches use the same mean → all outputs should be identical
+		for i in range(1, batch_size):
+			assert jnp.allclose(result[i], result[0])
+
+	@allure.title("BatchModule with mean: batch over hyperparameters and inputs")
+	@allure.description(
+		"batch_in_axes=0, batch_over_inputs=True: distinct inputs and distinct hyperparameters "
+		"per batch element."
+	)
+	def test_batch_over_inputs_and_hyperparameters(self):
+		batch_size = 3
+		batch_mean = BatchModule(LinearMean(slope=1.0), batch_size=batch_size, batch_in_axes=0, batch_over_inputs=True)
+
+		x_batched = jnp.ones((batch_size, 4, 1))  # shape (B, N, D)
+		result = batch_mean(x_batched)
+
+		assert result.shape == (batch_size, 4)
+		assert jnp.all(jnp.isfinite(result))
+
+	@allure.title("BatchModule with mean: shared hyperparameters and shared inputs")
+	@allure.description(
+		"batch_in_axes=None, batch_over_inputs=False: all batch elements share the same "
+		"hyperparameters and inputs — output is B identical mean vectors."
+	)
+	def test_shared_hyperparameters_shared_inputs(self):
+		batch_size = 3
+		mean = ConstantMean(constant=5.0)
+		batch_mean = BatchModule(mean, batch_size=batch_size, batch_in_axes=None, batch_over_inputs=False)
+
+		x = jnp.array([[1.0], [2.0], [3.0]])
+		result = batch_mean(x)
+
+		assert result.shape == (batch_size, x.shape[0])
+		assert jnp.all(jnp.isfinite(result))
+		# All batch elements must be identical (same HPs + same inputs)
+		expected = mean(x)
+		for i in range(batch_size):
+			assert jnp.allclose(result[i], expected)
+
+	@allure.title("BatchModule with mean: correct values with batched hyperparameters")
+	@allure.description(
+		"Verify that each batch element produces the correct mean value for its own hyperparameters."
+	)
+	def test_correct_values_batched_hyperparameters(self):
+		# After BatchModule init, inner.constant will have shape (3,) = [1, 1, 1]
+		# We'll use replace() to set distinct values per batch element
+		batch_size = 3
+		batch_mean = BatchModule(ConstantMean(constant=1.0), batch_size=batch_size, batch_in_axes=0, batch_over_inputs=False)
+		batch_mean = batch_mean.replace(constant=jnp.array([1.0, 2.0, 3.0]))
+
+		x = jnp.array([[0.0]])  # single point
+		result = batch_mean(x)  # shape (3, 1)
+
+		assert jnp.allclose(result[0], jnp.array([1.0]))
+		assert jnp.allclose(result[1], jnp.array([2.0]))
+		assert jnp.allclose(result[2], jnp.array([3.0]))
