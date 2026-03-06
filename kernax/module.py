@@ -120,7 +120,7 @@ class AbstractModule(eqx.Module):
 		return f"{self.__class__.__name__}({
 			', '.join(
 				[
-					f'{key}={format_jax_array(value)}' if '_raw_' not in key else f'{key[5:]}={format_jax_array(to_constrained(value))}'
+					f'{key}={format_jax_array(self.__getattribute__(key))}' if '_raw_' not in key else f'{key[5:]}={format_jax_array(self.__getattribute__(key[5:]))}'
 					for key, value in self.__dict__.items()
 					if isinstance(value, Array)
 				]

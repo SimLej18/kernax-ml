@@ -6,7 +6,7 @@ Gaussian Process models, with support for automatic differentiation, JIT
 compilation, and composable kernel operations.
 """
 
-__version__ = "0.5.2-alpha"
+__version__ = "0.5.3-alpha"
 __author__ = "S. Lejoly"
 __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"
@@ -78,7 +78,7 @@ from .wrappers import (
 )
 
 # Import HP sampling utilities
-from .hp_sampling import sample_hps_from_uniform_priors
+from .hp_sampling import sample_hps_from_uniform_priors, sample_hps_from_normal_priors
 
 # Import mean functions
 from .means import (
@@ -152,6 +152,7 @@ __all__ = [
 	"BlockDiagKernel",
 	# HP sampling
 	"sample_hps_from_uniform_priors",
+	"sample_hps_from_normal_priors",
 	# Mean functions
 	"StaticZeroMean",
 	"ZeroMean",
