@@ -91,18 +91,12 @@ def _sample_uniform_recursive(key, module, priors):
 			continue
 
 		key, subkey = jax.random.split(key)
-		new_sub = _sample_recursive(subkey, field_value, priors)
+		new_sub = _sample_uniform_recursive(subkey, field_value, priors)
 
 		if new_sub is not field_value:
 			module = eqx.tree_at(lambda m, fn=field_name: getattr(m, fn), module, new_sub)
 
 	return module
-
-import jax
-import equinox as eqx
-from jax import Array
-
-from .transforms import to_unconstrained
 
 
 def sample_hps_from_normal_priors(key, module, priors):
@@ -185,7 +179,7 @@ def _sample_normale_recursive(key, module, priors):
 			continue
 
 		key, subkey = jax.random.split(key)
-		new_sub = _sample_recursive(subkey, field_value, priors)
+		new_sub = _sample_normale_recursive(subkey, field_value, priors)
 
 		if new_sub is not field_value:
 			module = eqx.tree_at(lambda m, fn=field_name: getattr(m, fn), module, new_sub)
