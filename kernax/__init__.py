@@ -23,9 +23,11 @@ from .config import config
 # Import dot-product kernels
 from .dotproduct import (
 	LinearKernel,
+	AffineKernel,
 	PolynomialKernel,
 	SigmoidKernel,
 	StaticLinearKernel,
+	StaticAffineKernel,
 	StaticPolynomialKernel,
 	StaticSigmoidKernel,
 )
@@ -117,6 +119,8 @@ __all__ = [
 	"ConstantKernel",
 	"StaticLinearKernel",
 	"LinearKernel",
+	"StaticAffineKernel",
+	"AffineKernel",
 	"StaticPeriodicKernel",
 	"PeriodicKernel",
 	"StaticRationalQuadraticKernel",

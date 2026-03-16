@@ -11,6 +11,7 @@ import pytest
 
 import kernax
 from kernax import (
+	AffineKernel,
 	ConstantKernel,
 	LinearKernel,
 	Matern12Kernel,
@@ -174,20 +175,18 @@ class TestRBFKernel:
 
 
 class TestLinearKernel:
-	"""Tests for Linear Kernel."""
+	"""Tests for Linear Kernel: k(x, x') = slope_var * x.T @ x'"""
 
 	@allure.title("LinearKernel Instantiation")
-	@allure.description("Test that Linear kernel can be instantiated.")
+	@allure.description("Test that Linear kernel can be instantiated with slope_var.")
 	def test_instantiation(self):
-		kernel = LinearKernel(variance_b=0.5, variance_v=1.0, offset_c=0.0)
-		assert kernel.variance_b == 0.5
-		assert kernel.variance_v == 1.0
-		assert kernel.offset_c == 0.0
+		kernel = LinearKernel(slope_var=1.5)
+		assert kernel.slope_var == 1.5
 
 	@allure.title("LinearKernel string representation")
 	@allure.description("Test that Linear kernel has a valid string representation.")
 	def test_str_representation(self):
-		kernel = LinearKernel(variance_b=0.5, variance_v=1.0, offset_c=0.0)
+		kernel = LinearKernel(slope_var=1.0)
 		str_repr = str(kernel)
 		assert isinstance(str_repr, str)
 		assert len(str_repr) > 0
@@ -195,30 +194,21 @@ class TestLinearKernel:
 	@allure.title("LinearKernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
 	def test_scalar_computation(self):
-		kernel = LinearKernel(variance_b=0.5, variance_v=1.0, offset_c=0.0)
+		kernel = LinearKernel(slope_var=2.0)
 		x1 = jnp.array([2.0])
 		x2 = jnp.array([3.0])
-		# k(x1, x2) = variance_b + variance_v * (x1 - offset_c) * (x2 - offset_c)
-		# k(2, 3) = 0.5 + 1.0 * (2 - 0) * (3 - 0) = 0.5 + 6 = 6.5
+		# k(x1, x2) = slope_var * x1.T @ x2 = 2.0 * 2.0 * 3.0 = 12.0
 		result = kernel(x1, x2)
-		expected = jnp.array(6.5)
+		expected = jnp.array(12.0)
 		assert result.shape == ()
 		assert jnp.isfinite(result)
 		assert jnp.allclose(result, expected)
 
-	@pytest.mark.parametrize(
-		"variance_b,variance_v,offset_c",
-		[
-			(0.0, 1.0, 0.0),
-			(0.5, 1.0, 0.0),
-			(1.0, 0.5, 0.0),
-			(0.5, 1.0, 0.5),
-		],
-	)
+	@pytest.mark.parametrize("slope_var", [0.5, 1.0, 2.0])
 	@allure.title("LinearKernel cross-cov computation")
 	@allure.description("Test cross-covariance computation between two batches of vectors.")
-	def test_cross_cov_computation(self, sample_1d_data, variance_b, variance_v, offset_c):
-		kernel = LinearKernel(variance_b=variance_b, variance_v=variance_v, offset_c=offset_c)
+	def test_cross_cov_computation(self, sample_1d_data, slope_var):
+		kernel = LinearKernel(slope_var=slope_var)
 		x1, x2 = sample_1d_data
 		result = kernel(x1, x2)
 		assert result.shape == (x1.shape[0], x2.shape[0])
@@ -227,30 +217,37 @@ class TestLinearKernel:
 			for j in range(x2.shape[0]):
 				assert jnp.allclose(result[i, j], kernel(x1[i], x2[j]))
 
-	@pytest.mark.parametrize(
-		"variance_b,variance_v,offset_c", [(0.5, 1.0, 0.0), (1.0, 0.5, 2.0), (1.0, 1.0, -3.0)]
-	)
+	@pytest.mark.parametrize("slope_var", [0.5, 1.0, 2.0])
 	@allure.title("LinearKernel mathematical properties")
 	@allure.description("Test that mathematical properties of the kernel still hold.")
-	def test_math_properties(self, sample_1d_data, variance_b, variance_v, offset_c):
-		kernel = LinearKernel(variance_b=variance_b, variance_v=variance_v, offset_c=offset_c)
+	def test_math_properties(self, sample_1d_data, slope_var):
+		kernel = LinearKernel(slope_var=slope_var)
 		x1, _ = sample_1d_data
 		K = kernel(x1)  # Test optional x2 parameter
 
-		# Check diagonal elements are positive
-		assert jnp.all(jnp.diag(K) > 0)
+		# Check diagonal elements are non-negative (k(x,x) = slope_var * x^2 >= 0)
+		assert jnp.all(jnp.diag(K) >= 0)
 
 		# Check matrix is symmetric
 		assert jnp.allclose(K, K.T)
 
+	@allure.title("LinearKernel passes through origin")
+	@allure.description("Test that k(0, x) = 0 for any x, reflecting the GP always crossing (0, 0).")
+	def test_passes_through_origin(self, sample_1d_data):
+		kernel = LinearKernel(slope_var=1.0)
+		_, x2 = sample_1d_data
+		origin = jnp.array([0.0])
+		# k(0, x) = slope_var * 0.T @ x = 0
+		result = kernel(origin, x2)
+		assert jnp.allclose(result, jnp.zeros_like(result))
+
 	@allure.title("LinearKernel comparison with scikit-learn")
-	@allure.description("Compare Linear kernel results against scikit-learn implementation.")
+	@allure.description("Compare Linear kernel results against scikit-learn DotProduct.")
 	def test_against_scikitlearn(self, sample_1d_data):
 		from sklearn.gaussian_process.kernels import DotProduct
 
-		# DotProduct in sklearn is simpler: k(x, y) = x^T y (no variance_b or offset_c)
-		# We'll use a kernel with no offset for comparison
-		kernel = LinearKernel(variance_b=0.0, variance_v=1.0, offset_c=0.0)
+		# sklearn DotProduct(sigma_0=0) computes k(x, y) = x.T @ y
+		kernel = LinearKernel(slope_var=1.0)
 		sklearn_kernel = DotProduct(sigma_0=0.0)
 
 		x1, x2 = sample_1d_data
@@ -260,17 +257,114 @@ class TestLinearKernel:
 		assert jnp.allclose(result, expected)
 
 	@allure.title("LinearKernel comparison with GPJax")
-	@allure.description("Compare Linear kernel results against GPJax implementation.")
+	@allure.description("Compare Linear kernel results against GPJax Linear kernel.")
 	def test_against_gpjax(self, sample_1d_data):
 		from gpjax.kernels import Linear
 
-		# GPJax Linear kernel is simpler
-		kernel = LinearKernel(variance_b=0.0, variance_v=1.0, offset_c=0.0)
+		kernel = LinearKernel(slope_var=1.0)
 		gpjax_kernel = Linear()
 
 		x1, x2 = sample_1d_data
 		result = kernel(x1, x2)
 		expected = gpjax_kernel.cross_covariance(x1, x2)
+
+		assert jnp.allclose(result, expected)
+
+
+class TestAffineKernel:
+	"""Tests for Affine Kernel: k(x, x') = slope_var * (x - offset).T @ (x' - offset)"""
+
+	@allure.title("AffineKernel Instantiation")
+	@allure.description("Test that Affine kernel can be instantiated with slope_var and offset.")
+	def test_instantiation(self):
+		kernel = AffineKernel(slope_var=1.0, offset=2.0)
+		assert kernel.slope_var == 1.0
+		assert kernel.offset == 2.0
+
+	@allure.title("AffineKernel string representation")
+	@allure.description("Test that Affine kernel has a valid string representation.")
+	def test_str_representation(self):
+		kernel = AffineKernel(slope_var=1.0, offset=2.0)
+		str_repr = str(kernel)
+		assert isinstance(str_repr, str)
+		assert len(str_repr) > 0
+
+	@allure.title("AffineKernel scalar computation")
+	@allure.description("Test covariance computation between two 1D vectors.")
+	def test_scalar_computation(self):
+		kernel = AffineKernel(slope_var=2.0, offset=1.0)
+		x1 = jnp.array([3.0])
+		x2 = jnp.array([4.0])
+		# k(x1, x2) = slope_var * (x1 - offset).T @ (x2 - offset)
+		# = 2.0 * (3 - 1) * (4 - 1) = 2.0 * 2.0 * 3.0 = 12.0
+		result = kernel(x1, x2)
+		expected = jnp.array(12.0)
+		assert result.shape == ()
+		assert jnp.isfinite(result)
+		assert jnp.allclose(result, expected)
+
+	@pytest.mark.parametrize(
+		"slope_var,offset",
+		[(0.5, 0.0), (1.0, 1.0), (2.0, -1.0), (1.0, 0.5)],
+	)
+	@allure.title("AffineKernel cross-cov computation")
+	@allure.description("Test cross-covariance computation between two batches of vectors.")
+	def test_cross_cov_computation(self, sample_1d_data, slope_var, offset):
+		kernel = AffineKernel(slope_var=slope_var, offset=offset)
+		x1, x2 = sample_1d_data
+		result = kernel(x1, x2)
+		assert result.shape == (x1.shape[0], x2.shape[0])
+		assert jnp.all(jnp.isfinite(result))
+		for i in range(x1.shape[0]):
+			for j in range(x2.shape[0]):
+				assert jnp.allclose(result[i, j], kernel(x1[i], x2[j]))
+
+	@pytest.mark.parametrize("slope_var,offset", [(0.5, 0.0), (1.0, 1.0), (2.0, -1.0)])
+	@allure.title("AffineKernel mathematical properties")
+	@allure.description("Test that mathematical properties of the kernel still hold.")
+	def test_math_properties(self, sample_1d_data, slope_var, offset):
+		kernel = AffineKernel(slope_var=slope_var, offset=offset)
+		x1, _ = sample_1d_data
+		K = kernel(x1)  # Test optional x2 parameter
+
+		# Check diagonal elements are non-negative (k(x,x) = slope_var * (x-offset)^2 >= 0)
+		assert jnp.all(jnp.diag(K) >= 0)
+
+		# Check matrix is symmetric
+		assert jnp.allclose(K, K.T)
+
+	@allure.title("AffineKernel passes through offset")
+	@allure.description("Test that k(offset, x) = 0 for any x, reflecting the GP always crossing (offset, 0).")
+	def test_passes_through_offset(self, sample_1d_data):
+		offset_val = 2.0
+		kernel = AffineKernel(slope_var=1.0, offset=offset_val)
+		_, x2 = sample_1d_data
+		offset_point = jnp.array([offset_val])
+		# k(offset, x) = slope_var * (offset - offset).T @ (x - offset) = 0
+		result = kernel(offset_point, x2)
+		assert jnp.allclose(result, jnp.zeros_like(result))
+
+	@allure.title("AffineKernel with zero offset equals LinearKernel")
+	@allure.description("Test that AffineKernel(offset=0) produces identical results to LinearKernel.")
+	def test_zero_offset_equals_linear(self, sample_1d_data):
+		slope_var = 1.5
+		affine_kernel = AffineKernel(slope_var=slope_var, offset=0.0)
+		linear_kernel = LinearKernel(slope_var=slope_var)
+		x1, x2 = sample_1d_data
+		assert jnp.allclose(affine_kernel(x1, x2), linear_kernel(x1, x2))
+
+	@allure.title("AffineKernel comparison with scikit-learn")
+	@allure.description("Compare Affine kernel (offset=0) against scikit-learn DotProduct.")
+	def test_against_scikitlearn(self, sample_1d_data):
+		from sklearn.gaussian_process.kernels import DotProduct
+
+		# With offset=0, AffineKernel reduces to a plain dot product — matches DotProduct(sigma_0=0)
+		kernel = AffineKernel(slope_var=1.0, offset=0.0)
+		sklearn_kernel = DotProduct(sigma_0=0.0)
+
+		x1, x2 = sample_1d_data
+		result = kernel(x1, x2)
+		expected = sklearn_kernel(x1, x2)
 
 		assert jnp.allclose(result, expected)
 
