@@ -82,6 +82,9 @@ from .wrappers import (
 # Import HP sampling utilities
 from .hp_sampling import sample_hps_from_uniform_priors, sample_hps_from_normal_priors
 
+# Import mask utility
+from .mask import create_mask
+
 # Import mean functions
 from .means import (
 	AffineMean,
@@ -157,6 +160,8 @@ __all__ = [
 	# HP sampling
 	"sample_hps_from_uniform_priors",
 	"sample_hps_from_normal_priors",
+	# Mask utility
+	"create_mask",
 	# Mean functions
 	"StaticZeroMean",
 	"ZeroMean",

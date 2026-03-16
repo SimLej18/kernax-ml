@@ -120,13 +120,17 @@ class AbstractModule(eqx.Module):
 		return f"{self.__class__.__name__}({
 			', '.join(
 				[
-					f'{key}={format_jax_array(self.__getattribute__(key))}' if '_raw_' not in key else f'{key[5:]}={format_jax_array(self.__getattribute__(key[5:]))}'
+					f'{key}={format_jax_array(self.__getattribute__(key))}' if '_raw_' not in key
+					else (
+						f'{key[5:]}={format_jax_array(self.__getattribute__(key[5:]))}' if isinstance(value, Array)
+						else f'{key[5:]}=None'
+					)
 					for key, value in self.__dict__.items()
-					if isinstance(value, Array)
+					if isinstance(value, Array) or (value is None and key.startswith('_raw_'))
 				]
 				+
 				[
-					f'{key}={value}' for key, value in self.__dict__.items() if isinstance(value, (int, float, str))
+					f'{key[5:] if key.startswith("_raw_") else key}={value}' for key, value in self.__dict__.items() if isinstance(value, (int, float, str))
 				]
 			)
 		})"

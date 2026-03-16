@@ -2,8 +2,6 @@
 Tests for wrapper kernels (BatchModule, ActiveDimsModule, ARDKernel).
 """
 
-from copy import deepcopy
-
 import allure
 import jax.numpy as jnp
 
@@ -15,6 +13,7 @@ from kernax import (
 	BlockKernel,
 	FeatureKernel,
 	SEKernel,
+	create_mask,
 )
 
 
@@ -148,14 +147,8 @@ class TestBlockKernel:
 		# Use FeatureKernel since it's compatible with varying hyperparameters
 		base_kernel = FeatureKernel(length_scale=1.0, length_scale_u=1.0, variance=1.0)
 
-		# Create block_in_axes by copying the kernel and setting which params vary
-		block_in_axes = deepcopy(base_kernel)
-		block_in_axes._raw_length_scale = 0
-		block_in_axes._raw_length_scale_u = None
-		block_in_axes._raw_variance = 0
-
 		block_kernel = BlockKernel(
-			base_kernel, nb_blocks=3, block_in_axes=block_in_axes, block_over_inputs=True
+			base_kernel, nb_blocks=3, block_in_axes=create_mask(base_kernel, default=None, length_scale=0, variance=0), block_over_inputs=True
 		)
 		assert block_kernel.inner is not None
 		assert block_kernel.nb_blocks == 3
@@ -167,17 +160,11 @@ class TestBlockKernel:
 		base_kernel = FeatureKernel(length_scale=1.0, length_scale_u=1.0, variance=1.0)
 		nb_blocks = 3
 
-		# Create block_in_axes by copying the kernel and setting which params vary
-		block_in_axes = deepcopy(base_kernel)
-		block_in_axes._raw_length_scale = 0
-		block_in_axes._raw_length_scale_u = None
-		block_in_axes._raw_variance = 0
-
 		# Wrap in BlockKernel to handle blocked hyperparameters
 		block_kernel = BlockKernel(
 			base_kernel,
 			nb_blocks=nb_blocks,
-			block_in_axes=block_in_axes,
+			block_in_axes=create_mask(base_kernel, default=None, length_scale=0, variance=0),
 			block_over_inputs=False,  # Same inputs for all blocks
 		)
 
@@ -201,14 +188,8 @@ class TestBlockKernel:
 		x1_batched, x2_batched = sample_batched_data
 		nb_blocks = x1_batched.shape[0]
 
-		# Create block_in_axes by copying the kernel and setting which params vary
-		block_in_axes = deepcopy(base_kernel)
-		block_in_axes._raw_length_scale = 0
-		block_in_axes._raw_length_scale_u = None
-		block_in_axes._raw_variance = 0
-
 		block_kernel = BlockKernel(
-			base_kernel, nb_blocks=nb_blocks, block_in_axes=block_in_axes, block_over_inputs=True
+			base_kernel, nb_blocks=nb_blocks, block_in_axes=create_mask(base_kernel, default=None, length_scale=0, variance=0), block_over_inputs=True
 		)
 
 		result = block_kernel(x1_batched, x1_batched)
@@ -409,13 +390,9 @@ class TestBlockDiagKernel:
 	@allure.title("BlockDiagKernel Instantiation")
 	@allure.description("Test that BlockDiagKernel can be instantiated.")
 	def test_instantiation(self):
-		import jax.tree_util as jtu
-
 		base_kernel = SEKernel(length_scale=1.0)
-		# Create a pytree with block_in_axes=0 for all hyperparameters
-		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
 		block_diag_kernel = BlockDiagKernel(
-			base_kernel, nb_blocks=3, block_in_axes=block_in_axes, block_over_inputs=True
+			base_kernel, nb_blocks=3, block_in_axes=create_mask(base_kernel, default=0), block_over_inputs=True
 		)
 		assert block_diag_kernel.inner is not None
 		assert block_diag_kernel.batch_over_inputs == 0
@@ -423,20 +400,15 @@ class TestBlockDiagKernel:
 	@allure.title("BlockDiagKernel block over hyperparameters")
 	@allure.description("Test block-diagonal with distinct hyperparameters per block.")
 	def test_block_over_hyperparameters(self):
-		import jax.tree_util as jtu
-
 		# Create base kernel with single length_scale
 		base_kernel = SEKernel(length_scale=1.0)
 		nb_blocks = 3
-
-		# Create a pytree where hyperparameters are batched (0 for all)
-		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
 
 		# Wrap in BlockDiagKernel to handle blocked hyperparameters
 		block_diag_kernel = BlockDiagKernel(
 			base_kernel,
 			nb_blocks=nb_blocks,
-			block_in_axes=block_in_axes,
+			block_in_axes=create_mask(base_kernel, default=0),
 			block_over_inputs=False,  # Same inputs for all blocks
 		)
 
@@ -455,17 +427,12 @@ class TestBlockDiagKernel:
 	@allure.title("BlockDiagKernel block over inputs and hyperparameters")
 	@allure.description("Test block-diagonal over both inputs and hyperparameters.")
 	def test_block_over_inputs_and_hyperparameters(self, sample_batched_data):
-		import jax.tree_util as jtu
-
 		base_kernel = SEKernel(length_scale=1.0)
 		x1_batched, x2_batched = sample_batched_data
 		nb_blocks = x1_batched.shape[0]
 
-		# Create a pytree where hyperparameters are batched
-		block_in_axes = jtu.tree_map(lambda _: 0, base_kernel)
-
 		block_diag_kernel = BlockDiagKernel(
-			base_kernel, nb_blocks=nb_blocks, block_in_axes=block_in_axes, block_over_inputs=True
+			base_kernel, nb_blocks=nb_blocks, block_in_axes=create_mask(base_kernel, default=0), block_over_inputs=True
 		)
 
 		result = block_diag_kernel(x1_batched, x1_batched)
