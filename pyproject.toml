@@ -52,9 +52,11 @@ dev = [
     "mypy>=0.990",
 ]
 docs = [
-    "sphinx>=5.0",
-    "sphinx-rtd-theme>=1.0",
-    "nbsphinx>=0.8",
+    "sphinx>=7.0",
+    "shibuya",
+    "myst-nb",
+    "jupytext",
+    "sphinx-autodoc-typehints",
 ]
 benchmarks = [
     "pandas>=1.5.0",
@@ -65,7 +67,7 @@ benchmarks = [
 [project.urls]
 Homepage = "https://github.com/SimLej18/kernax-ml"
 Repository = "https://github.com/SimLej18/kernax-ml"
-Documentation = "https://kernax-ml.readthedocs.io"
+Documentation = "https://kernax-ml.readthedocs.io/en/latest/"
 "Bug Tracker" = "https://github.com/SimLej18/kernax-ml/issues"
 
 [tool.setuptools.packages.find]
