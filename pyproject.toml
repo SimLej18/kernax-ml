@@ -7,7 +7,7 @@ name = "kernax-ml"
 version = "v0.5.5-alpha"
 description = "A JAX-based kernel library for Gaussian Processes with automatic differentiation and composable operations"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 license = {text = "MIT"}
 authors = [
     {name = "S. Lejoly", email = "simon.lejoly@unamur.be"}
@@ -45,9 +45,6 @@ dev = [
     "pytest-cov>=4.0",
     "allure-pytest>=2.15",
     "pytest-benchmark>=5.2",
-    "gpjax>=0.13",
-    "gpytorch>=1.15",
-    "scikit-learn>=1.8",
     "ruff>=0.1.0",
     "mypy>=0.990",
 ]
@@ -135,4 +132,5 @@ addopts = [
     "--cov=kernax",
     "--cov-report=term-missing",
     "--cov-report=html:tests/out/htmlcov",
+    "--ignore=benchmarks",
 ]

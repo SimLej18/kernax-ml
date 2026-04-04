@@ -21,7 +21,7 @@ import jax.numpy as jnp
 import jax.random as jr
 import jax.tree_util as jtu
 
-from kernax import SEKernel, BatchKernel
+from kernax import SEKernel, BatchModule
 from benchmarks.input_generators import (
 	generate_1d_regular_grid,
 	generate_2d_regular_grid,
@@ -182,7 +182,7 @@ class BenchmarkSEKernel:
 	# ==================== Batch 1D Benchmarks ====================
 
 	def benchmark_batch_1d_common_hps(self, benchmark, request):
-		"""Benchmark BatchKernel on 1D inputs (100 batches × 100 points) with shared hyperparameters."""
+		"""Benchmark BatchModule on 1D inputs (100 batches × 100 points) with shared hyperparameters."""
 		rounds = int(request.config.getoption("--bench-rounds"))
 
 		def setup():
@@ -192,8 +192,8 @@ class BenchmarkSEKernel:
 			# Instantiate base kernel
 			base_kernel = SEKernel(length_scale=1.0)
 
-			# Wrap in BatchKernel with shared hyperparameters
-			batch_kernel = BatchKernel(
+			# Wrap in BatchModule with shared hyperparameters
+			batch_kernel = BatchModule(
 				base_kernel,
 				batch_size=100,
 				batch_in_axes=None,  # Shared hyperparameters
@@ -217,7 +217,7 @@ class BenchmarkSEKernel:
 		benchmark.pedantic(run_kernel, setup=setup, rounds=rounds, iterations=1)
 
 	def benchmark_batch_1d_batched_hps(self, benchmark, request):
-		"""Benchmark BatchKernel on 1D inputs (100 batches × 100 points) with distinct hyperparameters per batch."""
+		"""Benchmark BatchModule on 1D inputs (100 batches × 100 points) with distinct hyperparameters per batch."""
 		rounds = int(request.config.getoption("--bench-rounds"))
 
 		def setup():
@@ -227,8 +227,8 @@ class BenchmarkSEKernel:
 			# Instantiate base kernel
 			base_kernel = SEKernel(length_scale=1.0)
 
-			# Wrap in BatchKernel with batched hyperparameters
-			batch_kernel = BatchKernel(
+			# Wrap in BatchModule with batched hyperparameters
+			batch_kernel = BatchModule(
 				base_kernel,
 				batch_size=100,
 				batch_in_axes=0,  # Batched hyperparameters
@@ -237,11 +237,11 @@ class BenchmarkSEKernel:
 
 			# Modify hyperparameters of inner kernel with random multipliers
 			random_multipliers = jr.uniform(subkey1, (100,), minval=0.5, maxval=1.5)
-			new_inner_kernel = jtu.tree_map(
+			new_inner = jtu.tree_map(
 				lambda param: param * random_multipliers if param.shape[0] == 100 else param,
-				batch_kernel.inner_kernel,
+				batch_kernel.inner,
 			)
-			batch_kernel = eqx.tree_at(lambda bk: bk.inner_kernel, batch_kernel, new_inner_kernel)
+			batch_kernel = eqx.tree_at(lambda bk: bk.inner, batch_kernel, new_inner)
 
 			# Generate batched random inputs (varies per round)
 			x = generate_batched_random_inputs(
@@ -262,7 +262,7 @@ class BenchmarkSEKernel:
 	# ==================== Batch 2D Benchmarks ====================
 
 	def benchmark_batch_2d_common_hps(self, benchmark, request):
-		"""Benchmark BatchKernel on 2D inputs (100 batches × 100 points) with shared hyperparameters."""
+		"""Benchmark BatchModule on 2D inputs (100 batches × 100 points) with shared hyperparameters."""
 		rounds = int(request.config.getoption("--bench-rounds"))
 
 		def setup():
@@ -272,8 +272,8 @@ class BenchmarkSEKernel:
 			# Instantiate base kernel
 			base_kernel = SEKernel(length_scale=1.0)
 
-			# Wrap in BatchKernel with shared hyperparameters
-			batch_kernel = BatchKernel(
+			# Wrap in BatchModule with shared hyperparameters
+			batch_kernel = BatchModule(
 				base_kernel,
 				batch_size=100,
 				batch_in_axes=None,  # Shared hyperparameters
@@ -297,7 +297,7 @@ class BenchmarkSEKernel:
 		benchmark.pedantic(run_kernel, setup=setup, rounds=rounds, iterations=1)
 
 	def benchmark_batch_2d_batched_hps(self, benchmark, request):
-		"""Benchmark BatchKernel on 2D inputs (100 batches × 100 points) with distinct hyperparameters per batch."""
+		"""Benchmark BatchModule on 2D inputs (100 batches × 100 points) with distinct hyperparameters per batch."""
 		rounds = int(request.config.getoption("--bench-rounds"))
 
 		def setup():
@@ -307,8 +307,8 @@ class BenchmarkSEKernel:
 			# Instantiate base kernel
 			base_kernel = SEKernel(length_scale=1.0)
 
-			# Wrap in BatchKernel with batched hyperparameters
-			batch_kernel = BatchKernel(
+			# Wrap in BatchModule with batched hyperparameters
+			batch_kernel = BatchModule(
 				base_kernel,
 				batch_size=100,
 				batch_in_axes=0,  # Batched hyperparameters
@@ -317,11 +317,11 @@ class BenchmarkSEKernel:
 
 			# Modify hyperparameters of inner kernel with random multipliers
 			random_multipliers = jr.uniform(subkey1, (100,), minval=0.5, maxval=1.5)
-			new_inner_kernel = jtu.tree_map(
+			new_inner = jtu.tree_map(
 				lambda param: param * random_multipliers if param.shape[0] == 100 else param,
-				batch_kernel.inner_kernel,
+				batch_kernel.inner,
 			)
-			batch_kernel = eqx.tree_at(lambda bk: bk.inner_kernel, batch_kernel, new_inner_kernel)
+			batch_kernel = eqx.tree_at(lambda bk: bk.inner, batch_kernel, new_inner)
 
 			# Generate batched random inputs (varies per round)
 			x = generate_batched_random_inputs(

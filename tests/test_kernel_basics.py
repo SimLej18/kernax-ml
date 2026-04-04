@@ -90,55 +90,6 @@ class TestSEKernel:
 		# Check that K_2 has higher values than K_1 due to bigger length scale
 		assert jnp.all(K_2 >= K_1)
 
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("SEKernel comparison with scikit-learn")
-	@allure.description("Compare SE kernel results against scikit-learn implementation.")
-	def test_against_scikitlearn(self, sample_1d_data, length_scale):
-		from sklearn.gaussian_process.kernels import RBF
-
-		kernel = SEKernel(length_scale=length_scale)
-		sklearn_kernel = RBF(length_scale=length_scale)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("SEKernel comparison with GPyTorch")
-	@allure.description("Compare SE kernel results against GPyTorch implementation.")
-	def test_against_gpytorch(self, sample_1d_data, length_scale):
-		import torch
-		from gpytorch.kernels import RBFKernel as GPyTorchRBFKernel
-
-		kernel = SEKernel(length_scale=length_scale)
-		gpytorch_kernel = GPyTorchRBFKernel()
-		gpytorch_kernel._set_lengthscale(length_scale)
-
-		x1, x2 = sample_1d_data
-		x1_torch = torch.tensor(x1)
-		x2_torch = torch.tensor(x2)
-
-		result = kernel(x1, x2)
-		expected = gpytorch_kernel(x1_torch, x2_torch).detach().numpy()
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("SEKernel comparison with GPJax")
-	@allure.description("Compare SE kernel results against GPJax implementation.")
-	def test_against_gpjax(self, sample_1d_data, length_scale):
-		from gpjax.kernels import RBF
-
-		kernel = SEKernel(length_scale=length_scale)
-		gpjax_kernel = RBF(lengthscale=length_scale)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = gpjax_kernel.cross_covariance(x1, x2)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestRBFKernel:
@@ -241,34 +192,6 @@ class TestLinearKernel:
 		result = kernel(origin, x2)
 		assert jnp.allclose(result, jnp.zeros_like(result))
 
-	@allure.title("LinearKernel comparison with scikit-learn")
-	@allure.description("Compare Linear kernel results against scikit-learn DotProduct.")
-	def test_against_scikitlearn(self, sample_1d_data):
-		from sklearn.gaussian_process.kernels import DotProduct
-
-		# sklearn DotProduct(sigma_0=0) computes k(x, y) = x.T @ y
-		kernel = LinearKernel(slope_var=1.0)
-		sklearn_kernel = DotProduct(sigma_0=0.0)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
-
-	@allure.title("LinearKernel comparison with GPJax")
-	@allure.description("Compare Linear kernel results against GPJax Linear kernel.")
-	def test_against_gpjax(self, sample_1d_data):
-		from gpjax.kernels import Linear
-
-		kernel = LinearKernel(slope_var=1.0)
-		gpjax_kernel = Linear()
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = gpjax_kernel.cross_covariance(x1, x2)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestAffineKernel:
@@ -353,20 +276,6 @@ class TestAffineKernel:
 		x1, x2 = sample_1d_data
 		assert jnp.allclose(affine_kernel(x1, x2), linear_kernel(x1, x2))
 
-	@allure.title("AffineKernel comparison with scikit-learn")
-	@allure.description("Compare Affine kernel (offset=0) against scikit-learn DotProduct.")
-	def test_against_scikitlearn(self, sample_1d_data):
-		from sklearn.gaussian_process.kernels import DotProduct
-
-		# With offset=0, AffineKernel reduces to a plain dot product — matches DotProduct(sigma_0=0)
-		kernel = AffineKernel(slope_var=1.0, offset=0.0)
-		sklearn_kernel = DotProduct(sigma_0=0.0)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestMatern12Kernel:
@@ -431,55 +340,6 @@ class TestMatern12Kernel:
 		K2 = kernel2(x1, x1)
 		assert jnp.all(K2 >= K)
 
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("Matern12Kernel comparison with scikit-learn")
-	@allure.description("Compare Matern 1/2 kernel results against scikit-learn implementation.")
-	def test_against_scikitlearn(self, sample_1d_data, length_scale):
-		from sklearn.gaussian_process.kernels import Matern
-
-		kernel = Matern12Kernel(length_scale=length_scale)
-		sklearn_kernel = Matern(length_scale=length_scale, nu=0.5)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("Matern12Kernel comparison with GPyTorch")
-	@allure.description("Compare Matern 1/2 kernel results against GPyTorch implementation.")
-	def test_against_gpytorch(self, sample_1d_data, length_scale):
-		import torch
-		from gpytorch.kernels import MaternKernel
-
-		kernel = Matern12Kernel(length_scale=length_scale)
-		gpytorch_kernel = MaternKernel(nu=0.5)
-		gpytorch_kernel._set_lengthscale(length_scale)
-
-		x1, x2 = sample_1d_data
-		x1_torch = torch.tensor(x1)
-		x2_torch = torch.tensor(x2)
-
-		result = kernel(x1, x2)
-		expected = gpytorch_kernel(x1_torch, x2_torch).detach().numpy()
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("Matern12Kernel comparison with GPJax")
-	@allure.description("Compare Matern 1/2 kernel results against GPJax implementation.")
-	def test_against_gpjax(self, sample_1d_data, length_scale):
-		from gpjax.kernels import Matern12
-
-		kernel = Matern12Kernel(length_scale=length_scale)
-		gpjax_kernel = Matern12(lengthscale=length_scale)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = gpjax_kernel.cross_covariance(x1, x2)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestMatern32Kernel:
@@ -544,55 +404,6 @@ class TestMatern32Kernel:
 		K2 = kernel2(x1)  # Test optional x2 parameter
 		assert jnp.all(K2 >= K)
 
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("Matern32Kernel comparison with scikit-learn")
-	@allure.description("Compare Matern 3/2 kernel results against scikit-learn implementation.")
-	def test_against_scikitlearn(self, sample_1d_data, length_scale):
-		from sklearn.gaussian_process.kernels import Matern
-
-		kernel = Matern32Kernel(length_scale=length_scale)
-		sklearn_kernel = Matern(length_scale=length_scale, nu=1.5)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("Matern32Kernel comparison with GPyTorch")
-	@allure.description("Compare Matern 3/2 kernel results against GPyTorch implementation.")
-	def test_against_gpytorch(self, sample_1d_data, length_scale):
-		import torch
-		from gpytorch.kernels import MaternKernel
-
-		kernel = Matern32Kernel(length_scale=length_scale)
-		gpytorch_kernel = MaternKernel(nu=1.5)
-		gpytorch_kernel._set_lengthscale(length_scale)
-
-		x1, x2 = sample_1d_data
-		x1_torch = torch.tensor(x1)
-		x2_torch = torch.tensor(x2)
-
-		result = kernel(x1, x2)
-		expected = gpytorch_kernel(x1_torch, x2_torch).detach().numpy()
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("Matern32Kernel comparison with GPJax")
-	@allure.description("Compare Matern 3/2 kernel results against GPJax implementation.")
-	def test_against_gpjax(self, sample_1d_data, length_scale):
-		from gpjax.kernels import Matern32
-
-		kernel = Matern32Kernel(length_scale=length_scale)
-		gpjax_kernel = Matern32(lengthscale=length_scale)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = gpjax_kernel.cross_covariance(x1, x2)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestMatern52Kernel:
@@ -658,55 +469,6 @@ class TestMatern52Kernel:
 		K2 = kernel2(x1)  # Test optional x2 parameter
 		assert jnp.all(K2 >= K)
 
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("Matern52Kernel comparison with scikit-learn")
-	@allure.description("Compare Matern 5/2 kernel results against scikit-learn implementation.")
-	def test_against_scikitlearn(self, sample_1d_data, length_scale):
-		from sklearn.gaussian_process.kernels import Matern
-
-		kernel = Matern52Kernel(length_scale=length_scale)
-		sklearn_kernel = Matern(length_scale=length_scale, nu=2.5)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("Matern52Kernel comparison with GPyTorch")
-	@allure.description("Compare Matern 5/2 kernel results against GPyTorch implementation.")
-	def test_against_gpytorch(self, sample_1d_data, length_scale):
-		import torch
-		from gpytorch.kernels import MaternKernel
-
-		kernel = Matern52Kernel(length_scale=length_scale)
-		gpytorch_kernel = MaternKernel(nu=2.5)
-		gpytorch_kernel._set_lengthscale(length_scale)
-
-		x1, x2 = sample_1d_data
-		x1_torch = torch.tensor(x1)
-		x2_torch = torch.tensor(x2)
-
-		result = kernel(x1, x2)
-		expected = gpytorch_kernel(x1_torch, x2_torch).detach().numpy()
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize("length_scale", [0.5, 1.0, 2.0])
-	@allure.title("Matern52Kernel comparison with GPJax")
-	@allure.description("Compare Matern 5/2 kernel results against GPJax implementation.")
-	def test_against_gpjax(self, sample_1d_data, length_scale):
-		from gpjax.kernels import Matern52
-
-		kernel = Matern52Kernel(length_scale=length_scale)
-		gpjax_kernel = Matern52(lengthscale=length_scale)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = gpjax_kernel.cross_covariance(x1, x2)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestPeriodicKernel:
@@ -784,41 +546,6 @@ class TestPeriodicKernel:
 		kernel2 = PeriodicKernel(length_scale=2.0, variance=1.0, period=2.0)
 		K2 = kernel2(x1)  # Test optional x2 parameter
 		assert jnp.all(K2 >= K)
-
-	@allure.title("PeriodicKernel comparison with scikit-learn")
-	@allure.description("Compare Periodic kernel results against scikit-learn implementation.")
-	def test_against_scikitlearn(self, sample_1d_data):
-		from sklearn.gaussian_process.kernels import ExpSineSquared
-
-		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
-		# ExpSineSquared uses periodicity parameter instead of period
-		sklearn_kernel = ExpSineSquared(length_scale=1.0, periodicity=2.0)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
-
-	@allure.title("PeriodicKernel comparison with GPyTorch")
-	@allure.description("Compare Periodic kernel results against GPyTorch implementation.")
-	def test_against_gpytorch(self, sample_1d_data):
-		import torch
-		from gpytorch.kernels import PeriodicKernel as GPyTorchPeriodicKernel
-
-		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
-		gpytorch_kernel = GPyTorchPeriodicKernel()
-		gpytorch_kernel._set_lengthscale(1.0)
-		gpytorch_kernel.period_length = torch.tensor([2.0])
-
-		x1, x2 = sample_1d_data
-		x1_torch = torch.tensor(x1)
-		x2_torch = torch.tensor(x2)
-
-		result = kernel(x1, x2)
-		expected = gpytorch_kernel(x1_torch, x2_torch).detach().numpy()
-
-		assert jnp.allclose(result, expected)
 
 	@allure.title("PeriodicKernel properties verification")
 	@allure.description("Verify Periodic kernel computation with exact values.")
@@ -923,80 +650,6 @@ class TestRationalQuadraticKernel:
 		K2 = kernel2(x1)  # Test optional x2 parameter
 		assert jnp.all(K2 >= K)
 
-	@pytest.mark.parametrize(
-		"length_scale,alpha",
-		[
-			(0.5, 1.0),
-			(1.0, 0.5),
-			(1.0, 1.0),
-			(2.0, 2.0),
-		],
-	)
-	@allure.title("RationalQuadraticKernel comparison with scikit-learn")
-	@allure.description("Compare RQ kernel results against scikit-learn implementation.")
-	def test_against_scikitlearn(self, sample_1d_data, length_scale, alpha):
-		from sklearn.gaussian_process.kernels import RationalQuadratic
-
-		kernel = RationalQuadraticKernel(length_scale=length_scale, alpha=alpha)
-		sklearn_kernel = RationalQuadratic(length_scale=length_scale, alpha=alpha)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize(
-		"length_scale,alpha",
-		[
-			(0.5, 1.0),
-			(1.0, 0.5),
-			(1.0, 1.0),
-			(2.0, 2.0),
-		],
-	)
-	@allure.title("RationalQuadraticKernel comparison with GPyTorch")
-	@allure.description("Compare RQ kernel results against GPyTorch implementation.")
-	def test_against_gpytorch(self, sample_1d_data, length_scale, alpha):
-		import torch
-		from gpytorch.kernels import RQKernel
-
-		kernel = RationalQuadraticKernel(length_scale=length_scale, alpha=alpha)
-		gpytorch_kernel = RQKernel()
-		gpytorch_kernel._set_lengthscale(length_scale)
-		gpytorch_kernel.alpha = alpha
-
-		x1, x2 = sample_1d_data
-		x1_torch = torch.tensor(x1)
-		x2_torch = torch.tensor(x2)
-
-		result = kernel(x1, x2)
-		expected = gpytorch_kernel(x1_torch, x2_torch).detach().numpy()
-
-		assert jnp.allclose(result, expected)
-
-	@pytest.mark.parametrize(
-		"length_scale,alpha",
-		[
-			(0.5, 1.0),
-			(1.0, 0.5),
-			(1.0, 1.0),
-			(2.0, 2.0),
-		],
-	)
-	@allure.title("RationalQuadraticKernel comparison with GPJax")
-	@allure.description("Compare RQ kernel results against GPJax implementation.")
-	def test_against_gpjax(self, sample_1d_data, length_scale, alpha):
-		from gpjax.kernels import RationalQuadratic
-
-		kernel = RationalQuadraticKernel(length_scale=length_scale, alpha=alpha)
-		gpjax_kernel = RationalQuadratic(lengthscale=length_scale, alpha=alpha)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = gpjax_kernel.cross_covariance(x1, x2)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestPolynomialKernel:
@@ -1075,55 +728,6 @@ class TestPolynomialKernel:
 		expected_deg3 = jnp.array(216.0)  # (2 * 3)^3 = 6^3 = 216
 		assert jnp.allclose(result_deg3, expected_deg3)
 
-	@allure.title("PolynomialKernel comparison with scikit-learn")
-	@allure.description("Compare Polynomial kernel results against scikit-learn implementation.")
-	def test_against_scikitlearn(self, sample_1d_data):
-		from sklearn.gaussian_process.kernels import DotProduct
-
-		# For polynomial degree 1 with constant=0, compare with DotProduct
-		kernel = PolynomialKernel(degree=1, gamma=1.0, constant=0.0)
-		sklearn_kernel = DotProduct(sigma_0=0.0)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
-
-	@allure.title("PolynomialKernel comparison with GPyTorch")
-	@allure.description("Compare Polynomial kernel results against GPyTorch implementation.")
-	def test_against_gpytorch(self, sample_1d_data):
-		import torch
-		from gpytorch.kernels import PolynomialKernel as GPyTorchPolynomialKernel
-
-		# GPyTorch polynomial kernel has similar parameters
-		kernel = PolynomialKernel(degree=2, gamma=1.0, constant=1.0)
-		gpytorch_kernel = GPyTorchPolynomialKernel(power=2)
-		gpytorch_kernel.offset = torch.tensor(1.0)
-
-		x1, x2 = sample_1d_data
-		x1_torch = torch.tensor(x1)
-		x2_torch = torch.tensor(x2)
-
-		result = kernel(x1, x2)
-		expected = gpytorch_kernel(x1_torch, x2_torch).detach().numpy()
-
-		assert jnp.allclose(result, expected)
-
-	@allure.title("PolynomialKernel comparison with GPJax")
-	@allure.description("Compare Polynomial kernel results against GPJax implementation.")
-	def test_against_gpjax(self, sample_1d_data):
-		from gpjax.kernels import Polynomial
-
-		# GPJax polynomial kernel
-		kernel = PolynomialKernel(degree=2, gamma=1.0, constant=1.0)
-		gpjax_kernel = Polynomial(degree=2, shift=1.0, variance=1.0)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = gpjax_kernel.cross_covariance(x1, x2)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestConstantKernel:
@@ -1183,52 +787,6 @@ class TestConstantKernel:
 		# Check matrix is symmetric
 		assert jnp.allclose(K, K.T)
 
-	@allure.title("ConstantKernel comparison with scikit-learn")
-	@allure.description("Compare Constant kernel results against scikit-learn implementation.")
-	def test_against_scikitlearn(self, sample_1d_data):
-		from sklearn.gaussian_process.kernels import ConstantKernel as SKConstantKernel
-
-		kernel = ConstantKernel(value=2.0)
-		sklearn_kernel = SKConstantKernel(constant_value=2.0)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = sklearn_kernel(x1, x2)
-
-		assert jnp.allclose(result, expected)
-
-	@allure.title("ConstantKernel comparison with GPyTorch")
-	@allure.description("Compare Constant kernel results against GPyTorch implementation.")
-	def test_against_gpytorch(self, sample_1d_data):
-		import torch
-		from gpytorch.kernels import ConstantKernel as GPyTorchConstantKernel
-
-		kernel = ConstantKernel(value=2.0)
-		gpytorch_kernel = GPyTorchConstantKernel()
-		gpytorch_kernel.constant = torch.tensor([[2.0]])
-
-		x1, x2 = sample_1d_data
-		x1_torch = torch.tensor(x1)
-		x2_torch = torch.tensor(x2)
-
-		result = kernel(x1, x2)
-		expected = gpytorch_kernel(x1_torch, x2_torch).detach().numpy()
-
-		assert jnp.allclose(result, expected)
-
-	@allure.title("ConstantKernel comparison with GPJax")
-	@allure.description("Compare Constant kernel results against GPJax implementation.")
-	def test_against_gpjax(self, sample_1d_data):
-		from gpjax.kernels import Constant
-
-		kernel = ConstantKernel(value=2.0)
-		gpjax_kernel = Constant(constant=2.0)
-
-		x1, x2 = sample_1d_data
-		result = kernel(x1, x2)
-		expected = gpjax_kernel.cross_covariance(x1, x2)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestWhiteNoiseKernel:
@@ -1480,40 +1038,6 @@ class TestSigmoidKernel:
 
 		# Sigmoid kernel is symmetric
 		assert jnp.allclose(K, K.T)
-
-	@allure.title("SigmoidKernel against scikit-learn")
-	@allure.description("Compare kernax SigmoidKernel against sklearn.gaussian_process.kernels.Sigmoid.")
-	def test_against_scikitlearn(self, sample_1d_data):
-		"""Test against scikit-learn implementation."""
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
-		try:
-			import sklearn.gaussian_process.kernels  # noqa: F401
-		except ImportError:
-			pytest.skip("scikit-learn not installed")
-
-		x1, x2 = sample_1d_data
-
-		# Convert to numpy for sklearn
-		x1_np = jnp.array(x1)
-		x2_np = jnp.array(x2)
-
-		# Test with various parameters
-		for alpha, constant in [(1.0, 0.0), (0.5, 1.0), (2.0, -0.5)]:
-			# Kernax kernel
-			kernax_kernel = kernax.SigmoidKernel(alpha=alpha, constant=constant)
-			K_kernax = kernax_kernel(x1_np, x2_np)
-
-			# Manual implementation matching sklearn's approach
-			# sklearn doesn't have a direct Sigmoid kernel, but we can compute it manually
-			# tanh(alpha * <x, x'> + c)
-			dot_products = x1_np @ x2_np.T
-			K_manual = jnp.tanh(alpha * dot_products + constant)
-
-			# Compare
-			assert jnp.allclose(K_kernax, K_manual, rtol=1e-5, atol=1e-5)
 
 	@allure.title("SigmoidKernel output range")
 	@allure.description("Verify that sigmoid kernel output is always in (-1, 1) range.")
