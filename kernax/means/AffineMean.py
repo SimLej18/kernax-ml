@@ -1,10 +1,8 @@
 from __future__ import annotations
-
 import equinox as eqx
 import jax.numpy as jnp
 from equinox import filter_jit
 from jax import Array
-
 from ..AbstractMean import AbstractMean, StaticAbstractMean
 
 

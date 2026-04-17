@@ -1,84 +1,59 @@
+from __future__ import annotations
 import equinox as eqx
 from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
-
-from ..AbstractKernel import AbstractKernel
+from ..AbstractKernel import AbstractStationaryKernel
 from ..distances import squared_euclidean_distance
-from ..transforms import to_constrained, to_unconstrained
-from .StationaryKernel import StaticStationaryKernel
+from ...parametrisations import AbstractParametrisation, LogExpParametrisation
 
 
-class StaticSEKernel(StaticStationaryKernel):
-	distance_func = squared_euclidean_distance
-
-	@classmethod
-	@filter_jit
-	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
-		"""
-		Compute the kernel covariance value between two vectors.
-
-		:param kern: kernel instance containing the hyperparameters
-		:param x1: scalar array
-		:param x2: scalar array
-		:return: scalar array
-		"""
-		kern = eqx.combine(kern)
-		return jnp.exp(-0.5 * cls.distance_func(x1, x2) / kern.length_scale**2)  # type: ignore[attr-defined]
-
-
-class SEKernel(AbstractKernel):
+class SEKernel(AbstractStationaryKernel):
 	"""
 	Squared Exponential (aka "RBF" or "Gaussian") Kernel
 
-	The length_scale parameter is always positive. Internally, it may be stored in an
-	unconstrained space (log-space or softplus-inverse space) depending on the global
-	configuration, which improves optimization stability.
+	The length_scale parameter is constrained to stay positive and provide smoother optimisation.
 	"""
 
-	_raw_length_scale: Array = eqx.field(converter=jnp.asarray)
-	static_class = StaticSEKernel
-
-	def __init__(self, length_scale, **kwargs):
-		"""
-		Initialize the SE kernel with a length scale parameter.
-
-		Args:
-			length_scale: Length scale parameter (must be positive). This is provided
-				in the constrained space (positive values) and will be converted to
-				the appropriate unconstrained space based on config.parameter_transform.
-			**kwargs: Additional arguments passed to AbstractKernel (e.g., computation_engine)
-
-		Raises:
-			ValueError: If length_scale is not positive
-		"""
-		# Assert length_scale is positive
-		length_scale = jnp.array(length_scale)
-		length_scale = eqx.error_if(length_scale, jnp.any(length_scale <= 0), "length_scale must be positive.")
-
-		# Initialize parent (marks kernels as instantiated, locks config)
-		super().__init__(**kwargs)
-
-		# Transform to unconstrained space
-		self._raw_length_scale = to_unconstrained(jnp.asarray(length_scale))
+	engine: AbstractEngine = eqx.field(static=True)
+	_distance_function: Callable = eqx.field(static=True)
+	_length_scale_parametrisation: AbstractParametrization = eqx.field(static=True)
+	_length_scale: Array = eqx.field(converter=jnp.asarray)
 
 	@property
-	def length_scale(self) -> Array:
-		"""
-		Get the length scale in constrained space (always positive).
+	def length_scale(self):
+		return self._length_scale_parameterisation.unwrap(self._length_scale)
 
-		This property applies the forward transformation to convert from the internal
-		unconstrained representation back to the constrained (positive) space.
+	def __init__(self,
+	             length_scale: float | Array,
+	             length_scale_parametrisation: AbstractParametrisation = LogExpParametrisation,
+	             distance_function: Callable = squared_euclidean_distance,
+	             engine: AbstractEngine = DenseEngine):
+		# Assert length_scale is positive
+		length_scale = jnp.asarray(length_scale)
+		length_scale = eqx.error_if(length_scale, jnp.any(length_scale <= 0),
+		                            "`length_scale` must be positive.")
 
-		Returns:
-			Length scale parameter (positive)
-		"""
-		return to_constrained(self._raw_length_scale)
+		self._distance_function = distance_function
+		self._length_scale_parametrization = length_scale_parametrisation
+		self._length_scale = self._length_scale_parametrisation.wrap(length_scale)
+		self.engine = engine
 
+	@filter_jit
+	def pairwise(self, x1: Array, x2: Array):
+		return jnp.exp(-0.5 * self._distance_function(x1, x2) / self.length_scale**2)
 
-class RBFKernel(SEKernel):
-	"""
-	Same as SEKernel
-	"""
+	def replace(self, length_scale: None|float|Array = None, **kwargs) -> SEKernel:
+		if length_scale is None:
+			return self  # No change to make
 
-	pass
+		return eqx.tree_at(
+			lambda k: k._length_scale,
+			self,
+			jnp.broadcast_to(
+				self._length_scale_parametrisation.wrap(jnp.asarray(length_scale)),
+				self._length_scale.shape)
+		)
+
+RBFKernel = SEKernel  # Equivalent
+

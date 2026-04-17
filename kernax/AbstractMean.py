@@ -1,40 +1,27 @@
 from __future__ import annotations
-
-from typing import ClassVar, Optional, Type
-
+from abc import abstractmethod
 import jax.numpy as jnp
+from jax import Array
 from equinox import filter_jit
-from jax import Array, vmap
-
-from .module import AbstractModule, StaticAbstractModule
+from .module import AbstractModule
 
 
 class AbstractMean(AbstractModule):
-	static_class: ClassVar[Optional[Type[StaticAbstractMean]]] = None
-
-	def __init__(self, **kwargs):
-		super().__init__(**kwargs)
-
 	@filter_jit
-	def __call__(self, x: Array) -> Array:
+	def __call__(self, x: Array, *args, **kwargs) -> Array:
 		x = jnp.atleast_1d(x)
 
-		assert self.static_class is not None, "static_class must be defined in subclass"
-
 		if jnp.ndim(x) == 1:
-			return self.static_class.scalar_mean(self, x)
+			return self.scalar_mean(self, x, *args, **kwargs)
 		elif jnp.ndim(x) == 2:
-			return self.static_class.vector_mean(self, x)
+			return self.vector_mean(self, x, *args, **kwargs)
 		else:
 			raise ValueError(
 				f"Invalid input dimensions: x has shape {x.shape}. "
 				"Expected 1D or 2D arrays as inputs."
 			)
 
-
-class StaticAbstractMean(StaticAbstractModule):
-	@classmethod
-	@filter_jit
+	@abstractmethod
 	def scalar_mean(cls, mean: AbstractMean, x: Array) -> Array:
 		"""
 		Compute the mean value for a single input vector.
@@ -43,7 +30,7 @@ class StaticAbstractMean(StaticAbstractModule):
 		:param x: 1D array
 		:return: scalar array
 		"""
-		return jnp.array(jnp.nan)  # To be overwritten in subclasses
+		raise NotImplementedError
 
 	@classmethod
 	@filter_jit

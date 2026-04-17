@@ -12,13 +12,10 @@ __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"
 
 # Import transformation utilities
-from . import transforms
-from .module import AbstractModule, StaticAbstractModule
-from .AbstractKernel import AbstractKernel, StaticAbstractKernel
-from .AbstractMean import AbstractMean, StaticAbstractMean
-
-# Import configuration system
-from .config import config
+from .parametrisations import AbstractParametrisation, LogExpParametrisation
+from .module import AbstractModule
+from .AbstractKernel import AbstractKernel
+from .AbstractMean import AbstractMean
 
 # Import dot-product kernels
 from .dotproduct import (
@@ -26,10 +23,6 @@ from .dotproduct import (
 	AffineKernel,
 	PolynomialKernel,
 	SigmoidKernel,
-	StaticLinearKernel,
-	StaticAffineKernel,
-	StaticPolynomialKernel,
-	StaticSigmoidKernel,
 )
 
 # Import operator modules
@@ -42,7 +35,6 @@ from .operators import (
 # Import other kernels
 from .other import (
 	ConstantKernel,
-	StaticConstantKernel,
 	VarianceKernel,
 	WhiteNoiseKernel,
 )
@@ -57,13 +49,6 @@ from .stationary import (
 	RBFKernel,
 	SEKernel,
 	FeatureKernel,
-	StaticMatern12Kernel,
-	StaticMatern32Kernel,
-	StaticMatern52Kernel,
-	StaticPeriodicKernel,
-	StaticRationalQuadraticKernel,
-	StaticSEKernel,
-	StaticFeatureKernel,
 )
 
 # Import wrapper modules/kernels
@@ -90,10 +75,6 @@ from .means import (
 	AffineMean,
 	ConstantMean,
 	LinearMean,
-	StaticAffineMean,
-	StaticConstantMean,
-	StaticLinearMean,
-	StaticZeroMean,
 	ZeroMean,
 )
 
@@ -103,45 +84,26 @@ __all__ = [
 	"__author__",
 	"__email__",
 	"__license__",
-	# Configuration
-	"config",
-	# Transformations
-	"transforms",
 	# Base classes
-	"StaticAbstractModule",
 	"AbstractModule",
-	"StaticAbstractKernel",
 	"AbstractKernel",
-	"StaticAbstractMean",
 	"AbstractMean",
 	# Base kernels
-	"StaticSEKernel",
 	"SEKernel",
 	"RBFKernel",
-	"StaticConstantKernel",
 	"ConstantKernel",
-	"StaticLinearKernel",
 	"LinearKernel",
-	"StaticAffineKernel",
 	"AffineKernel",
-	"StaticPeriodicKernel",
 	"PeriodicKernel",
-	"StaticRationalQuadraticKernel",
 	"RationalQuadraticKernel",
-	"StaticPolynomialKernel",
 	"PolynomialKernel",
-	"StaticSigmoidKernel",
 	"SigmoidKernel",
 	"VarianceKernel",
 	"WhiteNoiseKernel",
-	"StaticFeatureKernel",
 	"FeatureKernel",
 	# Matern family
-	"StaticMatern12Kernel",
 	"Matern12Kernel",
-	"StaticMatern32Kernel",
 	"Matern32Kernel",
-	"StaticMatern52Kernel",
 	"Matern52Kernel",
 	# Operator modules
 	"OperatorModule",
@@ -160,15 +122,14 @@ __all__ = [
 	# HP sampling
 	"sample_hps_from_uniform_priors",
 	"sample_hps_from_normal_priors",
+	# Parametrisations
+	"AbstractParametrisation",
+	"LogExpParametrisation",
 	# Mask utility
 	"create_mask",
 	# Mean functions
-	"StaticZeroMean",
 	"ZeroMean",
-	"StaticConstantMean",
 	"ConstantMean",
-	"StaticLinearMean",
 	"LinearMean",
-	"StaticAffineMean",
 	"AffineMean",
 ]

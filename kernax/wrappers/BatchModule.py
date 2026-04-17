@@ -1,13 +1,12 @@
-import equinox as eqx
+from jax import Array, vmap
 import jax.numpy as jnp
 import jax.tree_util as jtu
+import equinox as eqx
 from equinox import filter_jit
-from jax import Array, vmap
-
-from .WrapperModule import WrapperModule
+from .WrapperModule import AbstractWrapperModule
 
 
-class BatchModule(WrapperModule):
+class BatchModule(AbstractWrapperModule):
 	"""
 	Wrapper module to add batch handling to any module.
 
@@ -21,11 +20,17 @@ class BatchModule(WrapperModule):
 
 	This class uses vmap to vectorize the module computation over the batch dimension.
 	"""
+	inner: NewAbstractModule
 	batch_size: int = eqx.field(static=True)
 	batch_in_axes: bool = eqx.field(static=True)
-	batch_over_inputs: int | None = eqx.field(static=True)
+	batch_over_inputs: Optional[int] = eqx.field(static=True)
 
-	def __init__(self, inner, batch_size, batch_in_axes=None, batch_over_inputs=True, **kwargs):
+	@property
+	def can_use_vmap(self):
+		return not (self.batch_over_inputs is None and jtu.tree_all(
+			jtu.tree_map(lambda k: k is None, self.batch_in_axes)))
+
+	def __init__(self, inner, batch_size, batch_in_axes=None, batch_over_inputs=True):
 		"""
 		:param inner: the kernel to wrap, must be an instance of AbstractKernel
 		:param batch_size: the size of the batch (int)
@@ -37,8 +42,6 @@ class BatchModule(WrapperModule):
 											   leaves being either 0 (batched) or None (shared).
 		:param batch_over_inputs: whether to expect inputs of shape (B, N, I) (True) or (N, I) (False)
 		"""
-		# Initialize the WrapperKernel
-		super().__init__(inner=inner, **kwargs)
 		self.batch_size = batch_size
 
 		# Default: all array hyperparameters are shared (None for all array leaves)
@@ -56,80 +59,35 @@ class BatchModule(WrapperModule):
 		# Add batch dimension to parameters where batch_in_axes is 0
 		self.inner = jtu.tree_map(
 			lambda param, batch_in_ax: (
-				param if batch_in_ax is None else jnp.repeat(param[None, ...], batch_size, axis=0)
+				param if batch_in_ax is None else jnp.repeat(param[None, ...], batch_size,
+				                                             axis=0)
 			),
-			self.inner,
+			inner,
 			self.batch_in_axes,
 		)
 
 	@filter_jit
-	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
-		"""
-		Compute the kernel over batched inputs using vmap.
+	def __call__(self, x1: Array, x2: Optional[Array], *args, **kwargs) -> Array:
+		if x2 is None:
+			x2 = x1
 
-		Args:
-				x1: Input of shape (B, ..., N, I)
-				x2: Optional second input of shape (B, ..., M, I)
+		if self.can_use_vmap:
+			return vmap(
+				lambda module, x1, x2: module(x1, x2, *args, **kwargs),
+				in_axes=(self.batch_in_axes, self.batch_over_inputs, self.batch_over_inputs)
+			)(self.inner, x1, x2)
 
-		Returns:
-				Kernel matrix of appropriate shape with batch dimension
-		"""
-		# Check if we can use vmap (at least one axis is not None)
-		can_use_vmap = (
-			not jtu.tree_all(jtu.tree_map(lambda k: k is None, self.batch_in_axes))
-			or self.batch_over_inputs is not None
+		# We can't use vmap
+		if self.batch_size == 1:
+			return self.inner.engine(x1, x2, *args, **kwargs)[
+				None, ...]  # Add batch dimension
+
+		# We can't use vmap but have to repeat cov n times
+		return jnp.repeat(
+			self.inner.engine(x1, x2, *args, **kwargs)[None, ...],
+			self.batch_size,
+			axis=0
 		)
-
-		if can_use_vmap:
-			# Use vmap when we have batched hyperparameters or batched inputs
-
-			# As inner can either be a Mean or a Kernel, we need to check if x2 is None to call the right function signature in vmap
-			if x2 is None:
-				return vmap(  # type: ignore[no-any-return]
-					lambda module, x1: module(x1),
-				in_axes=(
-					self.batch_in_axes,
-					self.batch_over_inputs))(self.inner, x1)
-			else:
-				return vmap(  # type: ignore[no-any-return]
-					lambda module, x1, x2: module(x1, x2),
-					in_axes=(
-						self.batch_in_axes,
-						self.batch_over_inputs,
-						self.batch_over_inputs,
-					))(self.inner, x1, x2)
-		else:
-			if self.batch_size == 1:
-				if x2 is None:
-					return self.inner(x1)[None, ...]  # Add batch dimension
-
-				# If batch size is 1, we can just call the inner kernel without repeating
-				return self.inner(x1, x2)[None, ...]  # Add batch dimension
-
-			# Repeat the same matrix when all hyperparameters and inputs are shared
-			if x2 is None:
-				return jnp.repeat(
-					jnp.expand_dims(self.inner(x1), 0),
-					self.batch_size,
-					axis=0
-				)
-			return jnp.repeat(
-				jnp.expand_dims(self.inner(x1, x2), 0),
-				self.batch_size,
-				axis=0
-			)
-
-	def replace(self, **kwargs):
-		_STATIC_FIELDS = {"batch_size", "batch_in_axes", "batch_over_inputs"}
-		illegal = _STATIC_FIELDS & kwargs.keys()
-		if illegal:
-			names = ", ".join(f"'{f}'" for f in sorted(illegal))
-			raise ValueError(
-				f"{names} {'is' if len(illegal) == 1 else 'are'} structural "
-				f"parameter(s) of BatchModule and cannot be modified via replace(). "
-				f"Create a new BatchModule with the desired configuration."
-			)
-		return super().replace(**kwargs)
 
 	def __str__(self):
 		# just str of the inner kernel, as the batch info is in the parameters of the inner kernel

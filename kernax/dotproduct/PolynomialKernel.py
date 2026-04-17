@@ -1,45 +1,33 @@
+from __future__ import annotations
 import equinox as eqx
 from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
-
-from ..AbstractKernel import AbstractKernel
-from .DotProductKernel import StaticDotProductKernel
-
-
-class StaticPolynomialKernel(StaticDotProductKernel):
-	@classmethod
-	@filter_jit
-	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
-		"""
-		Compute the polynomial kernel covariance value between two vectors.
-
-		:param kern: kernel instance containing the hyperparameters
-		:param x1: scalar array
-		:param x2: scalar array
-		:return: scalar array
-		"""
-		kern = eqx.combine(kern)
-		dp = cls.distance_func(x1, x2)
-		return jnp.pow(kern.gamma * dp + kern.constant, kern.degree)  # type: ignore[attr-defined]
+from .DotProductKernel import AbstractDotProductKernel
+from ...engines import AbstractEngine, DenseEngine
+from ...parametrisations import AbstractParametrisation, LogExpParametrisation
+from ...distances import dot_product
 
 
-class PolynomialKernel(AbstractKernel):
-	"""
-	Polynomial Kernel
-
-	Parameter gamma is always positive.
-	Parameter constant can be any real value.
-	Parameter degree is a static integer.
-	"""
-
+class PolynomialKernel(AbstractDotProductKernel):
+	engine: AbstractEngine = eqx.field(static=True)
+	_distance_function: Callable = eqx.field(static=True)
 	degree: int = eqx.field(static=True)
-	_raw_gamma: Array = eqx.field(converter=jnp.asarray)
+	_gamma_parametrisation: AbstractParametrisation = eqx.field(static=True)
+	_gamma: Array = eqx.field(converter=jnp.asarray)
 	constant: Array = eqx.field(converter=jnp.asarray)
 
-	static_class = StaticPolynomialKernel
+	@property
+	def gamma(self) -> Array:
+		return self._gamma_parametrisation.unwrap(self._gamma)
 
-	def __init__(self, degree: int, gamma: float = 1.0, constant: float = 0.0, **kwargs):
+	def __init__(self,
+	             degree: int,
+	             gamma: float|Array,
+	             constant: float|Array,
+	             gamma_parametrisation: AbstractParametrisation = LogExpParametrisation,
+	             distance_function: Callable = dot_product,
+	             engine: AbstractEngine = DenseEngine):
 		"""
 		Initialize the Polynomial kernel.
 
@@ -51,31 +39,58 @@ class PolynomialKernel(AbstractKernel):
 		Raises:
 			ValueError: If degree is not positive or gamma is not positive
 		"""
-		# Validate degree
-		if degree <= 0:
-			raise ValueError(f"degree must be a positive integer, got {degree}")
+		# Assert gamma is positive
+		assert jnp.all(jnp.asarray(gamma) > 0).item(),  "`gamma` must be non-negative."
 
-		# Validate gamma positivity
-		gamma_array = jnp.array(gamma)
-		gamma_array = eqx.error_if(gamma_array, jnp.any(gamma_array <= 0), "gamma must be positive.")
-
-		# Initialize parent (locks config)
-		super().__init__(**kwargs)
-
-		# Set static degree
+		self._distance_function = distance_function
 		self.degree = degree
+		self._gamma_parametrisation = gamma_parametrisation
+		self._gamma = self._gamma_parametrisation.wrap(gamma)
+		self.constant = constant
+		self.engine = engine
 
-		# Transform gamma to unconstrained space
-		from ..transforms import to_unconstrained
 
-		self._raw_gamma = to_unconstrained(jnp.asarray(gamma_array))
+	@filter_jit
+	def pairwise(self, x1: Array, x2: Array) -> Array:
+		"""
+		Compute the polynomial kernel covariance value between two vectors.
 
-		# constant can be any value, no transformation needed
-		self.constant = jnp.asarray(constant)
+		:param x1: scalar array
+		:param x2: scalar array
+		:return: scalar array
+		"""
+		return jnp.pow(self.gamma * self._distance_function(x1, x2) + self.constant, self.degree)
 
-	@property
-	def gamma(self) -> Array:
-		"""Get the gamma parameter in constrained space (always positive)."""
-		from ..transforms import to_constrained
+	def replace(self,
+	            degree: None | int = None,
+	            gamma: None | float | Array = None,
+	            constant: None | float | Array = None,
+	            **kwargs) -> PolynomialKernel:
+		new_kernel = self
 
-		return to_constrained(self._raw_gamma)
+		if degree is not None:
+			new_kernel = eqx.tree_at(
+				lambda k: k.degree,
+				new_kernel,
+				degree
+			)
+
+		if gamma is not None:
+			new_kernel = eqx.tree_at(
+				lambda k: k.gamma,
+				new_kernel,
+				jnp.broadcast_to(
+					self._gamma_parametrisation.wrap(jnp.asarray(gamma)),
+					self.gamma.shape),
+			)
+
+		if constant is not None:
+			new_kernel = eqx.tree_at(
+				lambda k: k.constant,
+				new_kernel,
+				jnp.broadcast_to(
+					jnp.asarray(constant),
+					self.constant.shape),
+			)
+
+		return new_kernel

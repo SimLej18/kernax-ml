@@ -1,14 +1,13 @@
+from typing import Callable
+import equinox as eqx
+from jax import Array
+from ..AbstractKernel import AbstractKernel
 
-from ..AbstractKernel import StaticAbstractKernel
-from ..distances import dot_product
 
-
-class StaticDotProductKernel(StaticAbstractKernel):
+class AbstractDotProductKernel(AbstractKernel):
 	"""
 	Super-class for every kernel that uses the dot product between input vectors.
 
 	This allows to change the distance function used in child classes.
-	The default metric is the dot product.
 	"""
-
-	distance_func = dot_product
+	distance_func = eqx.AbstractVar[Callable[[Array, Array], Array]]

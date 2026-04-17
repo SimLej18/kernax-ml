@@ -10,6 +10,7 @@ from jax import Array
 
 
 def create_mask(module: eqx.Module, default=None, **kwargs) -> eqx.Module:
+	# FIXME: create_mask doesn't work on BatchModules
 	"""
 	Return a copy of `module` with the same pytree structure, where Array fields are
 	replaced by mask values instead of their original JAX arrays.
