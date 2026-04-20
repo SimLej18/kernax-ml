@@ -24,23 +24,19 @@ pip install -e .
 
 ### Code Style
 
-We use several tools to maintain code quality:
+We use the following tools to maintain code quality:
 
-- **Black** for code formatting
-- **isort** for import sorting
-- **flake8** for linting
+- **ruff** for code formatting and linting
 - **mypy** for type checking
 
-Run all formatters:
+Format code:
 ```bash
-black kernax tests
-isort kernax tests
+make format
 ```
 
 Check code quality:
 ```bash
-flake8 kernax tests
-mypy kernax
+make lint
 ```
 
 ### Testing
@@ -59,42 +55,68 @@ pytest --cov=kernax --cov-report=html
 
 To add a new kernel type:
 
-1. Create a new file in the `kernax/` directory (e.g., `NewKernel.py`)
+1. Create a new file in the appropriate `kernax/` subdirectory (e.g., `kernax/stationary/MyKernel.py`)
 
-2. Implement the static class:
+2. Implement the kernel class:
 ```python
-from functools import partial
-from jax import jit
+from __future__ import annotations
+import equinox as eqx
+from equinox import filter_jit
+from jax import Array
 import jax.numpy as jnp
-from kernax import StaticAbstractKernel
+from .StationaryKernel import AbstractStationaryKernel  # or AbstractKernel
+from ..engines import AbstractEngine, DenseEngine
+from ..parametrisations import AbstractParametrisation, LogExpParametrisation
 
-class StaticNewKernel(StaticAbstractKernel):
-    @classmethod
-    @partial(jit, static_argnums=(0,))
-    def pairwise_cov(cls, kern, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
-        # Implement your kernel computation here
-        pass
+
+class MyKernel(AbstractStationaryKernel):
+    engine: AbstractEngine = eqx.field(static=True)
+    _my_param_parametrisation: AbstractParametrisation = eqx.field()
+    _my_param: Array = eqx.field(converter=jnp.asarray)  # param that needs parametrisation
+    other_param: Array = eqx.field(converter=jnp.asarray)  # param that doesn't need parametrisation
+
+    @property
+    def my_param(self) -> Array:
+        return self._my_param_parametrisation.unwrap(self._my_param)
+
+    def __init__(self, my_param: float | Array,
+                 other_param: float | Array,
+                 my_param_parametrisation: AbstractParametrisation = LogExpParametrisation(),
+                 engine: AbstractEngine = DenseEngine):
+        my_param = jnp.asarray(my_param)
+        self._my_param_parametrisation = my_param_parametrisation
+        self._my_param = self._my_param_parametrisation.wrap(my_param)
+        self.other_param = other_param  # We can assign/access it directly, as there is no parametrisation
+        self.engine = engine
+
+    @filter_jit
+    def pairwise(self, x1: Array, x2: Array) -> Array:
+        return ...  # implement computation
+
+    def replace(self, 
+                my_param: None | float | Array = None, 
+                other_param: None | float | Array = None,
+                **kwargs) -> MyKernel:
+        new_kernel = self
+        
+        if my_param is not None:
+            new_kernel =  eqx.tree_at(
+                lambda k: k._my_param,
+                new_kernel,
+                new_kernel._my_param_parametrisation.wrap(jnp.asarray(my_param)))
+        if other_param is not None:
+            new_kernel = eqx.tree_at(
+                lambda k: k.other_param,  # Assign directly
+                new_kernel,
+                jnp.asarray(other_param)  # No parametrisation
+            )
+            
+        return new_kernel
 ```
 
-3. Implement the instance class:
-```python
-from jax.tree_util import register_pytree_node_class
-from kernax import AbstractKernel
+3. Export from the subdirectory's `__init__.py` and from `kernax/__init__.py`
 
-@register_pytree_node_class
-class NewKernel(AbstractKernel):
-    def __init__(self, hyperparam1=None, hyperparam2=None):
-        super().__init__(hyperparam1=hyperparam1, hyperparam2=hyperparam2)
-        self.static_class = StaticNewKernel
-```
-
-4. Add imports to `kernax/__init__.py`
-
-5. Write tests in `tests/test_base_kernels.py` or a new test file
-
-6. Update documentation
-
-See [CLAUDE.md](CLAUDE.md) for detailed architecture guidelines.
+4. Write tests in the appropriate test files
 
 ## Pull Request Process
 

@@ -57,7 +57,7 @@ pip install -e .
 
 ```python
 import jax.numpy as jnp
-from kernax import SEKernel, LinearKernel, WhiteNoiseKernel, ExpKernel, BatchKernel, ARDKernel
+from kernax import SEKernel, LinearKernel, WhiteNoiseKernel, ExpModule, BatchModule, ARDKernel
 
 # Create a simple Squared Exponential kernel
 kernel = SEKernel(length_scale=1.0)
@@ -76,7 +76,7 @@ composite_kernel = SEKernel(length_scale=1.0) + WhiteNoiseKernel(0.1)  # SE + no
 
 # Use BatchKernel for distinct hyperparameters per batch
 base_kernel = SEKernel(length_scale=1.0)
-batched_kernel = BatchKernel(base_kernel, batch_size=10, batch_in_axes=0, batch_over_inputs=True)
+batched_kernel = BatchModule(base_kernel, batch_size=10, batch_in_axes=0, batch_over_inputs=True)
 
 # Use ARDKernel for Automatic Relevance Determination
 length_scales = jnp.array([1.0, 2.0, 0.5])  # Different scale per dimension
@@ -119,53 +119,48 @@ ard_kernel = ARDKernel(SEKernel(length_scale=1.0), length_scales=length_scales)
   - Implemented as `ConstantKernel` with `SafeDiagonalEngine`
   - Hyperparameters: `noise`
 
-### Composite Kernels
+### Composite Modules
 
-- **`SumKernel`**: Adds two kernels (use `kernel1 + kernel2`)
-- **`ProductKernel`**: Multiplies two kernels (use `kernel1 * kernel2`)
+- **`SumModule`**: Adds two modules (use `kernel1 + kernel2`)
+- **`ProductModule`**: Multiplies two modules (use `kernel1 * kernel2`)
 
-### Wrapper Kernels
+### Wrapper Modules
 
 Transform or modify kernel behavior:
 
-- **`ExpKernel`**: Applies exponential to kernel output
-- **`LogKernel`**: Applies logarithm to kernel output
-- **`NegKernel`**: Negates kernel output (use `-kernel`)
-- **`BatchKernel`**: Adds batch handling with distinct hyperparameters per batch
+- **`ExpModule`**: Applies exponential to kernel output
+- **`LogModule`**: Applies logarithm to kernel output
+- **`NegModule`**: Negates kernel output (use `-kernel`)
+- **`BatchModule`**: Adds batch handling with distinct hyperparameters per batch
 - **`BlockKernel`**: Constructs block covariance matrices for grouped data
-- **`ActiveDimsKernel`**: Selects specific input dimensions before kernel computation
+- **`ActiveDimsModule`**: Selects specific input dimensions before kernel computation
 - **`ARDKernel`**: Applies Automatic Relevance Determination (different length scale per dimension)
 
 ### Computation Engines
 
-Computation engines control how covariance matrices are computed. All kernels accept a `computation_engine` parameter:
+Computation engines control how covariance matrices are computed. All kernels accept an `engine` parameter:
 
 - **`DenseEngine`** (default): Computes full covariance matrices
-- **`SafeDiagonalEngine`**: Returns diagonal matrices (uses conditional check for input equality)
-- **`FastDiagonalEngine`**: Returns diagonal matrices (assumes x1 == x2, faster but requires constraint)
-- **`SafeRegularGridEngine`**: Exploits regular grid structure with runtime checks
-- **`FastRegularGridEngine`**: Exploits regular grid structure without checks (faster but requires constraint)
+- **`NaNDenseEngine`**: applies a shortcut to skip computing NaN vectors
+- **`NoJitDenseEngine`**: skips useless sub-function calls to go faster when jit compilation is not available
 
 Example:
 ```python
 from kernax import SEKernel
-from kernax.engines import SafeDiagonalEngine, FastRegularGridEngine
+from kernax.engines import NaNDenseEngine, NoJitDenseEngine
 
 # Diagonal computation
-diagonal_kernel = SEKernel(length_scale=1.0, computation_engine=SafeDiagonalEngine)
+diagonal_kernel = SEKernel(length_scale=1.0, engine=NaNDenseEngine)
 
 # Regular grid optimization
-grid_kernel = SEKernel(length_scale=1.0, computation_engine=FastRegularGridEngine)
+grid_kernel = SEKernel(length_scale=1.0, engine=NoJitDenseEngine)
 ```
 
 ## Architecture
 
 Kernax is built on [Equinox](https://github.com/patrick-kidger/equinox), so they are compatible with every feature from JAX!
 
-Each kernel uses a dual-class pattern to separate state and structure:
-
-1. **Static Class** (e.g., `StaticSEKernel`): Contains JIT-compiled computation logic
-2. **Instance Class** (e.g., `SEKernel`): Extends `eqx.Module`, holds hyperparameters
+Each kernel is a single class extending `AbstractKernel` (which extends `eqx.Module`). It implements `pairwise(self, x1, x2)` for scalar covariance computation, and delegates matrix construction to an interchangeable `engine`. Hyperparameters are stored in wrapped form and exposed via properties, with a per-hyperparameter `AbstractParametrisation` controlling their transformation during optimization.
 
 ## Testing & Quality
 
@@ -255,8 +250,8 @@ Check the [changelog](CHANGELOG.md) for details.
 - ActiveDimsKernel wrapper for dimension selection
 - BlockKernel for block-matrix covariances
 - StationaryKernel and DotProductKernel base classes with proper inheritance
-- Parameter transform system (identity, exp, softplus) for optimization stability
-- Parameter positivity constraints with config-based transformation
+- Per-hyperparameter parametrisation system (LogExp, Softplus, Bounded, NonTrainable)
+- Parameter freezing either via `NonTrainableParametrisation` or via masking and using eqx.partition+eqx.combine
 - Computation engines for special cases (diagonal, regular grids)
 - Comprehensive test suite (94% coverage)
 - Benchmark architecture
@@ -264,8 +259,6 @@ Check the [changelog](CHANGELOG.md) for details.
 
 ### 🚧 In Progress / Planned
 
-- Parameter freezing for optimisation
-- Comprehensive benchmarks with multiple kernels and input scenarios
 - Expanded documentation and tutorials
 
 ## Contributing

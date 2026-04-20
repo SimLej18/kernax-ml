@@ -4,70 +4,54 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Kernax is a JAX-based kernel library for Gaussian Processes, implementing various covariance functions with automatic differentiation and JIT compilation support. The library is built on Equinox and follows a dual-class architecture pattern that separates static computation methods from instance-based kernel objects.
+Kernax is a JAX-based kernel library for Gaussian Processes, implementing various covariance functions with automatic differentiation and JIT compilation support. The library is built on Equinox and follows a single-class abstract-final pattern, with per-hyperparameter customizable parametrisation.
 
 ## Architecture
 
-### Dual-Class Pattern
+### Single-Class Pattern
 
-Each kernel type follows a consistent pattern with two classes:
+Each kernel is a single class extending `AbstractKernel` (or a subclass like `AbstractStationaryKernel`):
 
-1. **Static Class** (e.g., `StaticSEKernel`): Inherits from `StaticAbstractKernel`
-   - Contains static `@classmethod` implementations decorated with `@filter_jit` (Equinox's JIT)
-   - Implements `pairwise_cov(cls, kern, x1, x2)` for scalar-to-scalar covariance computation
-   - All computation logic lives here for JIT optimization
-
-2. **Instance Class** (e.g., `SEKernel`): Inherits from `AbstractKernel` (which extends `eqx.Module`)
-   - Automatically registered as PyTree through Equinox Module system
-   - Holds hyperparameters as instance attributes with `eqx.field` (e.g., `length_scale`)
-   - Sets `static_class` as class attribute pointing to corresponding static class
-   - Hyperparameters automatically converted to JAX arrays via Equinox converters
+- Stores hyperparameters in **wrapped form** via private fields (e.g., `_length_scale`) with `@property` accessors that unwrap them
+- Each hyperparameter has its own **`AbstractParametrisation`** (default: `LogExpParametrisation`) controlling its transformation during optimization
+- Implements `pairwise(self, x1, x2)` as an instance method decorated with `@filter_jit`
+- Implements `replace(**kwargs)` for immutable parameter updates via `eqx.tree_at()`
+- Holds `engine` as a static field (default: `DenseEngine`) controlling matrix construction
 
 ### AbstractKernel Base Class
 
-The `AbstractKernel` class (kernax/AbstractKernel.py:10-63) extends `eqx.Module` and provides:
+`AbstractKernel` (kernax/AbstractKernel.py) extends `AbstractModule` (which extends `eqx.Module`) and provides:
 
-- **Equinox Module integration**: Inherits from `eqx.Module` for automatic PyTree registration and clean gradient computation
+- **Abstract interface**: Declares `pairwise(self, x1, x2)` and `replace(self, ...)` as abstract methods
+- **`__call__`**: Delegates to `self.engine.__call__()`, which handles dimension detection, vectorization, and NaN handling
+- **Operator overloading**: `+`, `*`, `-` operators create `SumModule`, `ProductModule`, `NegModule` respectively (defined in `AbstractModule`)
 
-- **Automatic dimension handling** via `__call__`: Detects input dimensions and dispatches to appropriate computation method
-  - 1D x 1D → `pairwise_cov_if_not_nan` (scalar output)
-  - 2D x 1D → `cross_cov_vector_if_not_nan` (vector output)
-  - 2D x 2D → `cross_cov_matrix` (matrix output)
-
-- **NaN handling**: `pairwise_cov_if_not_nan` and `cross_cov_vector_if_not_nan` methods check for NaN inputs
-
-- **Vectorization**: Uses `vmap` to efficiently build up from scalar operations to vector/matrix operations
-
-- **Operator overloading**: Supports `+`, `*`, and `-` operators to create composite kernels
-  - `kernel1 + kernel2` → `SumKernel(kernel1, kernel2)`
-  - `kernel1 * kernel2` → `ProductKernel(kernel1, kernel2)`
-  - `-kernel` → `NegKernel(kernel)`
+Subclass hierarchy:
+- `AbstractStationaryKernel`: adds `distance_function` static field
+- `AbstractDotProductKernel`: for dot-product-based kernels
 
 ### Kernel Categories
 
-1. **Base Kernels** (implement `pairwise_cov` in static class):
+1. **Base Kernels** (implement `pairwise` as instance method):
    - SE (Squared Exponential, aka RBF or Gaussian)
-   - Linear
+   - Linear, Affine, Polynomial, Sigmoid
    - Matern (1/2, 3/2, 5/2)
-   - Periodic
-   - Rational Quadratic
-   - Constant
+   - Periodic, Rational Quadratic
+   - Constant, Variance, Feature, WhiteNoise
 
-2. **Operator Kernels** (kernax/OperatorKernels.py): Combine two kernels
-   - `SumKernel`: Adds outputs of two kernels
-   - `ProductKernel`: Multiplies outputs of two kernels
-   - Both auto-convert non-kernel arguments to `ConstantKernel`
+2. **Operator Modules** (kernax/operators/): Combine two modules
+   - `SumModule`: Adds outputs of two modules
+   - `ProductModule`: Multiplies outputs of two modules
 
-3. **Wrapper Kernels** (kernax/WrapperKernels.py): Transform or modify kernel behavior
-   - `ExpKernel`: Applies exponential
-   - `LogKernel`: Applies logarithm
-   - `NegKernel`: Negates output
-   - `BatchKernel`: Adds batch handling with distinct hyperparameters per batch element
-   - `BlockKernel`: Constructs block covariance matrices for grouped data with optional block structure over inputs/hyperparameters
-   - `BlockDiagKernel`: Creates block-diagonal covariance matrices, specialized version of BlockKernel for diagonal block structure
-   - `ActiveDimsKernel`: Selects specific input dimensions before kernel computation
+3. **Wrapper Modules** (kernax/wrappers/): Transform or modify kernel behavior
+   - `ExpModule`: Applies exponential
+   - `LogModule`: Applies logarithm
+   - `NegModule`: Negates output
+   - `BatchModule`: Adds batch handling with distinct hyperparameters per batch element
+   - `BlockKernel`: Constructs block covariance matrices for grouped data
+   - `BlockDiagKernel`: Block-diagonal covariance matrices, specialized version of BlockKernel
+   - `ActiveDimsModule`: Selects specific input dimensions before kernel computation
    - `ARDKernel`: Applies Automatic Relevance Determination (different length scale per dimension)
-   - Transform wrappers auto-convert non-kernel arguments to `ConstantKernel`
 
 4. **Computation Engines** (kernax/engines.py): Control how covariance matrices are computed
    - `DenseEngine` (default): Computes full covariance matrices
@@ -75,7 +59,7 @@ The `AbstractKernel` class (kernax/AbstractKernel.py:10-63) extends `eqx.Module`
    - `FastDiagonalEngine`: Returns diagonal matrices (assumes x1 == x2, faster but requires constraint)
    - `SafeRegularGridEngine`: Exploits regular grid structure with runtime checks
    - `FastRegularGridEngine`: Exploits regular grid structure without checks (faster but requires constraint)
-   - All kernels accept a `computation_engine` parameter for specialized computation patterns
+   - All kernels accept an `engine` parameter for specialized computation patterns
 
 ## Development Commands
 
@@ -188,49 +172,71 @@ When the user asks to "upgrade the project to version X.Y.Z" or "prepare for rel
 ### Version History Reference
 
 Check `CHANGELOG.md` for full version history. Recent versions:
+- **v0.5.5-alpha** (2026-04-20): Architectural rewrite — single-class abstract-final pattern, per-HP parametrisation, mean functions
 - **v0.4.4-alpha** (2026-02-06): Kernel modification API, VarianceKernel, printing improvements
 - **v0.4.3-alpha** (2026-02-05): Initial kernel modification support
 - **v0.4.2-alpha** (2026-02-03): FeatureKernel, BlockKernel API refactoring
 - **v0.4.1-alpha** (2026-02-02): Computation engine fixes, DiagKernel removal
 - **v0.4.0-alpha** (2025-01-31): Parameter transform system
-- **v0.3.1-alpha** (2025-01-30): BatchKernel and BlockKernel fixes
-- **v0.3.0-alpha** (2025-01-28): Benchmark infrastructure
 
 ## Implementation Guidelines
 
 ### Adding a New Kernel
 
-1. Create static class inheriting from `StaticAbstractKernel`
-2. Implement `pairwise_cov(cls, kern, x1, x2)` as a `@classmethod` with `@filter_jit` decorator
-3. Create instance class inheriting from `AbstractKernel` (which extends `eqx.Module`)
-4. Define hyperparameters as class attributes using `eqx.field(converter=jnp.asarray)` for automatic array conversion
-5. Set `static_class` as a class attribute pointing to the static class
-6. In `__init__`, call `super().__init__()` then set hyperparameter values
-7. Add both classes to `__init__.py` imports and `__all__`
+1. Create a class inheriting from `AbstractKernel` (or `AbstractStationaryKernel` for distance-based kernels)
+2. Declare fields: `engine` (static), `_param_parametrisation`, `_param` (with `converter=jnp.asarray`)
+3. Add a `@property` to unwrap each hyperparameter via its parametrisation
+4. Implement `__init__`: validate inputs, wrap hyperparameters via `parametrisation.wrap()`
+5. Implement `pairwise(self, x1, x2)` with `@filter_jit`
+6. Implement `replace(**kwargs)` using `eqx.tree_at()` on the wrapped field
+7. Add the class to `__init__.py` imports and `__all__`
 
 Example:
 ```python
-from equinox import filter_jit
+from __future__ import annotations
 import equinox as eqx
+from equinox import filter_jit
 from jax import Array
 import jax.numpy as jnp
-from kernax import StaticAbstractKernel, AbstractKernel
+from .AbstractKernel import AbstractKernel
+from .engines import AbstractEngine, DenseEngine
+from .parametrisations import AbstractParametrisation, LogExpParametrisation
 
-class StaticMyKernel(StaticAbstractKernel):
-    @classmethod
+
+class MyKernel(AbstractKernel):
+    engine: AbstractEngine = eqx.field(static=True)
+    _my_param_parametrisation: AbstractParametrisation = eqx.field()
+    _my_param: Array = eqx.field(converter=jnp.asarray)
+
+    @property
+    def my_param(self) -> Array:
+        return self._my_param_parametrisation.unwrap(self._my_param)
+
+    def __init__(self,
+                 my_param: float | Array,
+                 my_param_parametrisation: AbstractParametrisation = LogExpParametrisation(),
+                 engine: AbstractEngine = DenseEngine):
+        my_param = jnp.asarray(my_param)
+        if jnp.any(my_param <= 0):
+            raise ValueError("`my_param` must be positive.")
+        self._my_param_parametrisation = my_param_parametrisation
+        self._my_param = self._my_param_parametrisation.wrap(my_param)
+        self.engine = engine
+
     @filter_jit
-    def pairwise_cov(cls, kern: AbstractKernel, x1: jnp.ndarray, x2: jnp.ndarray) -> jnp.ndarray:
-        kern = eqx.combine(kern)  # If needed to access hyperparameters
+    def pairwise(self, x1: Array, x2: Array) -> Array:
         # Implement kernel computation
         return ...
 
-class MyKernel(AbstractKernel):
-    my_param: Array = eqx.field(converter=jnp.asarray)
-    static_class = StaticMyKernel
-
-    def __init__(self, my_param):
-        super().__init__()
-        self.my_param = my_param
+    def replace(self, my_param: None | float | Array = None, **kwargs) -> MyKernel:
+        if my_param is None:
+            return self
+        my_param = jnp.asarray(my_param)
+        return eqx.tree_at(
+            lambda k: k._my_param,
+            self,
+            self._my_param_parametrisation.wrap(my_param)
+        )
 ```
 
 ### Import Patterns
