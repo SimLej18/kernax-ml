@@ -41,13 +41,11 @@ def _recurse(module: eqx.Module, masks: dict, default) -> eqx.Module:
 	fields, values = [], []
 
 	for field_name, field_value in vars(module).items():
-		hp_name = field_name[5:] if field_name.startswith("_raw_") else field_name
-
 		if isinstance(field_value, Array):
 			fields.append(field_name)
-			values.append(masks.get(hp_name, default))
+			values.append(masks.get(field_name, default))
 
-		elif isinstance(field_value, eqx.Module):
+		elif isinstance(field_value, eqx.Module) :
 			new_sub = _recurse(field_value, masks, default)
 			fields.append(field_name)
 			values.append(new_sub)
