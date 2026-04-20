@@ -1,15 +1,13 @@
 from __future__ import annotations
-
-from typing import Optional, Tuple
-
-import jax.numpy as jnp
-from equinox import error_if, field, filter_jit
+from typing import Tuple, Iterable
+import equinox as eqx
+from equinox import field, filter_jit
 from jax import Array
+from ..module import AbstractModule
+from .WrapperModule import AbstractWrapperModule
 
-from .WrapperModule import WrapperModule
 
-
-class ActiveDimsModule(WrapperModule):
+class ActiveDimsModule(AbstractWrapperModule):
 	"""
 	Wrapper module to select active dimensions from the inputs before passing them to the inner module.
 
@@ -20,23 +18,20 @@ class ActiveDimsModule(WrapperModule):
 
 	active_dims: Tuple[int, ...] = field(static=True)
 
-	def __init__(self, inner, active_dims: Tuple[int, ...], **kwargs):
-		super().__init__(inner=inner, **kwargs)
+	def __init__(self, inner: AbstractModule, active_dims: Iterable[int]):
+		self.inner = inner
 		self.active_dims = tuple(int(dim) for dim in active_dims)
 
-	def replace(self, **kwargs):
-		if "active_dims" in kwargs:
-			raise ValueError(
-				"'active_dims' is a structural parameter of ActiveDimsModule and cannot be "
-				"modified via replace(). Create a new ActiveDimsModule with the desired active_dims."
-			)
-		return super().replace(**kwargs)
-
 	@filter_jit
-	def __call__(self, x1: Array, x2: Optional[Array] = None) -> Array:
-		x1 = error_if(x1, jnp.any(jnp.array(self.active_dims) >= x1.shape[-1]),
-		              "active_dims contains indices out of bounds for x1.")
+	def __call__(self, x1: Array, x2: Array | None = None) -> Array:
+		assert x1.shape[-1] >= max(self.active_dims), "active_dims contains indices out of bounds for x1"
 
 		if x2 is None:
 			return self.inner(x1[..., self.active_dims])
 		return self.inner(x1[..., self.active_dims], x2[..., self.active_dims])
+
+	def replace(self, active_dims: Iterable[int] | None, **kwargs):
+		if active_dims is not None:
+			raise ValueError(
+				"`active_dims` is a static field and cannot be mutated for ActiveDimsModule. "
+				"Initialise a new module instance instead.")

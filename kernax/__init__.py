@@ -27,7 +27,7 @@ from .dotproduct import (
 
 # Import operator modules
 from .operators import (
-	OperatorModule,
+	AbstractOperatorModule,
 	ProductModule,
 	SumModule,
 )
@@ -36,7 +36,6 @@ from .operators import (
 from .other import (
 	ConstantKernel,
 	VarianceKernel,
-	WhiteNoiseKernel,
 )
 
 # Import stationary kernels
@@ -49,10 +48,12 @@ from .stationary import (
 	RBFKernel,
 	SEKernel,
 	FeatureKernel,
+	WhiteNoiseKernel,
 )
 
 # Import wrapper modules/kernels
 from .wrappers import (
+	AbstractWrapperModule,
 	ActiveDimsModule,
 	ARDKernel,
 	BatchModule,
@@ -61,14 +62,7 @@ from .wrappers import (
 	ExpModule,
 	LogModule,
 	NegModule,
-	WrapperModule,
 )
-
-# Import HP sampling utilities
-from .hp_sampling import sample_hps_from_uniform_priors, sample_hps_from_normal_priors
-
-# Import mask utility
-from .mask import create_mask
 
 # Import mean functions
 from .means import (
@@ -96,21 +90,21 @@ __all__ = [
 	"AffineKernel",
 	"PeriodicKernel",
 	"RationalQuadraticKernel",
+	"WhiteNoiseKernel",
 	"PolynomialKernel",
 	"SigmoidKernel",
 	"VarianceKernel",
-	"WhiteNoiseKernel",
 	"FeatureKernel",
 	# Matern family
 	"Matern12Kernel",
 	"Matern32Kernel",
 	"Matern52Kernel",
 	# Operator modules
-	"OperatorModule",
+	"AbstractOperatorModule",
 	"SumModule",
 	"ProductModule",
 	# Wrapper modules/kernels
-	"WrapperModule",
+	"AbstractWrapperModule",
 	"NegModule",
 	"ExpModule",
 	"LogModule",
@@ -119,14 +113,6 @@ __all__ = [
 	"BatchModule",
 	"BlockKernel",
 	"BlockDiagKernel",
-	# HP sampling
-	"sample_hps_from_uniform_priors",
-	"sample_hps_from_normal_priors",
-	# Parametrisations
-	"AbstractParametrisation",
-	"LogExpParametrisation",
-	# Mask utility
-	"create_mask",
 	# Mean functions
 	"ZeroMean",
 	"ConstantMean",

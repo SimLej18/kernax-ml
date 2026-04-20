@@ -18,7 +18,7 @@ def _to_constant(value, reference_module):
 		return ConstantKernel(value=value)
 
 
-class OperatorModule(AbstractModule):
+class AbstractOperatorModule(AbstractModule):
 	"""Base class for modules that apply an operation on the outputs of two sub-modules."""
 
 	left: AbstractModule = eqx.field()
@@ -34,32 +34,23 @@ class OperatorModule(AbstractModule):
 		self.left = left
 		self.right = right
 
-	def replace(self, **kwargs):
-		operator_kwargs = {}
-		param_kwargs = {}
+	def replace(self,
+	            left: AbstractModule | None = None,
+	            right: AbstractModule | None = None,
+	            **kwargs):
+		new_module = self
 
-		for k, v in kwargs.items():
-			if k in ["left", "right"]:
-				operator_kwargs[k] = v
-			else:
-				param_kwargs[k] = v
+		if left is not None:
+			# Still broadcast other params to new left
+			new_module = eqx.tree_at(lambda m: m.left, new_module, left.replace(**kwargs))
+		else:
+			# Only broadcast to current left module
+			new_module = eqx.tree_at(lambda m: m.left, new_module, new_module.left.replace(**kwargs))
 
-		result = self
+		if right is not None:
+			# Still broadcast other params to new right
+			new_module = eqx.tree_at(lambda m: m.right, new_module, right.replace(**kwargs))
+		else:
+			new_module = eqx.tree_at(lambda m: m.right, new_module, new_module.right.replace(**kwargs))
 
-		if operator_kwargs:
-			result = super().replace(**operator_kwargs)
-
-		if param_kwargs:
-			try:
-				new_left = result.left.replace(**param_kwargs)
-			except (AttributeError, TypeError):
-				new_left = result.left
-
-			try:
-				new_right = result.right.replace(**param_kwargs)
-			except (AttributeError, TypeError):
-				new_right = result.right
-
-			result = eqx.tree_at(lambda s: (s.left, s.right), result, (new_left, new_right))
-
-		return result
+		return new_module

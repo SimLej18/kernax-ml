@@ -1,6 +1,7 @@
 """ Defines distances/comparisons between input vectors, used in different families of kernels. """
 
 import jax.numpy as jnp
+import jax.lax as jlx
 from jax import Array, jit
 
 
@@ -158,3 +159,17 @@ def dot_product(x1: Array, x2: Array) -> Array:
 	:return: Dot Product between x1 and x2.
 	"""
 	return x1.T @ x2
+
+@jit
+def equality(x1: Array, x2: Array) -> Array:
+	"""
+	:param x1: First input vector.
+	:param x2: Second input vector.
+	:return: 1 if x1 and x2 are equal, 0 otherwise.
+	"""
+	return jlx.cond(
+		jnp.all(x1 == x2),
+		lambda _: jnp.asarray(1.),
+		lambda _: jnp.asarray(0.),
+		None
+	)

@@ -26,13 +26,13 @@ class DenseEngine(AbstractEngine):
 		x1, x2 = jnp.atleast_1d(x1), jnp.atleast_1d(x2)
 
 		# Call the appropriate method
-		if jnp.ndim(x1) == 1 and jnp.ndim(x2) == 1:
+		if x1.ndim == 1 and x2.ndim == 1:
 			return DenseEngine.pairwise(module, x1, x2)
-		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 1:
-			return DenseEngine.cross_cov_vector(module, x1, x2)
-		elif jnp.ndim(x1) == 1 and jnp.ndim(x2) == 2:
+		elif x1.ndim == 2 and x2.ndim == 1:
 			return DenseEngine.cross_cov_vector(module, x2, x1)
-		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 2:
+		elif x1.ndim == 1 and x2.ndim == 2:
+			return DenseEngine.cross_cov_vector(module, x1, x2)
+		elif x1.ndim == 2 and x2.ndim == 2:
 			return DenseEngine.cross_cov_matrix(module, x1, x2)
 		else:
 			raise ValueError(
@@ -73,9 +73,9 @@ class NaNDenseEngine(AbstractEngine):
 		if jnp.ndim(x1) == 1 and jnp.ndim(x2) == 1:
 			return NaNDenseEngine.pairwise_if_not_nan(module, x1, x2)
 		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 1:
-			return NaNDenseEngine.cross_cov_vector_if_not_nan(module, x1, x2)
-		elif jnp.ndim(x1) == 1 and jnp.ndim(x2) == 2:
 			return NaNDenseEngine.cross_cov_vector_if_not_nan(module, x2, x1)
+		elif jnp.ndim(x1) == 1 and jnp.ndim(x2) == 2:
+			return NaNDenseEngine.cross_cov_vector_if_not_nan(module, x1, x2)
 		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 2:
 			return NaNDenseEngine.cross_cov_matrix(module, x1, x2)
 		else:
@@ -128,7 +128,7 @@ class NoJitDenseEngine(AbstractEngine):
 		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 1:
 			return vmap(module.pairwise, in_axes=(0, None))(x1, x2)
 		elif jnp.ndim(x1) == 1 and jnp.ndim(x2) == 2:
-			return vmap(module.pairwise, in_axes=(0, None))(x2, x1)
+			return vmap(module.pairwise, in_axes=(None, 0))(x1, x2)
 		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 2:
 			return vmap(vmap(module.pairwise, in_axes=(None, 0)), in_axes=(0, None))(x1, x2)
 		else:

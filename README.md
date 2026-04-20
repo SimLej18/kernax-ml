@@ -36,7 +36,7 @@ cd kernax-ml
 ```
 
 **Requirements**:
-- Python >= 3.12
+- Python >= 3.10
 - JAX >= 0.6.2
 
 **Using Conda** (recommended):

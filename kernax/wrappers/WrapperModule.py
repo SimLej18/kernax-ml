@@ -7,6 +7,9 @@ class AbstractWrapperModule(AbstractModule):
 	"""Base class for modules that wrap another module and transform its output."""
 	inner: eqx.AbstractVar[AbstractModule]
 
-	def replace(self, **kwargs) -> AbstractWrapperModule:
+	def replace(self, inner: AbstractModule | None = None, **kwargs) -> AbstractWrapperModule:
+		if inner is not None:
+			return eqx.tree_at(lambda m: m.inner, self, inner.replace(**kwargs))  # Still broadcast other params to new inner
+
 		# Broadcast replace to inner module
-		return eqx.tree_at(lambda k: k.inner, self, self.inner.replace(**kwargs))
+		return eqx.tree_at(lambda m: m.inner, self, self.inner.replace(**kwargs))

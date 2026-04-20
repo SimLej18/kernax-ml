@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import Optional, Callable
 from abc import abstractmethod
 import equinox as eqx
 from equinox import filter_jit
@@ -16,8 +15,12 @@ class AbstractKernel(AbstractModule):
 		raise NotImplementedError
 
 	@filter_jit
-	def __call__(self, x1: Array, x2: Optional[Array] = None, *args, **kwargs) -> Array:
+	def __call__(self, x1: Array, x2: Array | None = None, *args, **kwargs) -> Array:
 		if x2 is None:
 			x2 = x1
 
 		return self.engine.__call__(self, x1, x2, *args, **kwargs)
+
+	@abstractmethod
+	def replace(self, x: Array) -> Array:
+		raise NotImplementedError

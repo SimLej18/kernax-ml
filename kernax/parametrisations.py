@@ -7,34 +7,81 @@ unconstrained spaces, enabling stable optimization of positive-constrained param
 
 from __future__ import annotations
 from abc import abstractmethod
+from typing import Iterable
+import jax.nn
 import jax.numpy as jnp
-from jax import Array, jit
+import jax.lax as jlx
+from jax import Array
 import equinox as eqx
+from equinox import filter_jit
 
 
 class AbstractParametrisation(eqx.Module):
-	@classmethod
 	@abstractmethod
-	def wrap(cls, param: Array) -> Array:
+	def wrap(self, param: Array) -> Array:
 		raise NotImplementedError
 
-	@classmethod
 	@abstractmethod
-	def unwrap(cls, param: Array) -> Array:
+	def unwrap(self, param: Array) -> Array:
 		raise NotImplementedError
+
+
+class ParametrisationChain(AbstractParametrisation):
+	parametrisations: Iterable[AbstractParametrisation]
+
+	@filter_jit
+	def wrap(self, param: Array) -> Array:
+		for parametrisation in self.parametrisations:
+			param = parametrisation.wrap(param)
+		return param
+
+	@filter_jit
+	def unwrap(self, param: Array) -> Array:
+		for parametrisation in reversed(self.parametrisations):
+			param = parametrisation.unwrap(param)
+		return param
+
+
+class NonTrainableParametrisation(AbstractParametrisation):
+	@filter_jit
+	def wrap(self, param: Array) -> Array:
+		return param
+
+	@filter_jit
+	def unwrap(self, param: Array) -> Array:
+		return jlx.stop_gradient(param)
 
 
 class LogExpParametrisation(AbstractParametrisation):
-	@staticmethod
-	@jit
-	def wrap(param: Array) -> Array:
+	@filter_jit
+	def wrap(self, param: Array) -> Array:
 		return jnp.log(param)  # From R+ to R
 
-	@staticmethod
-	@jit
-	def unwrap(param: Array) -> Array:
+	@filter_jit
+	def unwrap(self, param: Array) -> Array:
 		return jnp.exp(param)  # From R to R+
 
 
-# TODO: 1-logexp constraint
-# TODO: sigmoid constraint for border optimisation
+class SoftPlusParametrisation(AbstractParametrisation):
+	@filter_jit
+	def wrap(self, param: Array) -> Array:
+		return jnp.log(jnp.exp(param) - 1)  # From R+ to R
+
+	@filter_jit
+	def unwrap(self, param: Array) -> Array:
+		return jnp.log(1 + jnp.exp(param))  # From R to R+
+
+
+class BoundedParametrisation(AbstractParametrisation):
+	lower_bound: Array = eqx.field(converter=jnp.asarray)
+	upper_bound: Array = eqx.field(converter=jnp.asarray)
+
+	@filter_jit
+	def wrap(self, param: Array) -> Array:
+		# From (lower_bound, upper_bound) to R
+		return jax.scipy.special.logit((param - self.lower_bound) / (self.upper_bound - self.lower_bound))
+
+	@filter_jit
+	def unwrap(self, param: Array) -> Array:
+		# From R to (lower_bound, upper_bound)
+		return self.lower_bound + (self.upper_bound - self.lower_bound) * jax.nn.sigmoid(param)

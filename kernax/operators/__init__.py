@@ -1,5 +1,5 @@
-from .OperatorModule import OperatorModule
+from .AbstractOperatorModule import AbstractOperatorModule
 from .ProductModule import ProductModule
 from .SumModule import SumModule
 
-__all__ = ["OperatorModule", "SumModule", "ProductModule"]
+__all__ = ["AbstractOperatorModule", "SumModule", "ProductModule"]

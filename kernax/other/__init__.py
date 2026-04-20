@@ -1,12 +1,9 @@
 """Other kernel types."""
 
-from .ConstantKernel import ConstantKernel, StaticConstantKernel
+from .ConstantKernel import ConstantKernel
 from .VarianceKernel import VarianceKernel
-from .WhiteNoiseKernel import WhiteNoiseKernel
 
 __all__ = [
 	"ConstantKernel",
-	"StaticConstantKernel",
 	"VarianceKernel",
-	"WhiteNoiseKernel",
 ]

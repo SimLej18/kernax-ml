@@ -1,15 +1,11 @@
-from .AffineMean import AffineMean, StaticAffineMean
-from .ConstantMean import ConstantMean, StaticConstantMean
-from .LinearMean import LinearMean, StaticLinearMean
-from .ZeroMean import StaticZeroMean, ZeroMean
+from .AffineMean import AffineMean
+from .ConstantMean import ConstantMean
+from .LinearMean import LinearMean
+from .ZeroMean import ZeroMean
 
 __all__ = [
-	"StaticZeroMean",
 	"ZeroMean",
-	"StaticConstantMean",
 	"ConstantMean",
-	"StaticLinearMean",
 	"LinearMean",
-	"StaticAffineMean",
 	"AffineMean",
 ]

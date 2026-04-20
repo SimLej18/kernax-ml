@@ -1,24 +1,26 @@
 from __future__ import annotations
-
 import equinox as eqx
-import jax.numpy as jnp
 from equinox import filter_jit
+import jax.numpy as jnp
 from jax import Array
-
-from ..AbstractMean import AbstractMean, StaticAbstractMean
-
-
-class StaticConstantMean(StaticAbstractMean):
-	@classmethod
-	@filter_jit
-	def scalar_mean(cls, mean: AbstractMean, x: Array) -> Array:
-		return mean.constant
+from ..AbstractMean import AbstractMean
 
 
 class ConstantMean(AbstractMean):
 	constant: Array = eqx.field(converter=jnp.asarray)
-	static_class = StaticConstantMean
 
-	def __init__(self, constant=0.0, **kwargs):
-		super().__init__(**kwargs)
+	def __init__(self, constant: float | Array = 0.0):
 		self.constant = jnp.asarray(constant)
+
+	@filter_jit
+	def scalar_mean(self, x: Array) -> Array:
+		return self.constant
+
+	def replace(self, constant: None | float | Array = None, **kwargs) -> ConstantMean:
+		if constant is None:
+			return self
+		return eqx.tree_at(
+			lambda m: m.constant,
+			self,
+			jnp.broadcast_to(jnp.asarray(constant), self.constant.shape)
+		)

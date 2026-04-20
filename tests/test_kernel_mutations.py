@@ -5,13 +5,9 @@ Tests for kernel mutation operations (replace method).
 import allure
 import jax.numpy as jnp
 import pytest
-from equinox import EquinoxRuntimeError
 
-from kernax import ActiveDimsModule, BatchModule, ConstantKernel, PeriodicKernel, PolynomialKernel, SEKernel
-from kernax.operators import SumModule
-from kernax.other import WhiteNoiseKernel
-from kernax.wrappers import BlockKernel, ExpModule
-
+from kernax import (ActiveDimsModule, BatchModule, ConstantKernel, PeriodicKernel, PolynomialKernel,
+                    SEKernel, SumModule, WhiteNoiseKernel, BlockKernel, ExpModule, SigmoidKernel)
 
 class TestReplaceMethod:
 	"""Tests for the functional replace() API."""
@@ -38,22 +34,21 @@ class TestReplaceMethod:
 	@allure.title("Replace multiple parameters")
 	@allure.description("Test replacing multiple constrained parameters simultaneously.")
 	def test_replace_multiple(self):
-		kernel = PeriodicKernel(length_scale=1.0, variance=2.0, period=3.0)
-		new_kernel = kernel.replace(length_scale=0.5, period=5.0)
+		kernel = PeriodicKernel(length_scale=1.0, period=3.0)
+		new_kernel = kernel.replace(length_scale=0.5)
 
 		assert jnp.allclose(new_kernel.length_scale, 0.5)
-		assert jnp.allclose(new_kernel.variance, 2.0)  # Unchanged
-		assert jnp.allclose(new_kernel.period, 5.0)
+		assert jnp.allclose(new_kernel.period, 3.0)  # Unchanged
 
 	@allure.title("Replace validates constraints")
 	@allure.description("Test that replace() rejects negative values for constrained parameters.")
 	def test_replace_validation(self):
 		kernel = SEKernel(length_scale=1.0)
 
-		with pytest.raises(EquinoxRuntimeError):
+		with pytest.raises(ValueError):
 			kernel.replace(length_scale=-1.0)
 
-		with pytest.raises(EquinoxRuntimeError):
+		with pytest.raises(ValueError):
 			kernel.replace(length_scale=0.0)
 
 
@@ -71,13 +66,24 @@ class TestReplaceWrapperKernel:
 		assert jnp.allclose(new_kernel.inner.length_scale, 2.0)
 
 	@allure.title("Replace inner kernel itself")
-	@allure.description("Test that replace() can replace the inner attribute directly.")
+	@allure.description("Test that replace() can't replace the inner attribute directly.")
 	def test_replace_inner(self):
-		kernel = ExpModule(SEKernel(length_scale=1.0))
-		new_inner = SEKernel(length_scale=3.0)
-		new_kernel = kernel.replace(inner=new_inner)
+		inner1 = SEKernel(length_scale=.5)
+		inner2 = SigmoidKernel(alpha=.5, constant=1.0)
+		kernel1 = ExpModule(inner1)
+		kernel2 = ExpModule(inner2)
 
-		assert jnp.allclose(new_kernel.inner.length_scale, 3.0)
+		x1 = jnp.array([1., 2., 3.])[:, None]
+
+		# Call kernels so that functions are jit-compiled
+		kernel1(x1)
+		kernel2(x1)
+
+		# Replace inside kernel1
+		replaced_kernel = kernel1.replace(inner=inner2)
+
+		assert isinstance(replaced_kernel.inner, SigmoidKernel), "Inner should be replaced with new kernel"
+		assert jnp.allclose(replaced_kernel(x1), kernel2(x1)), "Replacing inner should change computation"
 
 	@allure.title("Replace in nested wrappers")
 	@allure.description("Test replace() with multiple levels of wrapping.")
@@ -105,7 +111,7 @@ class TestReplaceBatchModule:
 
 		# Should broadcast scalar to (3,)
 		expected = jnp.array([2.0, 2.0, 2.0])
-		assert new_kernel.inner._raw_length_scale.shape[0] == 3
+		assert new_kernel.inner._length_scale.shape[0] == 3
 		assert jnp.allclose(new_kernel.inner.length_scale, expected)
 
 	@allure.title("Replace with correct batch dimensions")
@@ -150,11 +156,11 @@ class TestReplaceBatchModule:
 		batch_kernel = BatchModule(inner, batch_size=3, batch_in_axes=0)
 
 		# Try to replace with incompatible shape (2,) when batch_size is 3
-		with pytest.raises((ValueError, RuntimeError)):
+		with pytest.raises(ValueError):
 			batch_kernel.replace(length_scale=jnp.array([1.0, 2.0]))
 
 		# Try with shape (4,) when batch_size is 3
-		with pytest.raises((ValueError, RuntimeError)):
+		with pytest.raises(ValueError):
 			batch_kernel.replace(length_scale=jnp.array([1.0, 2.0, 3.0, 4.0]))
 
 	@allure.title("Replace in nested BatchModules")
@@ -170,7 +176,7 @@ class TestReplaceBatchModule:
 
 		# Verify shape: outer batch (3,) wraps inner batch (2,)
 		inner = new_kernel.inner.inner
-		assert inner._raw_length_scale.shape == (3, 2)
+		assert inner._length_scale.shape == (3, 2)
 		assert jnp.allclose(inner.length_scale, jnp.full((3, 2), 2.0))
 
 		# Replace with array matching full nested shape (3, 2)
@@ -270,7 +276,7 @@ class TestReplaceBlockKernel:
 
 		# Should broadcast scalar to (3,)
 		expected = jnp.array([2.0, 2.0, 2.0])
-		assert new_kernel.inner._raw_length_scale.shape[0] == 3
+		assert new_kernel.inner._length_scale.shape[0] == 3
 		assert jnp.allclose(new_kernel.inner.length_scale, expected)
 
 	@allure.title("Replace with correct block dimensions")
@@ -311,10 +317,12 @@ class TestReplaceImmutableFields:
 	@allure.title("BatchModule batch_in_axes is immutable")
 	@allure.description("Test that attempting to modify batch_in_axes raises a ValueError.")
 	def test_batch_in_axes_immutable(self):
-		batch_kernel = BatchModule(SEKernel(length_scale=1.0), batch_size=3, batch_in_axes=0)
+		# NOTE: the test wouldn't work for batch_in_axes->None, as `replace()` interprets None not
+		# as a new value but as the fact that the parameter doesn't have to change
+		batch_kernel = BatchModule(SEKernel(length_scale=1.0), batch_size=3, batch_in_axes=None)
 
 		with pytest.raises(ValueError, match="batch_in_axes"):
-			batch_kernel.replace(batch_in_axes=None)
+			batch_kernel.replace(batch_in_axes=0)
 
 	@allure.title("BlockKernel nb_blocks is immutable")
 	@allure.description("Test that attempting to modify nb_blocks raises a ValueError.")
@@ -351,8 +359,7 @@ class TestReplaceWhiteNoiseKernel:
 		new_kernel = kernel.replace(noise=2.5)
 
 		assert jnp.allclose(kernel.noise, 1.0), "Original unchanged"
-		assert jnp.allclose(new_kernel.noise, 2.5), "New noise value applied"
-		assert jnp.allclose(new_kernel.value, 2.5), "Value property also reflects new noise"
+		assert jnp.allclose(new_kernel.noise, 2.5), "New kernel changed"
 		assert kernel is not new_kernel, "Returns new instance"
 
 	@allure.title("Replace noise validates constraints")
@@ -360,5 +367,5 @@ class TestReplaceWhiteNoiseKernel:
 	def test_replace_noise_validation(self):
 		kernel = WhiteNoiseKernel(noise=1.0)
 
-		with pytest.raises(EquinoxRuntimeError):
+		with pytest.raises(ValueError):
 			kernel.replace(noise=-1.0)

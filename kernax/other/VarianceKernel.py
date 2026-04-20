@@ -1,42 +1,56 @@
+from __future__ import annotations
 import equinox as eqx
+from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
-
-from .ConstantKernel import AbstractKernel, StaticConstantKernel
-from ..transforms import to_constrained, to_unconstrained
+from ..AbstractKernel import AbstractKernel
+from ..engines import AbstractEngine, DenseEngine
+from ..parametrisations import AbstractParametrisation, LogExpParametrisation
 
 
 class VarianceKernel(AbstractKernel):
 	"""
-	Variance kernel that returns a constant value everywhere. Used to multiply with other kernels.
-
-	This kernel is functionally equivalent to a ConstantKernel but the implementation differs in
-	two ways:
-	1) The "value" parameter is renamed "variance" parameter, allowing easier modification when
-	combining with another ConstantKernel (e.g. WhiteNoiseKernel)
-	2) It forces a positivity constraint on the variance parameter
-
+	Variance kernel that returns a positive constant value everywhere.
+	Used to multiply with other kernels to scale their output.
 	"""
 
-	_raw_variance: Array = eqx.field(converter=jnp.asarray)
+	engine: AbstractEngine = eqx.field(static=True)
+	_variance_parametrisation: AbstractParametrisation = eqx.field()
+	_variance: Array = eqx.field(converter=jnp.asarray)
 
 	@property
 	def variance(self) -> Array:
-		return to_constrained(self._raw_variance)
+		return self._variance_parametrisation.unwrap(self._variance)
 
-	@property
-	def value(self):  # As we use the StaticConstantKernel pairwise_cov, we need to provide a 'value' property that returns the variance
-		return to_constrained(self._raw_variance)
+	def __init__(self,
+	             variance: float | Array = 1.0,
+	             variance_parametrisation: AbstractParametrisation = LogExpParametrisation(),
+	             engine: AbstractEngine = DenseEngine):
+		variance = jnp.asarray(variance)
+		if jnp.any(variance <= 0):
+			raise ValueError("`variance` must be positive.")
 
-	static_class = StaticConstantKernel
+		self._variance_parametrisation = variance_parametrisation
+		self._variance = self._variance_parametrisation.wrap(variance)
+		self.engine = engine
 
-	def __init__(self, variance=1.0, **kwargs):
-		# Assert noise is positive
-		variance = jnp.array(variance)
-		variance = eqx.error_if(variance, jnp.any(variance <= 0), "variance must be positive.")
+	@filter_jit
+	def pairwise(self, x1: Array, x2: Array) -> Array:
+		return self.variance
 
-		super().__init__(**kwargs)
+	def replace(self, variance: None | float | Array = None, **kwargs) -> VarianceKernel:
+		if variance is None:
+			return self
 
-		# Transform to unconstrained space
-		self._raw_variance = to_unconstrained(jnp.asarray(variance))
+		variance = jnp.asarray(variance)
 
+		if jnp.any(variance <= 0):
+			raise ValueError("`variance` must be positive.")
+
+		return eqx.tree_at(
+			lambda k: k._variance,
+			self,
+			jnp.broadcast_to(
+				self._variance_parametrisation.wrap(variance),
+				self._variance.shape)
+		)

@@ -1,86 +1,93 @@
+from __future__ import annotations
+from typing import Callable
 import equinox as eqx
 from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
-
-from ..AbstractKernel import AbstractKernel
+from .StationaryKernel import AbstractStationaryKernel
 from ..distances import squared_euclidean_distance
-from .StationaryKernel import StaticStationaryKernel
+from ..engines import AbstractEngine, DenseEngine
+from ..parametrisations import AbstractParametrisation, LogExpParametrisation
 
 
-class StaticRationalQuadraticKernel(StaticStationaryKernel):
-	distance_func = squared_euclidean_distance
+class RationalQuadraticKernel(AbstractStationaryKernel):
+	"""Rational Quadratic Kernel"""
 
-	@classmethod
-	@filter_jit
-	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
-		"""
-		Compute the Rational Quadratic kernel covariance value between two vectors.
-
-		:param kern: the kernel to use, containing hyperparameters (length_scale, alpha)
-		:param x1: scalar array
-		:param x2: scalar array
-		:return: covariance value (scalar)
-		"""
-		kern = eqx.combine(kern)
-		squared_dist = cls.distance_func(x1, x2)
-
-		base = 1 + squared_dist / (2 * kern.alpha * kern.length_scale**2)  # type: ignore[attr-defined]
-
-		return jnp.power(base, -kern.alpha)  # type: ignore[attr-defined]
-
-
-class RationalQuadraticKernel(AbstractKernel):
-	"""
-	Rational Quadratic Kernel
-
-	All parameters (length_scale, alpha) are always positive.
-	Internally, they may be stored in unconstrained space.
-	"""
-
-	_raw_length_scale: Array = eqx.field(converter=jnp.asarray)
-	_raw_alpha: Array = eqx.field(converter=jnp.asarray)
-	static_class = StaticRationalQuadraticKernel
-
-	def __init__(self, length_scale, alpha, **kwargs):
-		"""
-		Initialize the Rational Quadratic kernel.
-
-		Args:
-			length_scale: length scale parameter (ℓ, must be positive)
-			alpha: relative weighting of large-scale and small-scale variations (α, must be positive)
-
-		Raises:
-			ValueError: If any parameter is not positive
-		"""
-		# Validate positivity
-		length_scale = jnp.array(length_scale)
-		alpha = jnp.array(alpha)
-
-		length_scale = eqx.error_if(
-			length_scale, jnp.any(length_scale <= 0), "length_scale must be positive."
-		)
-		alpha = eqx.error_if(alpha, jnp.any(alpha <= 0), "alpha must be positive.")
-
-		# Initialize parent (locks config)
-		super().__init__(**kwargs)
-
-		# Transform to unconstrained space
-		from ..transforms import to_unconstrained
-
-		self._raw_length_scale = to_unconstrained(jnp.asarray(length_scale))
-		self._raw_alpha = to_unconstrained(jnp.asarray(alpha))
+	engine: AbstractEngine = eqx.field(static=True)
+	distance_function: Callable = eqx.field(static=True)
+	_length_scale_parametrisation: AbstractParametrisation = eqx.field()
+	_alpha_parametrisation: AbstractParametrisation = eqx.field()
+	_length_scale: Array = eqx.field(converter=jnp.asarray)
+	_alpha: Array = eqx.field(converter=jnp.asarray)
 
 	@property
 	def length_scale(self) -> Array:
-		"""Get the length scale in constrained space (always positive)."""
-		from ..transforms import to_constrained
-
-		return to_constrained(self._raw_length_scale)
+		return self._length_scale_parametrisation.unwrap(self._length_scale)
 
 	@property
 	def alpha(self) -> Array:
-		"""Get the alpha parameter in constrained space (always positive)."""
-		from ..transforms import to_constrained
+		return self._alpha_parametrisation.unwrap(self._alpha)
 
-		return to_constrained(self._raw_alpha)
+	def __init__(self,
+	             length_scale: float | Array,
+	             alpha: float | Array,
+	             length_scale_parametrisation: AbstractParametrisation = LogExpParametrisation(),
+	             alpha_parametrisation: AbstractParametrisation = LogExpParametrisation(),
+	             distance_function: Callable = squared_euclidean_distance,
+	             engine: AbstractEngine = DenseEngine):
+		length_scale = jnp.asarray(length_scale)
+		alpha = jnp.asarray(alpha)
+
+		if jnp.any(length_scale <= 0):
+			raise ValueError("`length_scale` must be positive.")
+		if jnp.any(alpha <= 0):
+			raise ValueError("`alpha` must be positive.")
+
+		self.distance_function = distance_function
+		self._length_scale_parametrisation = length_scale_parametrisation
+		self._alpha_parametrisation = alpha_parametrisation
+		self._length_scale = self._length_scale_parametrisation.wrap(length_scale)
+		self._alpha = self._alpha_parametrisation.wrap(alpha)
+		self.engine = engine
+
+	@filter_jit
+	def pairwise(self, x1: Array, x2: Array) -> Array:
+		squared_dist = self.distance_function(x1, x2)
+		base = 1 + squared_dist / (2 * self.alpha * self.length_scale**2)
+		return jnp.power(base, -self.alpha)
+
+	def replace(self,
+	            length_scale: None | float | Array = None,
+	            alpha: None | float | Array = None,
+	            **kwargs) -> RationalQuadraticKernel:
+		new_kernel = self
+
+		if length_scale is not None:
+			length_scale = jnp.asarray(length_scale)
+
+			if jnp.any(length_scale <= 0):
+				raise ValueError("`length_scale` must be positive.")
+
+			new_kernel = eqx.tree_at(
+				lambda k: k._length_scale,
+				new_kernel,
+				jnp.broadcast_to(
+					self._length_scale_parametrisation.wrap(length_scale),
+					self._length_scale.shape)
+			)
+
+		if alpha is not None:
+			alpha = jnp.asarray(alpha)
+
+			if jnp.any(alpha <= 0):
+				raise ValueError("`alpha` must be positive.")
+
+			new_kernel = eqx.tree_at(
+				lambda k: k._alpha,
+				new_kernel,
+				jnp.broadcast_to(
+					self._alpha_parametrisation.wrap(alpha),
+					self._alpha.shape)
+			)
+
+		return new_kernel

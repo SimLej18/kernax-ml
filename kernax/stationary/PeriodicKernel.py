@@ -1,98 +1,93 @@
+from __future__ import annotations
+from typing import Callable
 import equinox as eqx
 from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
-
-from ..AbstractKernel import AbstractKernel
+from .StationaryKernel import AbstractStationaryKernel
 from ..distances import euclidean_distance
-from .StationaryKernel import StaticStationaryKernel
+from ..engines import AbstractEngine, DenseEngine
+from ..parametrisations import AbstractParametrisation, LogExpParametrisation
 
 
-class StaticPeriodicKernel(StaticStationaryKernel):
-	distance_func = euclidean_distance
+class PeriodicKernel(AbstractStationaryKernel):
+	"""Periodic Kernel"""
 
-	@classmethod
-	@filter_jit
-	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
-		"""
-		Compute the periodic kernel covariance value between two vectors.
-
-		:param kern: the kernel to use, containing hyperparameters (length_scale, variance, period).
-		:param x1: scalar array
-		:param x2: scalar array
-		:return: covariance value (scalar)
-		"""
-		kern = eqx.combine(kern)
-		dist = cls.distance_func(x1, x2)
-
-		return kern.variance * jnp.exp(  # type: ignore[no-any-return,attr-defined]
-			-2 * jnp.sin(jnp.pi * dist / kern.period) ** 2 / kern.length_scale**2  # type: ignore[attr-defined]
-		)
-
-
-class PeriodicKernel(AbstractKernel):
-	"""
-	Periodic Kernel
-
-	All parameters (length_scale, variance, period) are always positive.
-	Internally, they may be stored in unconstrained space.
-	"""
-
-	_raw_length_scale: Array = eqx.field(converter=jnp.asarray)
-	_raw_variance: Array = eqx.field(converter=jnp.asarray)
-	_raw_period: Array = eqx.field(converter=jnp.asarray)
-	static_class = StaticPeriodicKernel
-
-	def __init__(self, length_scale, variance, period, **kwargs):
-		"""
-		Initialize the Periodic kernel.
-
-		Args:
-			length_scale: length scale parameter (ℓ, must be positive)
-			variance: variance parameter (σ², must be positive)
-			period: period parameter (p, must be positive)
-
-		Raises:
-			ValueError: If any parameter is not positive
-		"""
-		# Validate positivity
-		length_scale = jnp.array(length_scale)
-		variance = jnp.array(variance)
-		period = jnp.array(period)
-
-		length_scale = eqx.error_if(
-			length_scale, jnp.any(length_scale <= 0), "length_scale must be positive."
-		)
-		variance = eqx.error_if(variance, jnp.any(variance <= 0), "variance must be positive.")
-		period = eqx.error_if(period, jnp.any(period <= 0), "period must be positive.")
-
-		# Initialize parent (locks config)
-		super().__init__(**kwargs)
-
-		# Transform to unconstrained space
-		from ..transforms import to_unconstrained
-
-		self._raw_length_scale = to_unconstrained(jnp.asarray(length_scale))
-		self._raw_variance = to_unconstrained(jnp.asarray(variance))
-		self._raw_period = to_unconstrained(jnp.asarray(period))
+	engine: AbstractEngine = eqx.field(static=True)
+	distance_function: Callable = eqx.field(static=True)
+	_length_scale_parametrisation: AbstractParametrisation = eqx.field()
+	_period_parametrisation: AbstractParametrisation = eqx.field()
+	_length_scale: Array = eqx.field(converter=jnp.asarray)
+	_period: Array = eqx.field(converter=jnp.asarray)
 
 	@property
 	def length_scale(self) -> Array:
-		"""Get the length scale in constrained space (always positive)."""
-		from ..transforms import to_constrained
+		return self._length_scale_parametrisation.unwrap(self._length_scale)
 
-		return to_constrained(self._raw_length_scale)
-
-	@property
-	def variance(self) -> Array:
-		"""Get the variance in constrained space (always positive)."""
-		from ..transforms import to_constrained
-
-		return to_constrained(self._raw_variance)
 
 	@property
 	def period(self) -> Array:
-		"""Get the period in constrained space (always positive)."""
-		from ..transforms import to_constrained
+		return self._period_parametrisation.unwrap(self._period)
 
-		return to_constrained(self._raw_period)
+	def __init__(self,
+	             length_scale: float | Array,
+	             period: float | Array,
+	             length_scale_parametrisation: AbstractParametrisation = LogExpParametrisation(),
+	             period_parametrisation: AbstractParametrisation = LogExpParametrisation(),
+	             distance_function: Callable = euclidean_distance,
+	             engine: AbstractEngine = DenseEngine):
+		length_scale = jnp.asarray(length_scale)
+		period = jnp.asarray(period)
+
+		if jnp.any(length_scale <= 0):
+			raise ValueError("`length_scale` must be positive.")
+		if jnp.any(period <= 0):
+			raise ValueError("`period` must be positive.")
+
+		self.distance_function = distance_function
+		self._length_scale_parametrisation = length_scale_parametrisation
+		self._period_parametrisation = period_parametrisation
+		self._length_scale = self._length_scale_parametrisation.wrap(length_scale)
+		self._period = self._period_parametrisation.wrap(period)
+		self.engine = engine
+
+	@filter_jit
+	def pairwise(self, x1: Array, x2: Array) -> Array:
+		dist = self.distance_function(x1, x2)
+		return jnp.exp(-2 * jnp.sin(jnp.pi * dist / self.period)**2 / self.length_scale**2)
+
+	def replace(self,
+	            length_scale: None | float | Array = None,
+	            period: None | float | Array = None,
+	            **kwargs) -> PeriodicKernel:
+		new_kernel = self
+
+		if length_scale is not None:
+			length_scale = jnp.asarray(length_scale)
+
+			if jnp.any(length_scale <= 0):
+				raise ValueError("`length_scale` must be positive.")
+
+			new_kernel = eqx.tree_at(
+				lambda k: k._length_scale,
+				new_kernel,
+				jnp.broadcast_to(
+					self._length_scale_parametrisation.wrap(length_scale),
+					self._length_scale.shape)
+			)
+
+		if period is not None:
+			period = jnp.asarray(period)
+
+			if jnp.any(period <= 0):
+				raise ValueError("`period` must be positive.")
+
+			new_kernel = eqx.tree_at(
+				lambda k: k._period,
+				new_kernel,
+				jnp.broadcast_to(
+					self._period_parametrisation.wrap(period),
+					self._period.shape)
+			)
+
+		return new_kernel

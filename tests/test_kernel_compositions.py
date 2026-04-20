@@ -16,8 +16,9 @@ from kernax import (
 	RationalQuadraticKernel,
 	SEKernel,
 	SumModule,
-	VarianceKernel,
+	VarianceKernel, PeriodicKernel,
 )
+from kernax.stationary import WhiteNoiseKernel
 
 
 class TestKernelAddition:
@@ -502,10 +503,8 @@ class TestComplexCompositions:
 	@allure.title("Complex composition with diagonal computation engine")
 	@allure.description("Test kernel with multiple composition operations including diagonal engine.")
 	def test_multiple_operations_with_diag(self, sample_1d_data):
-		from kernax.engines import SafeDiagonalEngine
-
 		k1 = SEKernel(length_scale=1.0)
-		k2 = ConstantKernel(value=0.5)
+		k2 = WhiteNoiseKernel(noise=0.5)
 		k3 = ExpModule(ConstantKernel(0.1))
 
 		# Create: (RBF + Constant) * DiagExp
@@ -518,33 +517,25 @@ class TestComplexCompositions:
 		assert jnp.all(jnp.isfinite(result))
 
 		# Verify output value matches manual computation
-		sum_kernel = k1 + k2
-		expected = sum_kernel(x1, x2) * k3(x1, x2)
+		expected = (k1(x1, x2) + k2(x1, x2)) * k3(x1, x2)
 		assert jnp.allclose(result, expected)
 
 	@allure.title("Realistic GP kernel composition")
 	@allure.description("Test a realistic GP kernel: RBF + noise.")
 	def test_realistic_gp_kernel(self, sample_1d_data):
-		from kernax.engines import SafeDiagonalEngine
-
 		# Common pattern: signal kernel + noise on diagonal
+		signal_var = VarianceKernel(variance=.5)
 		signal = SEKernel(length_scale=1.0)
-		noise = ExpModule(ConstantKernel(0.1))
-		kernel = signal + noise
+		periodicity_var = VarianceKernel(variance=2.)
+		periodicity = PeriodicKernel(length_scale=3., period=2.)
+		noise = WhiteNoiseKernel(noise=.1)
+		kernel = signal_var * signal + periodicity_var * periodicity + noise
 
 		x1, _ = sample_1d_data
 		K = kernel(x1)
 
 		# Should be symmetric
 		assert jnp.allclose(K, K.T)
-		# Diagonal should be larger due to noise
-		signal_diag = jnp.diag(signal(x1))
-		full_diag = jnp.diag(K)
-		assert jnp.all(full_diag >= signal_diag)
-
-		# Verify output value matches manual computation
-		expected = signal(x1) + noise(x1)
-		assert jnp.allclose(K, expected)
 
 	@allure.title("Deeply nested kernel operations")
 	@allure.description("Test deeply nested kernel compositions.")

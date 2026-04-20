@@ -1,32 +1,16 @@
+from __future__ import annotations
+from typing import Callable
 import equinox as eqx
 from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
-
-from ..AbstractKernel import AbstractKernel
-from .DotProductKernel import StaticDotProductKernel
-
-
-class StaticSigmoidKernel(StaticDotProductKernel):
-	@classmethod
-	@filter_jit
-	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
-		"""
-		Compute the sigmoid kernel covariance value between two vectors.
-
-		Formula: tanh(α⟨x, x'⟩ + c)
-
-		:param kern: kernel instance containing the hyperparameters (alpha, constant)
-		:param x1: scalar array
-		:param x2: scalar array
-		:return: scalar array
-		"""
-		kern = eqx.combine(kern)
-		dp = cls.distance_func(x1, x2)
-		return jnp.tanh(kern.alpha * dp + kern.constant)  # type: ignore[attr-defined]
+from .DotProductKernel import AbstractDotProductKernel
+from ..engines import AbstractEngine, DenseEngine
+from ..parametrisations import AbstractParametrisation, LogExpParametrisation
+from ..distances import dot_product
 
 
-class SigmoidKernel(AbstractKernel):
+class SigmoidKernel(AbstractDotProductKernel):
 	"""
 	Sigmoid (Hyperbolic Tangent) Kernel
 
@@ -36,39 +20,62 @@ class SigmoidKernel(AbstractKernel):
 	Parameter constant can be any real value.
 	"""
 
-	_raw_alpha: Array = eqx.field(converter=jnp.asarray)
+	engine: AbstractEngine = eqx.field(static=True)
+	distance_function: Callable = eqx.field(static=True)
+	_alpha_parametrisation: AbstractParametrisation = eqx.field(static=True)
+	_alpha: Array = eqx.field(converter=jnp.asarray)
 	constant: Array = eqx.field(converter=jnp.asarray)
-	static_class = StaticSigmoidKernel
-
-	def __init__(self, alpha: float = 1.0, constant: float = 0.0):
-		"""
-		Initialize the Sigmoid kernel.
-
-		Args:
-			alpha: Scale factor (must be positive). Controls the steepness.
-			constant: Independent term (can be any real value). Shifts the activation.
-
-		Raises:
-			ValueError: If alpha is not positive
-		"""
-		# Validate alpha positivity
-		alpha_array = jnp.array(alpha)
-		alpha_array = eqx.error_if(alpha_array, jnp.any(alpha_array <= 0), "alpha must be positive.")
-
-		# Initialize parent (locks config)
-		super().__init__()
-
-		# Transform alpha to unconstrained space
-		from ..transforms import to_unconstrained
-
-		self._raw_alpha = to_unconstrained(jnp.asarray(alpha_array))
-
-		# constant can be any value, no transformation needed
-		self.constant = jnp.asarray(constant)
 
 	@property
 	def alpha(self) -> Array:
-		"""Get the alpha parameter in constrained space (always positive)."""
-		from ..transforms import to_constrained
+		return self._alpha_parametrisation.unwrap(self._alpha)
 
-		return to_constrained(self._raw_alpha)
+	def __init__(self,
+	             alpha: float | Array,
+	             constant: float | Array,
+	             alpha_parametrisation: AbstractParametrisation = LogExpParametrisation(),
+	             distance_function: Callable = dot_product,
+	             engine: AbstractEngine = DenseEngine):
+		alpha = jnp.asarray(alpha)
+		if jnp.any(alpha <= 0):
+			raise ValueError("`alpha` must be positive.")
+
+		self.distance_function = distance_function
+		self._alpha_parametrisation = alpha_parametrisation
+		self._alpha = self._alpha_parametrisation.wrap(alpha)
+		self.constant = jnp.asarray(constant)
+		self.engine = engine
+
+	@filter_jit
+	def pairwise(self, x1: Array, x2: Array) -> Array:
+		dp = self.distance_function(x1, x2)
+		return jnp.tanh(self.alpha * dp + self.constant)
+
+	def replace(self,
+	            alpha: None | float | Array = None,
+	            constant: None | float | Array = None,
+	            **kwargs) -> SigmoidKernel:
+		new_kernel = self
+
+		if alpha is not None:
+			alpha = jnp.asarray(alpha)
+
+			if jnp.any(alpha <= 0):
+				raise ValueError("`alpha` must be positive.")
+
+			new_kernel = eqx.tree_at(
+				lambda k: k._alpha,
+				new_kernel,
+				jnp.broadcast_to(
+					self._alpha_parametrisation.wrap(alpha),
+					self._alpha.shape)
+			)
+
+		if constant is not None:
+			new_kernel = eqx.tree_at(
+				lambda k: k.constant,
+				new_kernel,
+				jnp.broadcast_to(jnp.asarray(constant), self.constant.shape)
+			)
+
+		return new_kernel

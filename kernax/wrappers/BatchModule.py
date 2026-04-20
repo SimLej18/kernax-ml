@@ -3,6 +3,7 @@ import jax.numpy as jnp
 import jax.tree_util as jtu
 import equinox as eqx
 from equinox import filter_jit
+from ..module import AbstractModule
 from .WrapperModule import AbstractWrapperModule
 
 
@@ -20,10 +21,10 @@ class BatchModule(AbstractWrapperModule):
 
 	This class uses vmap to vectorize the module computation over the batch dimension.
 	"""
-	inner: NewAbstractModule
+	inner: AbstractModule
 	batch_size: int = eqx.field(static=True)
 	batch_in_axes: bool = eqx.field(static=True)
-	batch_over_inputs: Optional[int] = eqx.field(static=True)
+	batch_over_inputs: int | None = eqx.field(static=True)
 
 	@property
 	def can_use_vmap(self):
@@ -67,9 +68,28 @@ class BatchModule(AbstractWrapperModule):
 		)
 
 	@filter_jit
-	def __call__(self, x1: Array, x2: Optional[Array], *args, **kwargs) -> Array:
+	def __call__(self, x1: Array, x2: Array | None = None, *args, **kwargs) -> Array:
 		if x2 is None:
-			x2 = x1
+			# As BatchModule can either wrap a Kernel (might expect x2) or a Mean (doesn't expect
+			# x2), we have to adapt calls to inner module depending on whether x2 was provided or
+			# not.
+			if self.can_use_vmap:
+				return vmap(
+					lambda module, x1: module(x1, *args, **kwargs),
+					in_axes=(self.batch_in_axes, self.batch_over_inputs)
+				)(self.inner, x1)
+
+			# We can't use vmap
+			if self.batch_size == 1:
+				return self.inner(x1, *args, **kwargs)[
+					None, ...]  # Add batch dimension
+
+			# We can't use vmap but have to repeat cov n times
+			return jnp.repeat(
+				self.inner(x1, *args, **kwargs)[None, ...],
+				self.batch_size,
+				axis=0
+			)
 
 		if self.can_use_vmap:
 			return vmap(
@@ -79,12 +99,12 @@ class BatchModule(AbstractWrapperModule):
 
 		# We can't use vmap
 		if self.batch_size == 1:
-			return self.inner.engine(x1, x2, *args, **kwargs)[
+			return self.inner(x1, x2, *args, **kwargs)[
 				None, ...]  # Add batch dimension
 
 		# We can't use vmap but have to repeat cov n times
 		return jnp.repeat(
-			self.inner.engine(x1, x2, *args, **kwargs)[None, ...],
+			self.inner(x1, x2, *args, **kwargs)[None, ...],
 			self.batch_size,
 			axis=0
 		)
@@ -92,3 +112,27 @@ class BatchModule(AbstractWrapperModule):
 	def __str__(self):
 		# just str of the inner kernel, as the batch info is in the parameters of the inner kernel
 		return f"{self.inner}"
+
+	def replace(self,
+	            inner: AbstractModule | None = None,
+				batch_size: int | None = None,
+				batch_in_axes: bool | None = None,
+				batch_over_inputs: bool | None = None,
+				**kwargs):
+		# NOTE: replacing batch_in_axes to None wouldn't throw an exception, as `replace()`
+		# interprets None not as a new value but as the info that the parameter doesn't have to change
+
+		if batch_size is not None:
+			raise ValueError(
+				"`batch_size` is a static field and cannot be mutated for BatchModule. "
+				"Initialise a new module instance instead.")
+		if batch_in_axes is not None:
+			raise ValueError(
+				"`batch_in_axes` is a static field and cannot be mutated for BatchModule. "
+				"Initialise a new module instance instead.")
+		if batch_over_inputs is not None:
+			raise ValueError(
+				"`batch_over_inputs` is a static field and cannot be mutated for BatchModule. "
+				"Initialise a new module instance instead.")
+
+		return super().replace(inner=inner, **kwargs)

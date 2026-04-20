@@ -7,8 +7,10 @@ from __future__ import annotations
 import jax
 import equinox as eqx
 from jax import Array
+import jax.random as jr
 
-from .transforms import to_unconstrained
+from kernax import AbstractWrapperModule, AbstractModule
+from kernax.operators import AbstractOperatorModule
 
 
 def sample_hps_from_uniform_priors(key, module, priors):
@@ -55,48 +57,32 @@ def sample_hps_from_uniform_priors(key, module, priors):
 	# ``sampled_mean``, ``sampled_mean_kernel``, and ``sampled_task_kernel`` are now initialized with hyperparameters sampled from the specified uniform priors.
 	```
 	"""
-	return _sample_uniform_recursive(key, module, priors)
+	if isinstance(module, AbstractWrapperModule):
+		return module.replace(inner=sample_hps_from_uniform_priors(key, module.inner, priors))
 
+	if isinstance(module, AbstractOperatorModule):
+		subkey1, subkey2 = jr.split(key)
+		return module.replace(
+			left=sample_hps_from_uniform_priors(subkey1, module.left, priors),
+			right=sample_hps_from_uniform_priors(subkey2, module.right, priors),
+		)
 
-def _sample_uniform_recursive(key, module, priors):
-	"""Recursively traverse the module tree and sample matching HP fields from uniform priors."""
-	# --- Step 1: sample direct Array fields of this module ---
-	direct_fields, direct_values = [], []
+	if isinstance(module, AbstractModule):
+		new_module = module
+		for param in priors.keys():
+			key, subkey = jr.split(key)
+			if hasattr(module, param):
+				new_module = new_module.replace(**{param: jr.uniform(
+					subkey,
+					shape=new_module.__getattribute__(param).shape,
+					dtype=new_module.__getattribute__(param).dtype,
+					minval=priors[param][0],
+					maxval=priors[param][1],
+				)})
 
-	for field_name, field_value in vars(module).items():
-		if not isinstance(field_value, Array):
-			continue
+		return new_module
 
-		hp_name = field_name[5:] if field_name.startswith("_raw_") else field_name
-		if hp_name not in priors:
-			continue
-
-		low, high = priors[hp_name]
-		key, subkey = jax.random.split(key)
-		sampled = jax.random.uniform(subkey, shape=field_value.shape, minval=low, maxval=high)
-
-		if field_name.startswith("_raw_"):
-			sampled = to_unconstrained(sampled)
-
-		direct_fields.append(field_name)
-		direct_values.append(sampled)
-
-	if direct_fields:
-		where = lambda m: [getattr(m, k) for k in direct_fields]
-		module = eqx.tree_at(where, module, direct_values)
-
-	# --- Step 2: recurse into nested eqx.Module fields ---
-	for field_name, field_value in vars(module).items():
-		if not isinstance(field_value, eqx.Module):
-			continue
-
-		key, subkey = jax.random.split(key)
-		new_sub = _sample_uniform_recursive(subkey, field_value, priors)
-
-		if new_sub is not field_value:
-			module = eqx.tree_at(lambda m, fn=field_name: getattr(m, fn), module, new_sub)
-
-	return module
+	raise ValueError("Module must be an instance of AbstractModule, AbstractWrapperModule, or AbstractOperatorModule.")
 
 
 def sample_hps_from_normal_priors(key, module, priors):
@@ -143,45 +129,28 @@ def sample_hps_from_normal_priors(key, module, priors):
 	# ``sampled_mean``, ``sampled_mean_kernel``, and ``sampled_task_kernel`` are now initialized with hyperparameters sampled from the specified normal priors.
 	```
 	"""
-	return _sample_normale_recursive(key, module, priors)
+	if isinstance(module, AbstractWrapperModule):
+		return module.replace(inner=sample_hps_from_normal_priors(key, module.inner, priors))
 
+	if isinstance(module, AbstractOperatorModule):
+		subkey1, subkey2 = jr.split(key)
+		return module.replace(
+			left=sample_hps_from_normal_priors(subkey1, module.left, priors),
+			right=sample_hps_from_normal_priors(subkey2, module.right, priors),
+		)
 
-def _sample_normale_recursive(key, module, priors):
-	"""Recursively traverse the module tree and sample matching HP fields from normal priors."""
-	# --- Step 1: sample direct Array fields of this module ---
-	direct_fields, direct_values = [], []
+	if isinstance(module, AbstractModule):
+		new_module = module
+		for param in priors.keys():
+			key, subkey = jr.split(key)
+			if hasattr(module, param):
+				new_module = new_module.replace(**{param: jr.normal(
+					subkey,
+					shape=new_module.__getattribute__(param).shape,
+					dtype=new_module.__getattribute__(param).dtype,
+				) * priors[param][1] + priors[param][0]})
 
-	for field_name, field_value in vars(module).items():
-		if not isinstance(field_value, Array):
-			continue
+		return new_module
 
-		hp_name = field_name[5:] if field_name.startswith("_raw_") else field_name
-		if hp_name not in priors:
-			continue
-
-		mean, std = priors[hp_name]
-		key, subkey = jax.random.split(key)
-		sampled = jax.random.normal(subkey, shape=field_value.shape) * std + mean
-
-		if field_name.startswith("_raw_"):
-			sampled = to_unconstrained(sampled)
-
-		direct_fields.append(field_name)
-		direct_values.append(sampled)
-
-	if direct_fields:
-		where = lambda m: [getattr(m, k) for k in direct_fields]
-		module = eqx.tree_at(where, module, direct_values)
-
-	# --- Step 2: recurse into nested eqx.Module fields ---
-	for field_name, field_value in vars(module).items():
-		if not isinstance(field_value, eqx.Module):
-			continue
-
-		key, subkey = jax.random.split(key)
-		new_sub = _sample_normale_recursive(subkey, field_value, priors)
-
-		if new_sub is not field_value:
-			module = eqx.tree_at(lambda m, fn=field_name: getattr(m, fn), module, new_sub)
-
-	return module
+	raise ValueError(
+		"Module must be an instance of AbstractModule, AbstractWrapperModule, or AbstractOperatorModule.")

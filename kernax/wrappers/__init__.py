@@ -6,10 +6,10 @@ from .BlockKernel import BlockKernel
 from .ExpModule import ExpModule
 from .LogModule import LogModule
 from .NegModule import NegModule
-from .WrapperModule import WrapperModule
+from .WrapperModule import AbstractWrapperModule
 
 __all__ = [
-	"WrapperModule",
+	"AbstractWrapperModule",
 	"ExpModule",
 	"LogModule",
 	"NegModule",

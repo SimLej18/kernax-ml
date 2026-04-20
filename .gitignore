@@ -160,3 +160,5 @@ benchmarks/out/
 benchmarks/results/
 benchmarks/*.html
 benchmarks/*.png
+/.claude/
+/.benchmarks/

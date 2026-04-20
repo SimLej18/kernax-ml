@@ -196,7 +196,9 @@ class TestReplaceBatchMean:
 	@allure.title("BatchModule batch_in_axes is immutable")
 	@allure.description("Test that attempting to modify batch_in_axes raises a ValueError.")
 	def test_batch_in_axes_immutable(self):
-		batch_mean = BatchModule(LinearMean(slope=1.0), batch_size=3, batch_in_axes=0)
+		# NOTE: the test wouldn't work for batch_in_axes->None, as `replace()` interprets None not
+		# as a new value but as the fact that the parameter doesn't have to change
+		batch_mean = BatchModule(LinearMean(slope=1.0), batch_size=3, batch_in_axes=None)
 
 		with pytest.raises(ValueError, match="batch_in_axes"):
-			batch_mean.replace(batch_in_axes=None)
+			batch_mean.replace(batch_in_axes=0)

@@ -5,10 +5,10 @@ from equinox import filter_jit
 from jax import Array, vmap
 
 from ..AbstractKernel import AbstractKernel
-from .WrapperModule import WrapperModule
+from .WrapperModule import AbstractWrapperModule
 
 
-class BlockKernel(WrapperModule):
+class BlockKernel(AbstractWrapperModule):
 	"""
 	Wrapper kernel to build block covariance matrices using any kernel.
 

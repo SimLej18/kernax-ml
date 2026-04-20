@@ -14,9 +14,8 @@ from kernax import (
 	SEKernel,
 	VarianceKernel,
 	WhiteNoiseKernel,
-	sample_hps_from_uniform_priors,
 )
-from kernax.other import ConstantKernel
+from kernax.hp_sampling import sample_hps_from_uniform_priors
 
 KEY = jax.random.PRNGKey(0)
 
@@ -93,8 +92,8 @@ class TestSampleHpsFromUniformPriors:
 		# Only variance is in priors; length_scale should be untouched
 		sampled = sample_hps_from_uniform_priors(KEY, kern, {"variance": (1.0, 10.0)})
 		assert jnp.allclose(
-			kern.right._raw_length_scale,  # type: ignore[attr-defined]
-			sampled.right._raw_length_scale,  # type: ignore[attr-defined]
+			kern.right.length_scale,
+			sampled.right.length_scale,
 		)
 
 	@allure.title("Prior keys absent from the module are silently ignored")
@@ -130,10 +129,9 @@ class TestSampleHpsFromUniformPriors:
 		priors = {"variance": (0.5, 5.0), "length_scale": (1.0, 8.0), "noise": (0.01, 1.0)}
 		sampled = sample_hps_from_uniform_priors(KEY, kern, priors)
 
-		# left = VarianceKernel * SEKernel, right = WhiteNoiseKernel
-		assert 0.5 <= float(sampled.left.left.variance) <= 5.0  # type: ignore[attr-defined]
-		assert 1.0 <= float(sampled.left.right.length_scale) <= 8.0  # type: ignore[attr-defined]
-		assert 0.01 <= float(sampled.right.noise) <= 1.0  # type: ignore[attr-defined]
+		assert 0.5 <= float(sampled.left.left.variance) <= 5.0
+		assert 1.0 <= float(sampled.left.right.length_scale) <= 8.0
+		assert 0.01 <= float(sampled.right.noise) <= 1.0
 
 	@allure.title("HPs sampled independently in each sub-module")
 	@allure.description(
@@ -143,8 +141,8 @@ class TestSampleHpsFromUniformPriors:
 	def test_independent_sampling_across_submodules(self):
 		kern = SEKernel(length_scale=1.0) + Matern32Kernel(length_scale=1.0)
 		sampled = sample_hps_from_uniform_priors(KEY, kern, {"length_scale": (1.0, 10.0)})
-		ls_left = float(sampled.left.length_scale)  # type: ignore[attr-defined]
-		ls_right = float(sampled.right.length_scale)  # type: ignore[attr-defined]
+		ls_left = float(sampled.left.length_scale)
+		ls_right = float(sampled.right.length_scale)
 		assert ls_left != ls_right, "Different sub-modules should have different sampled values"
 
 	# ── Batched HPs ──────────────────────────────────────────────────────────
@@ -157,7 +155,7 @@ class TestSampleHpsFromUniformPriors:
 		base = SEKernel(length_scale=1.0)
 		batched = BatchModule(base, batch_size=4, batch_in_axes=0)
 		sampled = sample_hps_from_uniform_priors(KEY, batched, {"length_scale": (1.0, 5.0)})
-		assert sampled.inner.length_scale.shape == (4,)  # type: ignore[attr-defined]
+		assert sampled.inner.length_scale.shape == (4,)
 
 	@allure.title("Each element of a batched HP is sampled within bounds")
 	@allure.description(
@@ -167,7 +165,7 @@ class TestSampleHpsFromUniformPriors:
 		base = SEKernel(length_scale=1.0)
 		batched = BatchModule(base, batch_size=8, batch_in_axes=0)
 		sampled = sample_hps_from_uniform_priors(KEY, batched, {"length_scale": (2.0, 6.0)})
-		ls = sampled.inner.length_scale  # type: ignore[attr-defined]
+		ls = sampled.inner.length_scale
 		assert jnp.all(ls >= 2.0) and jnp.all(ls <= 6.0)
 
 	@allure.title("Batched HP elements are independently sampled")
@@ -219,5 +217,5 @@ class TestSampleHpsFromUniformPriors:
 	)
 	def test_exported_from_kernax(self):
 		import kernax
-		assert hasattr(kernax, "sample_hps_from_uniform_priors")
-		assert callable(kernax.sample_hps_from_uniform_priors)
+		assert hasattr(kernax.hp_sampling, "sample_hps_from_uniform_priors")
+		assert callable(kernax.hp_sampling.sample_hps_from_uniform_priors)

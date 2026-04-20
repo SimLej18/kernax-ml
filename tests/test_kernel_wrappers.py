@@ -13,8 +13,10 @@ from kernax import (
 	BlockKernel,
 	FeatureKernel,
 	SEKernel,
-	create_mask,
 )
+from kernax.mask import create_mask
+
+from kernax.parametrisations import NonTrainableParametrisation
 
 
 class TestBatchModule:
@@ -773,7 +775,8 @@ class TestARDKernel:
 	@allure.title("ARDKernel isotropic equivalence")
 	@allure.description("Test that uniform length scales give isotropic kernel.")
 	def test_isotropic_equivalence(self):
-		base_kernel = SEKernel(length_scale=1.0)
+		base_kernel = SEKernel(length_scale=1.0,
+		                       length_scale_parametrisation=NonTrainableParametrisation())
 
 		# All dimensions have same scale
 		length_scales = jnp.array([2.0, 2.0, 2.0])
@@ -794,7 +797,8 @@ class TestARDKernel:
 	@allure.title("ARDKernel with matrix inputs")
 	@allure.description("Test ARDKernel with matrix inputs.")
 	def test_matrix_inputs(self):
-		base_kernel = SEKernel(length_scale=1.0)
+		base_kernel = SEKernel(length_scale=1.0,
+		                       length_scale_parametrisation=NonTrainableParametrisation())
 		length_scales = jnp.array([1.0, 0.5, 2.0])
 		kernel = ARDKernel(base_kernel, length_scales=length_scales)
 
@@ -811,7 +815,8 @@ class TestARDKernel:
 	@allure.title("ARDKernel relevance interpretation")
 	@allure.description("Test that smaller length scales indicate higher relevance.")
 	def test_relevance_interpretation(self):
-		base_kernel = SEKernel(length_scale=1.0)
+		base_kernel = SEKernel(length_scale=1.0,
+		                       length_scale_parametrisation=NonTrainableParametrisation())
 
 		# First dimension very relevant (small scale), last less relevant (large scale)
 		length_scales = jnp.array([0.1, 10.0])
@@ -916,7 +921,8 @@ class TestWrapperCombinations:
 	@allure.title("Wrapper combinations ARD with ActiveDims")
 	@allure.description("Test combining ARD and ActiveDims wrappers.")
 	def test_ard_with_active_dims(self):
-		base_kernel = SEKernel(length_scale=1.0)
+		base_kernel = SEKernel(length_scale=1.0,
+		                       length_scale_parametrisation=NonTrainableParametrisation())
 
 		# First, define ARD
 		length_scales = jnp.array([1.0, 0.5, 2.0])  # Defined only on 3 dims, as we later use ARD!
@@ -938,7 +944,8 @@ class TestWrapperCombinations:
 	@allure.title("Wrapper combinations Batch with ARD")
 	@allure.description("Test combining Batch and ARD wrappers.")
 	def test_batch_with_ard(self):
-		base_kernel = SEKernel(length_scale=1.0)
+		base_kernel = SEKernel(length_scale=1.0,
+		                       length_scale_parametrisation=NonTrainableParametrisation())
 
 		# Apply ARD first
 		length_scales = jnp.array([1.0, 2.0])

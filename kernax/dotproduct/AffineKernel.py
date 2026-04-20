@@ -1,12 +1,13 @@
 from __future__ import annotations
+from typing import Callable
 import equinox as eqx
 from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 from .DotProductKernel import AbstractDotProductKernel
-from ...engines import AbstractEngine, DenseEngine
-from ...parametrisations import AbstractParametrisation, LogExpParametrisation
-from ...distances import dot_product
+from ..engines import AbstractEngine, DenseEngine
+from ..parametrisations import AbstractParametrisation, LogExpParametrisation
+from ..distances import dot_product
 
 
 class AffineKernel(AbstractDotProductKernel):
@@ -20,51 +21,41 @@ class AffineKernel(AbstractDotProductKernel):
 	represents the variance at the crossing point.
 	"""
 	engine: AbstractEngine = eqx.field(static=True)
-	_distance_function: Callable = eqx.field(static=True)
-	_slope_var_parametrisation: AbstractParametrisation = eqx.field(static=True)
+	distance_function: Callable = eqx.field(static=True)
+	_slope_var_parametrisation: AbstractParametrisation = eqx.field()
 	_slope_var: Array = eqx.field(converter=jnp.asarray)
 	offset: Array = eqx.field(converter=jnp.asarray)
 
 	@property
-	def slope_var(self):
+	def slope_var(self) -> Array:
 		return self._slope_var_parametrisation.unwrap(self._slope_var)
 
 	def __init__(self,
 	             slope_var: float | Array,
 	             offset: float | Array,
-	             slope_var_parametrisation: AbstractParametrisation = LogExpParametrisation,
+	             slope_var_parametrisation: AbstractParametrisation = LogExpParametrisation(),
 	             distance_function: Callable = dot_product,
-	             engine: AbstractEngine = DenseEngine
-	             ):
+	             engine: AbstractEngine = DenseEngine):
 		"""
-		Initialize the Linear kernel.
+		Initialize the Affine kernel.
 
 		Args:
-			slope_var: Slope variance. Controls the slope. Must be non-negative.
+			slope_var: Slope variance. Controls the slope. Must be positive.
 			offset: Input offset. Determines the crossing point.
 		"""
-		# Assert slope_var is positive
 		slope_var = jnp.asarray(slope_var)
-		slope_var = eqx.error_if(slope_var, jnp.any(self.slope_var < 0),  # FIXME: we don't have to use error_if here, we are not inside jit
-		                         "`slope_var` must be non-negative.")
+		if jnp.any(slope_var <= 0):
+			raise ValueError("`slope_var` must be positive.")
 
-		self._distance_function = distance_function
+		self.distance_function = distance_function
 		self._slope_var_parametrisation = slope_var_parametrisation
 		self._slope_var = self._slope_var_parametrisation.wrap(slope_var)
-		self.offset = offset
+		self.offset = jnp.asarray(offset)
 		self.engine = engine
 
 	@filter_jit
-	def pairwise_(self, x1: Array, x2: Array) -> Array:
-		"""
-		Compute the affine kernel covariance value between two vectors.
-
-		:param x1: scalar array.
-		:param x2: scalar array.
-		:return: scalar array (covariance value).
-		"""
-		# Compute the dot product of the shifted vectors
-		return self.slope_var * self._distance_function(x1 - self.offset, x2 - self.offset)
+	def pairwise(self, x1: Array, x2: Array) -> Array:
+		return self.slope_var * self.distance_function(x1 - self.offset, x2 - self.offset)
 
 	def replace(self,
 	            slope_var: None | float | Array = None,
@@ -73,11 +64,16 @@ class AffineKernel(AbstractDotProductKernel):
 		new_kernel = self
 
 		if slope_var is not None:
-			new_kernel =  eqx.tree_at(
+			slope_var = jnp.asarray(slope_var)
+
+			if jnp.any(slope_var <= 0):
+				raise ValueError("`slope_var` must be positive.")
+
+			new_kernel = eqx.tree_at(
 				lambda k: k._slope_var,
 				new_kernel,
 				jnp.broadcast_to(
-					self._slope_var_parametrisation.wrap(jnp.asarray(slope_var)),
+					self._slope_var_parametrisation.wrap(slope_var),
 					self._slope_var.shape)
 			)
 
@@ -85,9 +81,7 @@ class AffineKernel(AbstractDotProductKernel):
 			new_kernel = eqx.tree_at(
 				lambda k: k.offset,
 				new_kernel,
-				jnp.broadcast_to(
-					jnp.asarray(offset),
-					self._slope_var.shape),
+				jnp.broadcast_to(jnp.asarray(offset), self.offset.shape)
 			)
 
 		return new_kernel

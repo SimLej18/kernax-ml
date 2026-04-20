@@ -1,9 +1,6 @@
 """
 Tests for base kernel implementations.
 """
-
-import warnings
-
 import allure
 import jax
 import jax.numpy as jnp
@@ -477,15 +474,14 @@ class TestPeriodicKernel:
 	@allure.title("PeriodicKernel Instantiation")
 	@allure.description("Test that Periodic kernel can be instantiated.")
 	def test_instantiation(self):
-		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
+		kernel = PeriodicKernel(length_scale=1.0, period=2.0)
 		assert kernel.length_scale == 1.0
-		assert kernel.variance == 1.0
 		assert kernel.period == 2.0
 
 	@allure.title("PeriodicKernel string representation")
 	@allure.description("Test that Periodic kernel has a valid string representation.")
 	def test_str_representation(self):
-		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
+		kernel = PeriodicKernel(length_scale=1.0, period=2.0)
 		str_repr = str(kernel)
 		assert isinstance(str_repr, str)
 		assert len(str_repr) > 0
@@ -493,13 +489,9 @@ class TestPeriodicKernel:
 	@allure.title("PeriodicKernel scalar computation")
 	@allure.description("Test covariance computation between two 1D vectors.")
 	def test_scalar_computation(self):
-		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
+		kernel = PeriodicKernel(length_scale=1.0, period=2.0)
 		x1 = jnp.array([0.5])
 		x2 = jnp.array([1.5])
-		# Periodic: k(x1, x2) = variance * exp(-2 * sin^2(pi * ||x1 - x2|| / period) / length_scale^2)
-		# dist = 1.0, period = 2.0, length_scale = 1.0, variance = 1.0
-		# sin(pi * 1.0 / 2.0) = sin(pi/2) = 1.0
-		# exp(-2 * 1.0^2 / 1.0^2) = exp(-2) = 0.13533528
 		result = kernel(x1, x2)
 		expected = jnp.array(0.13533528)
 		assert result.shape == ()
@@ -509,7 +501,7 @@ class TestPeriodicKernel:
 	@allure.title("PeriodicKernel cross-cov computation")
 	@allure.description("Test cross-covariance computation between two batches of vectors.")
 	def test_cross_cov_computation(self, sample_1d_data):
-		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
+		kernel = PeriodicKernel(length_scale=1.0, period=2.0)
 		x1, x2 = sample_1d_data
 		result = kernel(x1, x2)
 		assert result.shape == (x1.shape[0], x2.shape[0])
@@ -522,7 +514,7 @@ class TestPeriodicKernel:
 	@allure.description("Test that kernel respects periodicity.")
 	def test_periodicity(self):
 		period = 2.0
-		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=period)
+		kernel = PeriodicKernel(length_scale=1.0, period=period)
 		x = jnp.array([0.5])
 		y1 = jnp.array([1.5])
 		y2 = jnp.array([1.5 + period])
@@ -532,18 +524,18 @@ class TestPeriodicKernel:
 	@allure.title("PeriodicKernel mathematical properties")
 	@allure.description("Test that mathematical properties of the kernel still hold.")
 	def test_math_properties(self, sample_1d_data):
-		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
+		kernel = PeriodicKernel(length_scale=1.0, period=2.0)
 		x1, _ = sample_1d_data
 		K = kernel(x1)  # Test optional x2 parameter
 
-		# Check diagonal elements equal variance (same point)
+		# Check diagonal elements equal 1 (same point)
 		assert jnp.allclose(jnp.diag(K), 1.0)
 
 		# Check matrix is symmetric
 		assert jnp.allclose(K, K.T)
 
 		# Test that higher length scale gives higher values
-		kernel2 = PeriodicKernel(length_scale=2.0, variance=1.0, period=2.0)
+		kernel2 = PeriodicKernel(length_scale=2.0, period=2.0)
 		K2 = kernel2(x1)  # Test optional x2 parameter
 		assert jnp.all(K2 >= K)
 
@@ -552,7 +544,7 @@ class TestPeriodicKernel:
 	def test_periodic_exact_values(self):
 		# Note: GPJax Periodic kernel uses different formula/parameterization
 		# Testing with a simple case where we can verify the computation
-		kernel = PeriodicKernel(length_scale=1.0, variance=1.0, period=2.0)
+		kernel = PeriodicKernel(length_scale=1.0, period=2.0)
 
 		# Testing with simple 1D inputs
 		x1_simple = jnp.array([[0.5]])
@@ -602,9 +594,6 @@ class TestRationalQuadraticKernel:
 		kernel = RationalQuadraticKernel(length_scale=1.0, alpha=1.0)
 		x1 = jnp.array([1.0])
 		x2 = jnp.array([2.0])
-		# RQ: k(x1, x2) = variance * (1 + squared_dist / (2 * alpha * length_scale^2))^(-alpha)
-		# squared_dist = 1.0, alpha = 1.0, length_scale = 1.0, variance = 1.0
-		# (1 + 1.0 / (2 * 1.0 * 1.0))^(-1.0) = (1.5)^(-1.0) = 0.66666667
 		result = kernel(x1, x2)
 		expected = jnp.array(0.66666667)
 		assert result.shape == ()
@@ -639,7 +628,7 @@ class TestRationalQuadraticKernel:
 		x1, _ = sample_1d_data
 		K = kernel(x1)  # Test optional x2 parameter
 
-		# Check diagonal elements equal variance (same point)
+		# Check diagonal elements equal 1 (same point)
 		assert jnp.allclose(jnp.diag(K), 1.0)
 
 		# Check matrix is symmetric
@@ -798,7 +787,7 @@ class TestWhiteNoiseKernel:
 	@allure.description("Test that WhiteNoise kernel can be instantiated.")
 	def test_instantiation(self):
 		kernel = WhiteNoiseKernel(noise=1.0)
-		assert kernel.value == 1.0
+		assert kernel.noise == 1.0
 
 	@allure.title("WhiteNoiseKernel string representation")
 	@allure.description("Test that WhiteNoise kernel has a valid string representation.")
@@ -807,21 +796,6 @@ class TestWhiteNoiseKernel:
 		str_repr = str(kernel)
 		assert isinstance(str_repr, str)
 		assert len(str_repr) > 0
-
-	@pytest.mark.parametrize("noise", [0.5, 1.0, 2.0])
-	@allure.title("WhiteNoiseKernel comparison with ConstantKernel + SafeDiagonalEngine")
-	@allure.description("Compare WhiteNoiseKernel results against ConstantKernel with SafeDiagonalEngine.")
-	def test_against_diag(self, sample_1d_data, noise):
-		from kernax.engines import SafeDiagonalEngine
-
-		white_noise_kernel = WhiteNoiseKernel(noise=noise)
-		diag_const_kernel = ConstantKernel(value=noise, computation_engine=SafeDiagonalEngine)
-
-		x1, _ = sample_1d_data
-		result = white_noise_kernel(x1)
-		expected = diag_const_kernel(x1)
-
-		assert jnp.allclose(result, expected)
 
 
 class TestNaNHandling:
@@ -907,13 +881,8 @@ class TestSigmoidKernel:
 	@allure.description("Test that SigmoidKernel can be instantiated with valid parameters.")
 	def test_instantiation(self):
 		"""Test basic kernel instantiation."""
-		# Reset config for clean state
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
 		# Test with default parameters
-		kernel = kernax.SigmoidKernel()
+		kernel = kernax.SigmoidKernel(alpha=1., constant=0.)
 		assert kernel.alpha == 1.0
 		assert kernel.constant == 0.0
 
@@ -931,16 +900,12 @@ class TestSigmoidKernel:
 	@allure.description("Test that SigmoidKernel rejects invalid parameters.")
 	def test_parameter_validation(self):
 		"""Test that invalid parameters are rejected."""
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
 		# Alpha must be positive
-		with pytest.raises((ValueError, RuntimeError)):  # eqx.error_if raises runtime errors
-			kernax.SigmoidKernel(alpha=0.0)
+		with pytest.raises(ValueError):
+			kernax.SigmoidKernel(alpha=0.0, constant=0.)
 
-		with pytest.raises((ValueError, RuntimeError)):
-			kernax.SigmoidKernel(alpha=-1.0)
+		with pytest.raises(ValueError):
+			kernax.SigmoidKernel(alpha=-1.0, constant=0.)
 
 		# Constant can be any value (no error expected)
 		kernel = kernax.SigmoidKernel(alpha=1.0, constant=-10.0)
@@ -950,10 +915,6 @@ class TestSigmoidKernel:
 	@allure.description("Test that the kernel has a readable string representation.")
 	def test_str_representation(self):
 		"""Test string representation of the kernel."""
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
 		kernel = kernax.SigmoidKernel(alpha=1.0, constant=0.0)
 		str_repr = str(kernel)
 		assert "SigmoidKernel" in str_repr
@@ -962,10 +923,6 @@ class TestSigmoidKernel:
 	@allure.description("Test kernel computation between two scalar inputs.")
 	def test_scalar_computation(self):
 		"""Test kernel computation on scalar inputs."""
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
 		kernel = kernax.SigmoidKernel(alpha=1.0, constant=0.0)
 
 		x1 = jnp.array([1.0])
@@ -991,10 +948,6 @@ class TestSigmoidKernel:
 	@allure.description("Test cross-covariance computation between two batches of vectors.")
 	def test_cross_cov_computation(self, sample_1d_data, alpha, constant):
 		"""Test cross-covariance matrix computation."""
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
 		kernel = kernax.SigmoidKernel(alpha=alpha, constant=constant)
 		x1, x2 = sample_1d_data
 
@@ -1020,10 +973,6 @@ class TestSigmoidKernel:
 	@allure.description("Test mathematical properties of the sigmoid kernel.")
 	def test_math_properties(self, sample_1d_data, alpha, constant):
 		"""Test mathematical properties."""
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
 		kernel = kernax.SigmoidKernel(alpha=alpha, constant=constant)
 		x1, _ = sample_1d_data
 
@@ -1043,10 +992,6 @@ class TestSigmoidKernel:
 	@allure.description("Verify that sigmoid kernel output is always in (-1, 1) range.")
 	def test_output_range(self, sample_1d_data):
 		"""Test that output is always in valid range."""
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
 		x1, x2 = sample_1d_data
 
 		# Test with various extreme parameters
@@ -1059,38 +1004,10 @@ class TestSigmoidKernel:
 			assert jnp.all(K <= 1.0)
 			assert jnp.all(jnp.isfinite(K))
 
-	@allure.title("SigmoidKernel with parameter transforms")
-	@allure.description("Test that parameter transforms work correctly.")
-	def test_with_transforms(self):
-		"""Test kernel with different parameter transforms."""
-		for transform in ["identity", "exp", "softplus"]:
-			with warnings.catch_warnings():
-				warnings.simplefilter("ignore", RuntimeWarning)
-				kernax.config.unsafe_reset()
-
-			kernax.config.parameter_transform = transform
-
-			kernel = kernax.SigmoidKernel(alpha=2.0, constant=1.0)
-
-			# Check that retrieved parameter matches input
-			assert jnp.allclose(kernel.alpha, 2.0, rtol=1e-5)
-			assert jnp.allclose(kernel.constant, 1.0)
-
-			# Kernel should work correctly
-			x1 = jnp.array([1.0])
-			x2 = jnp.array([2.0])
-			result = kernel(x1, x2)
-			assert jnp.isfinite(result)
-			assert -1.0 <= result <= 1.0
-
 	@allure.title("SigmoidKernel edge cases")
 	@allure.description("Test kernel behavior with edge case inputs.")
 	def test_edge_cases(self):
 		"""Test edge cases."""
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
 		kernel = kernax.SigmoidKernel(alpha=1.0, constant=0.0)
 
 		# Test with zero vectors
@@ -1110,10 +1027,6 @@ class TestSigmoidKernel:
 	@allure.description("Test that the kernel properly handles NaN inputs.")
 	def test_nan_handling(self):
 		"""Test NaN handling."""
-		with warnings.catch_warnings():
-			warnings.simplefilter("ignore", RuntimeWarning)
-			kernax.config.unsafe_reset()
-
 		kernel = kernax.SigmoidKernel(alpha=1.0, constant=0.0)
 
 		x1 = jnp.array([1.0])

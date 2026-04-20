@@ -1,71 +1,58 @@
+from __future__ import annotations
+from typing import Callable
 import equinox as eqx
 from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
-
-from ..AbstractKernel import AbstractKernel
+from .StationaryKernel import AbstractStationaryKernel
 from ..distances import euclidean_distance
-from .StationaryKernel import StaticStationaryKernel
+from ..engines import AbstractEngine, DenseEngine
+from ..parametrisations import AbstractParametrisation, LogExpParametrisation
 
 
-# Matern 1/2 (Exponential) Kernel defined in Rasmussen and Williams (2006), section 4.2
-class StaticMatern12Kernel(StaticStationaryKernel):
-	distance_func = euclidean_distance
+class Matern12Kernel(AbstractStationaryKernel):
+	"""Matern 1/2 (aka Exponential) Kernel"""
 
-	@classmethod
-	@filter_jit
-	def pairwise_cov(cls, kern: AbstractKernel, x1: Array, x2: Array) -> Array:
-		"""
-		Compute the Matern 1/2 kernel covariance value between two vectors.
-
-		:param kern: the kernel to use, containing hyperparameters (length_scale)
-		:param x1: scalar array
-		:param x2: scalar array
-		:return: scalar array
-		"""
-		kern = eqx.combine(kern)
-		r = cls.distance_func(x1, x2)
-		return jnp.exp(-r / kern.length_scale)  # type: ignore[attr-defined]
-
-
-class Matern12Kernel(AbstractKernel):
-	"""
-	Matern 1/2 (aka Exponential) Kernel
-
-	The length_scale parameter is always positive. Internally, it may be stored in an
-	unconstrained space depending on the global configuration.
-	"""
-
-	_raw_length_scale: Array = eqx.field(converter=jnp.asarray)
-	static_class = StaticMatern12Kernel
-
-	def __init__(self, length_scale, **kwargs):
-		"""
-		Initialize the Matern 1/2 kernel with a length scale parameter.
-
-		Args:
-			length_scale: Length scale parameter (must be positive)
-
-		Raises:
-			ValueError: If length_scale is not positive
-		"""
-		# Validate positivity
-		length_scale = jnp.array(length_scale)
-		length_scale = eqx.error_if(
-			length_scale, jnp.any(length_scale <= 0), "length_scale must be positive."
-		)
-
-		# Initialize parent (locks config)
-		super().__init__(**kwargs)
-
-		# Transform to unconstrained space
-		from ..transforms import to_unconstrained
-
-		self._raw_length_scale = to_unconstrained(jnp.asarray(length_scale))
+	engine: AbstractEngine = eqx.field(static=True)
+	distance_function: Callable = eqx.field(static=True)
+	_length_scale_parametrisation: AbstractParametrisation = eqx.field()
+	_length_scale: Array = eqx.field(converter=jnp.asarray)
 
 	@property
 	def length_scale(self) -> Array:
-		"""Get the length scale in constrained space (always positive)."""
-		from ..transforms import to_constrained
+		return self._length_scale_parametrisation.unwrap(self._length_scale)
 
-		return to_constrained(self._raw_length_scale)
+	def __init__(self,
+	             length_scale: float | Array,
+	             length_scale_parametrisation: AbstractParametrisation = LogExpParametrisation(),
+	             distance_function: Callable = euclidean_distance,
+	             engine: AbstractEngine = DenseEngine):
+		length_scale = jnp.asarray(length_scale)
+		if jnp.any(length_scale <= 0):
+			raise ValueError("`length_scale` must be positive.")
+
+		self.distance_function = distance_function
+		self._length_scale_parametrisation = length_scale_parametrisation
+		self._length_scale = self._length_scale_parametrisation.wrap(length_scale)
+		self.engine = engine
+
+	@filter_jit
+	def pairwise(self, x1: Array, x2: Array) -> Array:
+		r = self.distance_function(x1, x2)
+		return jnp.exp(-r / self.length_scale)
+
+	def replace(self, length_scale: None | float | Array = None, **kwargs) -> Matern12Kernel:
+		if length_scale is None:
+			return self
+
+		length_scale = jnp.asarray(length_scale)
+		if jnp.any(length_scale <= 0):
+			raise ValueError("`length_scale` must be positive.")
+
+		return eqx.tree_at(
+			lambda k: k._length_scale,
+			self,
+			jnp.broadcast_to(
+				self._length_scale_parametrisation.wrap(length_scale),
+				self._length_scale.shape)
+		)
