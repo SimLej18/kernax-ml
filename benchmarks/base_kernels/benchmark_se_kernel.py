@@ -23,6 +23,7 @@ import jax.random as jr
 import jax.tree_util as jtu
 
 from kernax import SEKernel, BatchModule
+from kernax.hp_sampling import sample_hps_from_uniform_priors
 from benchmarks.input_generators import (
 	generate_1d_regular_grid,
 	generate_2d_regular_grid,
@@ -225,20 +226,18 @@ class BenchmarkSEKernel:
 
 			# Instantiate base kernel
 			# Wrap in BatchModule with batched hyperparameters
-			batch_kernel = filter_jit(BatchModule(
+			batch_kernel = BatchModule(
 				SEKernel(length_scale=1.0),
 				batch_size=100,
 				batch_in_axes=0,  # Batched hyperparameters
 				batch_over_inputs=True,
-			))
+			)
 
 			# Modify hyperparameters of inner kernel with random multipliers
-			random_multipliers = jr.uniform(subkey1, (100,), minval=0.5, maxval=1.5)
-			new_inner = jtu.tree_map(
-				lambda param: param * random_multipliers if param.shape[0] == 100 else param,
-				batch_kernel.inner,
-			)
-			batch_kernel = eqx.tree_at(lambda bk: bk.inner, batch_kernel, new_inner)
+			batch_kernel = sample_hps_from_uniform_priors(subkey1, batch_kernel, {"length_scale": (.1, 2.5)})
+
+			# Jit the kernel
+			batch_kernel = filter_jit(batch_kernel)
 
 			# Generate batched random inputs (varies per round)
 			x = generate_batched_random_inputs(
@@ -301,20 +300,19 @@ class BenchmarkSEKernel:
 
 			# Instantiate base kernel
 			# Wrap in BatchModule with batched hyperparameters
-			batch_kernel = filter_jit(BatchModule(
+			batch_kernel = BatchModule(
 				SEKernel(length_scale=1.0),
 				batch_size=100,
 				batch_in_axes=0,  # Batched hyperparameters
 				batch_over_inputs=True,
-			))
+			)
 
 			# Modify hyperparameters of inner kernel with random multipliers
-			random_multipliers = jr.uniform(subkey1, (100,), minval=0.5, maxval=1.5)
-			new_inner = jtu.tree_map(
-				lambda param: param * random_multipliers if param.shape[0] == 100 else param,
-				batch_kernel.inner,
-			)
-			batch_kernel = eqx.tree_at(lambda bk: bk.inner, batch_kernel, new_inner)
+			batch_kernel = sample_hps_from_uniform_priors(subkey1, batch_kernel,
+			                                              {"length_scale": (.1, 2.5)})
+
+			# Jit the kernel
+			batch_kernel = filter_jit(batch_kernel)
 
 			# Generate batched random inputs (varies per round)
 			x = generate_batched_random_inputs(
