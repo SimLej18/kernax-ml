@@ -1,6 +1,5 @@
 from __future__ import annotations
 import equinox as eqx
-from equinox import filter_jit
 import jax.numpy as jnp
 from jax import Array
 from ..AbstractMean import AbstractMean
@@ -12,7 +11,6 @@ class ConstantMean(AbstractMean):
 	def __init__(self, constant: float | Array = 0.0):
 		self.constant = jnp.asarray(constant)
 
-	@filter_jit
 	def scalar_mean(self, x: Array) -> Array:
 		return self.constant
 

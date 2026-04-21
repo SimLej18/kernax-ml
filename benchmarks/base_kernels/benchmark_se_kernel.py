@@ -17,6 +17,7 @@ Customize: pytest benchmarks/ --benchmark-only --bench-rounds=50
 """
 
 import equinox as eqx
+from equinox import filter_jit
 import jax.numpy as jnp
 import jax.random as jr
 import jax.tree_util as jtu
@@ -58,7 +59,7 @@ class BenchmarkSEKernel:
 			self.key, subkey = jr.split(self.key)
 
 			# Instantiate kernel
-			kernel = SEKernel(length_scale=1.0)
+			kernel = filter_jit(SEKernel(length_scale=1.0))
 
 			# Generate inputs (regular grid, so key not used but we split for consistency)
 			x = generate_1d_regular_grid(n_points=10000)
@@ -83,7 +84,7 @@ class BenchmarkSEKernel:
 			self.key, subkey = jr.split(self.key)
 
 			# Instantiate kernel
-			kernel = SEKernel(length_scale=1.0)
+			kernel = filter_jit(SEKernel(length_scale=1.0))
 
 			# Generate random inputs (varies per round)
 			x = generate_random_inputs(subkey, n_points=10000, n_dims=1, min_val=-500, max_val=500)
@@ -110,7 +111,7 @@ class BenchmarkSEKernel:
 			self.key, subkey = jr.split(self.key)
 
 			# Instantiate kernel
-			kernel = SEKernel(length_scale=1.0)
+			kernel = filter_jit(SEKernel(length_scale=1.0))
 
 			# Generate 2D grid inputs
 			x = generate_2d_regular_grid(n_points_per_dim=100)
@@ -135,7 +136,7 @@ class BenchmarkSEKernel:
 			self.key, subkey = jr.split(self.key)
 
 			# Instantiate kernel
-			kernel = SEKernel(length_scale=1.0)
+			kernel = filter_jit(SEKernel(length_scale=1.0))
 
 			# Generate random inputs (varies per round)
 			x = generate_random_inputs(subkey, n_points=10000, n_dims=2, min_val=-20, max_val=20)
@@ -160,7 +161,7 @@ class BenchmarkSEKernel:
 			self.key, subkey1, subkey2 = jr.split(self.key, 3)
 
 			# Instantiate kernel
-			kernel = SEKernel(length_scale=1.0)
+			kernel = filter_jit(SEKernel(length_scale=1.0))
 
 			# Generate random inputs (varies per round)
 			x = generate_random_inputs(subkey1, n_points=10000, n_dims=2, min_val=-20, max_val=20)
@@ -190,15 +191,13 @@ class BenchmarkSEKernel:
 			self.key, subkey = jr.split(self.key)
 
 			# Instantiate base kernel
-			base_kernel = SEKernel(length_scale=1.0)
-
 			# Wrap in BatchModule with shared hyperparameters
-			batch_kernel = BatchModule(
-				base_kernel,
+			batch_kernel = filter_jit(BatchModule(
+				SEKernel(length_scale=1.0),
 				batch_size=100,
 				batch_in_axes=None,  # Shared hyperparameters
 				batch_over_inputs=True,
-			)
+			))
 
 			# Generate batched random inputs (varies per round)
 			x = generate_batched_random_inputs(
@@ -225,15 +224,13 @@ class BenchmarkSEKernel:
 			self.key, subkey1, subkey2 = jr.split(self.key, 3)
 
 			# Instantiate base kernel
-			base_kernel = SEKernel(length_scale=1.0)
-
 			# Wrap in BatchModule with batched hyperparameters
-			batch_kernel = BatchModule(
-				base_kernel,
+			batch_kernel = filter_jit(BatchModule(
+				SEKernel(length_scale=1.0),
 				batch_size=100,
 				batch_in_axes=0,  # Batched hyperparameters
 				batch_over_inputs=True,
-			)
+			))
 
 			# Modify hyperparameters of inner kernel with random multipliers
 			random_multipliers = jr.uniform(subkey1, (100,), minval=0.5, maxval=1.5)
@@ -270,15 +267,13 @@ class BenchmarkSEKernel:
 			self.key, subkey = jr.split(self.key)
 
 			# Instantiate base kernel
-			base_kernel = SEKernel(length_scale=1.0)
-
 			# Wrap in BatchModule with shared hyperparameters
-			batch_kernel = BatchModule(
-				base_kernel,
+			batch_kernel = filter_jit(BatchModule(
+				SEKernel(length_scale=1.0),
 				batch_size=100,
 				batch_in_axes=None,  # Shared hyperparameters
 				batch_over_inputs=True,
-			)
+			))
 
 			# Generate batched random inputs (varies per round)
 			x = generate_batched_random_inputs(
@@ -305,15 +300,13 @@ class BenchmarkSEKernel:
 			self.key, subkey1, subkey2 = jr.split(self.key, 3)
 
 			# Instantiate base kernel
-			base_kernel = SEKernel(length_scale=1.0)
-
 			# Wrap in BatchModule with batched hyperparameters
-			batch_kernel = BatchModule(
-				base_kernel,
+			batch_kernel = filter_jit(BatchModule(
+				SEKernel(length_scale=1.0),
 				batch_size=100,
 				batch_in_axes=0,  # Batched hyperparameters
 				batch_over_inputs=True,
-			)
+			))
 
 			# Modify hyperparameters of inner kernel with random multipliers
 			random_multipliers = jr.uniform(subkey1, (100,), minval=0.5, maxval=1.5)

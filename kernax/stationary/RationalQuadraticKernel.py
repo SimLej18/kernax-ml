@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Callable
 import equinox as eqx
-from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 from .StationaryKernel import AbstractStationaryKernel
@@ -50,7 +49,6 @@ class RationalQuadraticKernel(AbstractStationaryKernel):
 		self._alpha = self._alpha_parametrisation.wrap(alpha)
 		self.engine = engine
 
-	@filter_jit
 	def pairwise(self, x1: Array, x2: Array) -> Array:
 		squared_dist = self.distance_function(x1, x2)
 		base = 1 + squared_dist / (2 * self.alpha * self.length_scale**2)

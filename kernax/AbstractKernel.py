@@ -1,7 +1,6 @@
 from __future__ import annotations
 from abc import abstractmethod
 import equinox as eqx
-from equinox import filter_jit
 from jax import Array
 from .module import AbstractModule
 from .engines import AbstractEngine
@@ -14,7 +13,6 @@ class AbstractKernel(AbstractModule):
 	def pairwise(self, x1: Array, x2: Array):
 		raise NotImplementedError
 
-	@filter_jit
 	def __call__(self, x1: Array, x2: Array | None = None, *args, **kwargs) -> Array:
 		if x2 is None:
 			x2 = x1

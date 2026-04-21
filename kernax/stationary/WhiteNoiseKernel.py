@@ -3,7 +3,6 @@ from typing import Callable
 import equinox as eqx
 from jax import Array
 from jax import numpy as jnp
-from equinox import filter_jit
 from .StationaryKernel import AbstractStationaryKernel
 from ..engines import AbstractEngine, DenseEngine
 from ..distances import equality
@@ -38,7 +37,6 @@ class WhiteNoiseKernel(AbstractStationaryKernel):
 		self._noise = self._noise_parametrisation.wrap(noise)
 		self.engine = engine
 
-	@filter_jit
 	def pairwise(self, x1: Array, x2: Array):
 		return self.distance_function(x1, x2)
 

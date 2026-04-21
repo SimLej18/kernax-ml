@@ -1,6 +1,5 @@
 from __future__ import annotations
 import equinox as eqx
-from equinox import filter_jit
 import jax.numpy as jnp
 from jax import Array
 from ..AbstractMean import AbstractMean
@@ -12,7 +11,6 @@ class LinearMean(AbstractMean):
 	def __init__(self, slope: float | Array = 0.0):
 		self.slope = jnp.asarray(slope)
 
-	@filter_jit
 	def scalar_mean(self, x: Array) -> Array:
 		return jnp.sum(self.slope * x)
 

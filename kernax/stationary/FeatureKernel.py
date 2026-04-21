@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Callable
 import equinox as eqx
-from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 from .StationaryKernel import AbstractStationaryKernel
@@ -65,7 +64,6 @@ class FeatureKernel(AbstractStationaryKernel):
 		self._variance = self._variance_parametrisation.wrap(variance)
 		self.engine = engine
 
-	@filter_jit
 	def pairwise(self, x1: Array, x2: Array) -> Array:
 		kern_length_scale = jnp.broadcast_to(self.length_scale, (2,)) if self.length_scale.ndim == 0 else self.length_scale
 		kern_variance = jnp.broadcast_to(self.variance, (2,)) if self.variance.ndim == 0 else self.variance

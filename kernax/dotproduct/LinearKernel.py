@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Callable
 import equinox as eqx
-from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 from .DotProductKernel import AbstractDotProductKernel
@@ -50,7 +49,6 @@ class LinearKernel(AbstractDotProductKernel):
 		self._slope_var = self._slope_var_parametrisation.wrap(slope_var)
 		self.engine = engine
 
-	@filter_jit
 	def pairwise(self, x1: Array, x2: Array) -> Array:
 		return self.slope_var * self.distance_function(x1, x2)
 

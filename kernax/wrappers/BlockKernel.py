@@ -1,7 +1,6 @@
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
-from equinox import filter_jit
 from jax import Array, vmap
 
 from ..AbstractKernel import AbstractKernel
@@ -66,7 +65,6 @@ class BlockKernel(AbstractWrapperModule):
 			self.block_in_axes,
 		)
 
-	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		"""
 		Compute the kernel over batched inputs using vmap.
@@ -120,7 +118,6 @@ class BlockKernel(AbstractWrapperModule):
 			# Tile the block to create the full block matrix
 			return jnp.tile(single_block, (self.nb_blocks, self.nb_blocks))
 
-	@filter_jit
 	def symmetric_blocks_to_matrix(self, flat_blocks):
 		"""
 		Rebuilds a symmetric matrix from its unique blocks (upper triangle).

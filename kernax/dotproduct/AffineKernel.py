@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Callable
 import equinox as eqx
-from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 from .DotProductKernel import AbstractDotProductKernel
@@ -53,7 +52,6 @@ class AffineKernel(AbstractDotProductKernel):
 		self.offset = jnp.asarray(offset)
 		self.engine = engine
 
-	@filter_jit
 	def pairwise(self, x1: Array, x2: Array) -> Array:
 		return self.slope_var * self.distance_function(x1 - self.offset, x2 - self.offset)
 

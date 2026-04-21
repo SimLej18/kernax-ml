@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Callable
 import equinox as eqx
-from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 from .StationaryKernel import AbstractStationaryKernel
@@ -36,7 +35,6 @@ class Matern32Kernel(AbstractStationaryKernel):
 		self._length_scale = self._length_scale_parametrisation.wrap(length_scale)
 		self.engine = engine
 
-	@filter_jit
 	def pairwise(self, x1: Array, x2: Array) -> Array:
 		r = self.distance_function(x1, x2)
 		sqrt3_r_div_l = (jnp.sqrt(3) * r) / self.length_scale

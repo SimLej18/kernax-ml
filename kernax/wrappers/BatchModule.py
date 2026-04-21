@@ -2,7 +2,6 @@ from jax import Array, vmap
 import jax.numpy as jnp
 import jax.tree_util as jtu
 import equinox as eqx
-from equinox import filter_jit
 from ..module import AbstractModule
 from .WrapperModule import AbstractWrapperModule
 
@@ -67,7 +66,6 @@ class BatchModule(AbstractWrapperModule):
 			self.batch_in_axes,
 		)
 
-	@filter_jit
 	def __call__(self, x1: Array, x2: Array | None = None, *args, **kwargs) -> Array:
 		if x2 is None:
 			# As BatchModule can either wrap a Kernel (might expect x2) or a Mean (doesn't expect

@@ -1,6 +1,5 @@
 from __future__ import annotations
 import equinox as eqx
-from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 from ..AbstractKernel import AbstractKernel
@@ -21,7 +20,6 @@ class ConstantKernel(AbstractKernel):
 		self.value = jnp.asarray(value)
 		self.engine = engine
 
-	@filter_jit
 	def pairwise(self, x1: Array, x2: Array) -> Array:
 		return self.value
 

@@ -4,7 +4,6 @@ import jax.numpy as jnp
 import jax.lax as jlx
 from jax import Array, vmap
 import equinox as eqx
-from equinox import filter_jit
 
 
 class AbstractEngine(eqx.Module):
@@ -20,7 +19,6 @@ class AbstractEngine(eqx.Module):
 class DenseEngine(AbstractEngine):
 	""" Computes the dense cross-covariance matrix, sometimes called the Gram matrix of a kernel"""
 	@staticmethod
-	@filter_jit
 	def __call__(module: AbstractModule, x1: Array, x2: Array, *args, **kwargs) -> Array:
 		# Turn scalar inputs into vectors
 		x1, x2 = jnp.atleast_1d(x1), jnp.atleast_1d(x2)
@@ -41,17 +39,14 @@ class DenseEngine(AbstractEngine):
 			)
 
 	@staticmethod
-	@filter_jit
 	def pairwise(module: AbstractModule, x1: Array, x2: Array):
 		return module.pairwise(x1, x2)
 
 	@staticmethod
-	@filter_jit
 	def cross_cov_vector(module: AbstractModule, x1: Array, x2: Array) -> Array:
 		return vmap(DenseEngine.pairwise, in_axes=(None, None, 0))(module, x1, x2)
 
 	@staticmethod
-	@filter_jit
 	def cross_cov_matrix(module: AbstractModule, x1: Array, x2: Array) -> Array:
 		return vmap(DenseEngine.cross_cov_vector, in_axes=(None, 0, None))(module, x1, x2)
 
@@ -64,7 +59,6 @@ class NaNDenseEngine(AbstractEngine):
 	Using a DenseEngine (or a NoJitDenseEngine when JITing is unavailable) is often as fast or even faster.
 	"""
 	@staticmethod
-	@filter_jit
 	def __call__(module: AbstractModule, x1: Array, x2: Array, *args, **kwargs) -> Array:
 		# Turn scalar inputs into vectors
 		x1, x2 = jnp.atleast_1d(x1), jnp.atleast_1d(x2)
@@ -85,7 +79,6 @@ class NaNDenseEngine(AbstractEngine):
 			)
 
 	@staticmethod
-	@filter_jit
 	def pairwise_if_not_nan(module: AbstractModule, x1: Array, x2: Array):
 		return jlx.cond(
 			jnp.any(jnp.isnan(x1) | jnp.isnan(x2)),
@@ -95,12 +88,10 @@ class NaNDenseEngine(AbstractEngine):
 		)
 
 	@staticmethod
-	@filter_jit
 	def cross_cov_vector(module: AbstractModule, x1: Array, x2: Array) -> Array:
 		return vmap(NaNDenseEngine.pairwise_if_not_nan, in_axes=(None, None, 0))(module, x1, x2)
 
 	@staticmethod
-	@filter_jit
 	def cross_cov_vector_if_not_nan(module: AbstractModule, x1: Array, x2: Array) -> Array:
 		return jlx.cond(
 			jnp.any(jnp.isnan(x1)),
@@ -110,7 +101,6 @@ class NaNDenseEngine(AbstractEngine):
 		)
 
 	@staticmethod
-	@filter_jit
 	def cross_cov_matrix(module: AbstractModule, x1: Array, x2: Array) -> Array:
 		return vmap(NaNDenseEngine.cross_cov_vector_if_not_nan, in_axes=(None, 0, None))(module, x1, x2)
 

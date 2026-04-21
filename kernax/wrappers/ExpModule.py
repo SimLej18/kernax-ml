@@ -1,6 +1,5 @@
 from __future__ import annotations
 import jax.numpy as jnp
-from equinox import filter_jit
 from jax import Array
 from .WrapperModule import AbstractWrapperModule
 from ..module import AbstractModule
@@ -17,7 +16,6 @@ class ExpModule(AbstractWrapperModule):
 
 		self.inner = inner
 
-	@filter_jit
 	def __call__(self, x1: Array, x2: Array | None = None) -> Array:
 		if x2 is None:
 			return jnp.exp(self.inner(x1))

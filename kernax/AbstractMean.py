@@ -2,7 +2,6 @@ from __future__ import annotations
 from abc import abstractmethod
 import jax.numpy as jnp
 from jax import Array, vmap
-from equinox import filter_jit
 from .module import AbstractModule
 
 
@@ -12,7 +11,6 @@ class AbstractMean(AbstractModule):
 		"""Compute the mean value for a single input vector."""
 		raise NotImplementedError
 
-	@filter_jit
 	def __call__(self, x: Array, *args, **kwargs) -> Array:
 		x = jnp.atleast_1d(x)
 

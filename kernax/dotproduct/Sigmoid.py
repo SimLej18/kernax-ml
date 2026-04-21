@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Callable
 import equinox as eqx
-from equinox import filter_jit
 from jax import Array
 from jax import numpy as jnp
 from .DotProductKernel import AbstractDotProductKernel
@@ -46,7 +45,6 @@ class SigmoidKernel(AbstractDotProductKernel):
 		self.constant = jnp.asarray(constant)
 		self.engine = engine
 
-	@filter_jit
 	def pairwise(self, x1: Array, x2: Array) -> Array:
 		dp = self.distance_function(x1, x2)
 		return jnp.tanh(self.alpha * dp + self.constant)

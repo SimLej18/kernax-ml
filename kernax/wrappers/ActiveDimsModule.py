@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import Tuple, Iterable
 import equinox as eqx
-from equinox import field, filter_jit
 from jax import Array
 from ..module import AbstractModule
 from .WrapperModule import AbstractWrapperModule
@@ -16,13 +15,12 @@ class ActiveDimsModule(AbstractWrapperModule):
 	instantiate it with HPs only for the active dimensions.
 	"""
 
-	active_dims: Tuple[int, ...] = field(static=True)
+	active_dims: Tuple[int, ...] = eqx.field(static=True)
 
 	def __init__(self, inner: AbstractModule, active_dims: Iterable[int]):
 		self.inner = inner
 		self.active_dims = tuple(int(dim) for dim in active_dims)
 
-	@filter_jit
 	def __call__(self, x1: Array, x2: Array | None = None) -> Array:
 		assert x1.shape[-1] >= max(self.active_dims), "active_dims contains indices out of bounds for x1"
 

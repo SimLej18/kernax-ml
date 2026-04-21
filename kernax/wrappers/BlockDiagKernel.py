@@ -1,5 +1,4 @@
 import jax.scipy as jsp
-from equinox import filter_jit
 from jax import Array
 
 from .BatchModule import BatchModule
@@ -21,7 +20,6 @@ class BlockDiagKernel(BatchModule):
 	def __init__(self, inner, nb_blocks, block_in_axes=None, block_over_inputs=True, **kwargs):
 		super().__init__(inner, nb_blocks, block_in_axes, block_over_inputs, **kwargs)
 
-	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		"""
 		Compute the kernel over batched inputs using vmap.

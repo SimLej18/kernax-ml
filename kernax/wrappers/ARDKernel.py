@@ -1,7 +1,6 @@
 from typing import Iterable
 import equinox as eqx
 import jax.numpy as jnp
-from equinox import filter_jit
 from jax import Array
 from ..stationary.StationaryKernel import AbstractStationaryKernel
 from ..parametrisations import AbstractParametrisation, LogExpParametrisation
@@ -40,7 +39,6 @@ class ARDKernel(AbstractWrapperModule):
 		self._length_scales_parametrisation = length_scales_parametrisation
 		self._length_scales = self._length_scales_parametrisation.wrap(length_scales)
 
-	@filter_jit
 	def __call__(self, x1: Array, x2: None | Array = None) -> Array:
 		if x1.shape[-1] != self.length_scales.shape[-1]:
 			raise ValueError(f"input shape {x1.shape} does not match length scale shape {self.length_scales.shape}")

@@ -1,5 +1,4 @@
 from __future__ import annotations
-from equinox import filter_jit
 from jax import Array
 from .WrapperModule import AbstractWrapperModule
 from ..module import AbstractModule
@@ -15,7 +14,6 @@ class NegModule(AbstractWrapperModule):
 
 		self.inner = inner
 
-	@filter_jit
 	def __call__(self, x1: Array, x2: Array | None = None) -> Array:
 		if x2 is None:
 			return -self.inner(x1)
