@@ -797,6 +797,16 @@ class TestWhiteNoiseKernel:
 		assert isinstance(str_repr, str)
 		assert len(str_repr) > 0
 
+	@allure.title("WhiteNoiseKernel output equals noise * identity")
+	@allure.description("Test that WhiteNoiseKernel(noise=v)(x, x) == jnp.eye(n) * v for non-unit noise values.")
+	@pytest.mark.parametrize("noise", [0.5, 2.0, 5.0])
+	def test_output_scales_with_noise(self, noise):
+		kernel = WhiteNoiseKernel(noise=noise)
+		x = jnp.array([1., 2., 3.])[:, None]
+		result = kernel(x, x)
+		expected = jnp.eye(len(x)) * noise
+		assert jnp.allclose(result, expected), f"Expected noise={noise} on diagonal, got {jnp.diag(result)}"
+
 
 class TestNaNHandling:
 	"""Tests for NaN-aware computations."""

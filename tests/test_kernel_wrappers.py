@@ -5,6 +5,8 @@ Tests for wrapper kernels (BatchModule, ActiveDimsModule, ARDKernel).
 import allure
 import jax.numpy as jnp
 
+import pytest
+
 from kernax import (
 	ActiveDimsModule,
 	ARDKernel,
@@ -12,7 +14,9 @@ from kernax import (
 	BlockDiagKernel,
 	BlockKernel,
 	FeatureKernel,
+	InputSpecificParamModule,
 	SEKernel,
+	WhiteNoiseKernel,
 )
 from kernax.mask import create_mask
 
@@ -966,3 +970,24 @@ class TestWrapperCombinations:
 
 		assert result.shape == (batch_size, 1, 1)
 		assert jnp.all(jnp.isfinite(result))
+
+
+class TestInputSpecificParamModule:
+	"""Tests for InputSpecificParamModule wrapper."""
+
+	@allure.title("InputSpecificParamModule output equals per-input noise on diagonal")
+	@allure.description(
+		"Test that wrapping WhiteNoiseKernel with InputSpecificParamModule and setting "
+		"per-input noise values produces a diagonal matrix whose entries match those values."
+	)
+	@pytest.mark.parametrize("base_noise,extra", [(1., jnp.arange(3) + 1), (0.5, jnp.zeros(3))])
+	def test_whitenoise_per_input_diagonal(self, base_noise, extra):
+		x = jnp.array([1., 2., 3.])[:, None]
+		k = InputSpecificParamModule(WhiteNoiseKernel(base_noise), input_size=len(x), vmap_in_axes=0)
+		noise_values = k.inner.noise + extra
+		k = k.replace(noise=noise_values)
+		result = k(x)
+		expected = jnp.diag(noise_values)
+		assert jnp.allclose(result, expected), (
+			f"Expected diagonal {noise_values}, got {jnp.diag(result)}"
+		)
