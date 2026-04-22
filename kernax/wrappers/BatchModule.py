@@ -59,8 +59,7 @@ class BatchModule(AbstractWrapperModule):
 		# Add batch dimension to parameters where batch_in_axes is 0
 		self.inner = jtu.tree_map(
 			lambda param, batch_in_ax: (
-				param if batch_in_ax is None else jnp.repeat(param[None, ...], batch_size,
-				                                             axis=0)
+				param if batch_in_ax is None else jnp.repeat(param[None, ...], batch_size, axis=0)
 			),
 			inner,
 			self.batch_in_axes,
