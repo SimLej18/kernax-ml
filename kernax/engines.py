@@ -17,38 +17,26 @@ class AbstractEngine(eqx.Module):
 
 
 class DenseEngine(AbstractEngine):
-	""" Computes the dense cross-covariance matrix, sometimes called the Gram matrix of a kernel"""
+	""" Engine optimised for efficiency in an environment where jax's jit is not available. """
 	@staticmethod
 	def __call__(module: AbstractModule, x1: Array, x2: Array, *args, **kwargs) -> Array:
 		# Turn scalar inputs into vectors
 		x1, x2 = jnp.atleast_1d(x1), jnp.atleast_1d(x2)
 
 		# Call the appropriate method
-		if x1.ndim == 1 and x2.ndim == 1:
-			return DenseEngine.pairwise(module, x1, x2)
-		elif x1.ndim == 2 and x2.ndim == 1:
-			return DenseEngine.cross_cov_vector(module, x2, x1)
-		elif x1.ndim == 1 and x2.ndim == 2:
-			return DenseEngine.cross_cov_vector(module, x1, x2)
-		elif x1.ndim == 2 and x2.ndim == 2:
-			return DenseEngine.cross_cov_matrix(module, x1, x2)
+		if jnp.ndim(x1) == 1 and jnp.ndim(x2) == 1:
+			return module.pairwise(x1, x2)
+		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 1:
+			return vmap(module.pairwise, in_axes=(0, None))(x1, x2)
+		elif jnp.ndim(x1) == 1 and jnp.ndim(x2) == 2:
+			return vmap(module.pairwise, in_axes=(None, 0))(x1, x2)
+		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 2:
+			return vmap(vmap(module.pairwise, in_axes=(None, 0)), in_axes=(0, None))(x1, x2)
 		else:
 			raise ValueError(
 				f"Invalid input dimensions: x1 has shape {x1.shape}, x2 has shape {x2.shape}. "
 				"Expected scalar, 1D or 2D arrays as inputs."
 			)
-
-	@staticmethod
-	def pairwise(module: AbstractModule, x1: Array, x2: Array):
-		return module.pairwise(x1, x2)
-
-	@staticmethod
-	def cross_cov_vector(module: AbstractModule, x1: Array, x2: Array) -> Array:
-		return vmap(DenseEngine.pairwise, in_axes=(None, None, 0))(module, x1, x2)
-
-	@staticmethod
-	def cross_cov_matrix(module: AbstractModule, x1: Array, x2: Array) -> Array:
-		return vmap(DenseEngine.cross_cov_vector, in_axes=(None, 0, None))(module, x1, x2)
 
 
 class NaNDenseEngine(AbstractEngine):
@@ -82,9 +70,8 @@ class NaNDenseEngine(AbstractEngine):
 	def pairwise_if_not_nan(module: AbstractModule, x1: Array, x2: Array):
 		return jlx.cond(
 			jnp.any(jnp.isnan(x1) | jnp.isnan(x2)),
-			lambda _: jnp.asarray(jnp.nan),
-			lambda _: module.pairwise(x1, x2),
-			None
+			lambda: jnp.nan,
+			lambda: module.pairwise(x1, x2)
 		)
 
 	@staticmethod
@@ -95,9 +82,8 @@ class NaNDenseEngine(AbstractEngine):
 	def cross_cov_vector_if_not_nan(module: AbstractModule, x1: Array, x2: Array) -> Array:
 		return jlx.cond(
 			jnp.any(jnp.isnan(x1)),
-			lambda _: jnp.full(len(x2), jnp.nan),
-			lambda _: NaNDenseEngine.cross_cov_vector(module, x1, x2),
-			None
+			lambda: jnp.full(len(x2), jnp.nan),
+			lambda: NaNDenseEngine.cross_cov_vector(module, x1, x2)
 		)
 
 	@staticmethod
@@ -105,24 +91,25 @@ class NaNDenseEngine(AbstractEngine):
 		return vmap(NaNDenseEngine.cross_cov_vector_if_not_nan, in_axes=(None, 0, None))(module, x1, x2)
 
 
-class NoJitDenseEngine(AbstractEngine):
-	""" Engine optimised for efficiency in an environment where jax's jit is not available. """
+class MaskedNaNEngine(AbstractEngine):
+	"""
+	Engine that replaces nan rows/cols with:
+	    - 0s when x1 != x2
+	    - identity rows/cols when x1 == x2
+	That way, the resulting cross-covariance matrix is easily compatible with many operations,
+	e.g: matrix inversion.
+	"""
 	@staticmethod
 	def __call__(module: AbstractModule, x1: Array, x2: Array, *args, **kwargs) -> Array:
 		# Turn scalar inputs into vectors
 		x1, x2 = jnp.atleast_1d(x1), jnp.atleast_1d(x2)
 
 		# Call the appropriate method
-		if jnp.ndim(x1) == 1 and jnp.ndim(x2) == 1:
-			return module.pairwise(x1, x2)
-		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 1:
-			return vmap(module.pairwise, in_axes=(0, None))(x1, x2)
-		elif jnp.ndim(x1) == 1 and jnp.ndim(x2) == 2:
-			return vmap(module.pairwise, in_axes=(None, 0))(x1, x2)
-		elif jnp.ndim(x1) == 2 and jnp.ndim(x2) == 2:
-			return vmap(vmap(module.pairwise, in_axes=(None, 0)), in_axes=(0, None))(x1, x2)
-		else:
-			raise ValueError(
-				f"Invalid input dimensions: x1 has shape {x1.shape}, x2 has shape {x2.shape}. "
-				"Expected scalar, 1D or 2D arrays as inputs."
-			)
+		return jlx.cond(
+			jnp.array_equal(x1, x2, equal_nan=True),
+			lambda: jnp.where(
+				jnp.isnan(x1) & jnp.isnan(x1).squeeze(),
+				jnp.eye(len(x1)),
+				jnp.nan_to_num(NaNDenseEngine.__call__(module, x1, x2), nan=0.)),
+			lambda: jnp.nan_to_num(NaNDenseEngine.__call__(module, x1, x2), nan=0.)
+		)
