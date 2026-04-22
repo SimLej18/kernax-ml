@@ -39,6 +39,14 @@ class ParametrisationChain(AbstractParametrisation):
 		return param
 
 
+class IdentityParametrisation(AbstractParametrisation):
+	def wrap(self, param: Array) -> Array:
+		return param
+
+	def unwrap(self, param: Array) -> Array:
+		return param
+
+
 class NonTrainableParametrisation(AbstractParametrisation):
 	def wrap(self, param: Array) -> Array:
 		return param

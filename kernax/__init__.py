@@ -12,7 +12,6 @@ __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"
 
 # Import transformation utilities
-from .parametrisations import AbstractParametrisation, LogExpParametrisation
 from .module import AbstractModule
 from .AbstractKernel import AbstractKernel
 from .AbstractMean import AbstractMean
@@ -62,6 +61,7 @@ from .wrappers import (
 	ExpModule,
 	LogModule,
 	NegModule,
+	InputSpecificParamModule,
 )
 
 # Import mean functions
@@ -113,6 +113,7 @@ __all__ = [
 	"BatchModule",
 	"BlockKernel",
 	"BlockDiagKernel",
+	"InputSpecificParamModule",
 	# Mean functions
 	"ZeroMean",
 	"ConstantMean",

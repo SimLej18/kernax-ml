@@ -162,3 +162,4 @@ benchmarks/*.html
 benchmarks/*.png
 /.claude/
 /.benchmarks/
+/debug/

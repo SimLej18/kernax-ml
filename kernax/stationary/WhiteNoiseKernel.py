@@ -38,7 +38,7 @@ class WhiteNoiseKernel(AbstractStationaryKernel):
 		self.engine = engine
 
 	def pairwise(self, x1: Array, x2: Array):
-		return self.distance_function(x1, x2)
+		return self.distance_function(x1, x2) * self.noise
 
 	def replace(self, noise: None|float|Array = None, **kwargs) -> WhiteNoiseKernel:
 		if noise is None:

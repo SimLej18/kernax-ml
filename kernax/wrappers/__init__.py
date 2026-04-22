@@ -7,6 +7,7 @@ from .ExpModule import ExpModule
 from .LogModule import LogModule
 from .NegModule import NegModule
 from .WrapperModule import AbstractWrapperModule
+from .InputSpecificParamModule import InputSpecificParamModule
 
 __all__ = [
 	"AbstractWrapperModule",
@@ -18,4 +19,5 @@ __all__ = [
 	"BlockKernel",
 	"BlockDiagKernel",
 	"ARDKernel",
+	"InputSpecificParamModule"
 ]

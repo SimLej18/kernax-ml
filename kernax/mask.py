@@ -2,11 +2,10 @@
 Goal of the script: provide `create_mask`, a utility to build pytree-compatible masks
 over any Equinox module (kernel or mean).
 """
-
 from __future__ import annotations
-
 import equinox as eqx
 from jax import Array
+from kernax.parametrisations import AbstractParametrisation, IdentityParametrisation
 
 
 def create_mask(module: eqx.Module, default=None, **kwargs) -> eqx.Module:
@@ -43,7 +42,12 @@ def _recurse(module: eqx.Module, masks: dict, default) -> eqx.Module:
 	for field_name, field_value in vars(module).items():
 		if isinstance(field_value, Array):
 			fields.append(field_name)
-			values.append(masks.get(field_name, default))
+			if field_name in masks:
+				values.append(masks[field_name])
+			elif field_name.startswith("_") and field_name[1:] in masks:
+				values.append(masks[field_name[1:]])
+			else:
+				values.append(default)
 
 		elif isinstance(field_value, eqx.Module) :
 			new_sub = _recurse(field_value, masks, default)
