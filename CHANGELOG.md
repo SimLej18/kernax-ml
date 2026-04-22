@@ -8,8 +8,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Planned
-- Comprehensive documentation
 - Additional kernel types (more Matern variants, spectral kernels)
+
+## [0.6.0-alpha] - 2026-04-22
+
+### Added
+- `InputSpecificParamModule`: wrapper giving each input its own set of HPs; designed for per-point noise with `WhiteNoiseKernel`.
+- `MaskedNaNEngine`: new engine implementing NaN masking directly in the kernel matrix computation.
+- Sphinx + ReadTheDocs documentation with full structure and getting-started content.
+
+### Changed *(breaking)*
+- JIT no longer applied internally; wrap kernels at the top level with `eqx.filter_jit(kernel)`.
+- Architecture rewrite: abstract-final pattern with per-HP customizable parametrisation; `Static` classes removed.
+
+### Fixed
+- Bug in `WhiteNoiseKernel` computation.
+- Python 3.10 compatibility: removed multi-line f-strings.
+
+### Removed
+- Cross-library comparison benchmarks (moved to KernelArena).
 
 ## [0.5.5-alpha] - 2026-03-16
 
@@ -161,7 +178,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sum/Product composite kernels; Diag/Exp/Log/Neg wrappers.
 - Automatic dimension handling, NaN-aware computations, JAX PyTree integration, operator overloading.
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.5.5-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.6.0-alpha...HEAD
+[0.6.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.5-alpha...v0.6.0-alpha
 [0.5.5-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.4-alpha...v0.5.5-alpha
 [0.5.4-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.2-alpha...v0.5.4-alpha
 [0.5.2-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.1-alpha...v0.5.2-alpha
