@@ -37,29 +37,33 @@ def create_mask(module: eqx.Module, default=None, **kwargs) -> eqx.Module:
 
 def _recurse(module: eqx.Module, masks: dict, default) -> eqx.Module:
 	"""Recursively replace Array fields with their mask values."""
-	fields, values = [], []
 
 	for field_name, field_value in vars(module).items():
 		if isinstance(field_value, Array):
-			fields.append(field_name)
 			if field_name in masks:
-				values.append(masks[field_name])
+				module = eqx.tree_at(
+					lambda m: m.__getattribute__(field_name),
+					module,
+					masks[field_name],
+				)
 			elif field_name.startswith("_") and field_name[1:] in masks:
-				values.append(masks[field_name[1:]])
+				module = eqx.tree_at(
+					lambda m: m.__getattribute__(field_name),
+					module,
+					masks[field_name[1:]],
+				)
 			else:
-				values.append(default)
+				module = eqx.tree_at(
+					lambda m: m.__getattribute__(field_name),
+					module,
+					default,
+				)
 
-		elif isinstance(field_value, eqx.Module) :
-			new_sub = _recurse(field_value, masks, default)
-			fields.append(field_name)
-			values.append(new_sub)
+		elif isinstance(field_value, eqx.Module) and field_name in ("inner", "left", "right"):
+			module = eqx.tree_at(
+				lambda m: m.__getattribute__(field_name),
+				module,
+				_recurse(field_value, masks, default),
+			)
 
-	if not fields:
-		return module
-
-	return eqx.tree_at(
-		lambda m: [getattr(m, k) for k in fields],
-		module,
-		values,
-		is_leaf=lambda x: x is None,
-	)
+	return module

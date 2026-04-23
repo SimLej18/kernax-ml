@@ -144,6 +144,60 @@ class TestBatchModule:
 			), f"Batch {i} differs from batch 0"
 
 
+	@allure.title("BatchModule double batch with masks")
+	@allure.description(
+		"Test doubly-nested BatchModule where the inner batch (size 2) varies length_scale "
+		"and the outer batch (size 4) varies noise, using create_mask at each level. "
+		"Result shape must be (4, 2, 3, 3). Diagonal entries equal 1 + noise; "
+		"off-diagonal entries are noise-independent and match SE covariance."
+	)
+	def test_double_batch_with_masks(self):
+		inputs = jnp.array([1., 2., 3.])[:, None]
+
+		k = SEKernel(.5) + WhiteNoiseKernel(.3)
+		bk = BatchModule(k, 2, create_mask(k, default=None, length_scale=0), False)
+		bbk = BatchModule(bk, 4, create_mask(bk, default=None, noise=0), False)
+
+		noise_vals = jnp.array([0., 1., 2., 3.])
+		ls_vals = jnp.array([.5, 1.5])
+
+		bbk = bbk.replace(noise=noise_vals)
+		bbk = bbk.replace(length_scale=ls_vals)
+
+		result = bbk(inputs)
+
+		# shape: (outer_batch=4, inner_batch=2, n=3, n=3)
+		assert result.shape == (4, 2, 3, 3)
+		assert jnp.all(jnp.isfinite(result))
+
+		# reference values from known output
+		expected = jnp.array([[[[1.0000000e+00, 1.3533528e-01, 3.3546262e-04],
+		                         [1.3533528e-01, 1.0000000e+00, 1.3533528e-01],
+		                         [3.3546262e-04, 1.3533528e-01, 1.0000000e+00]],
+		                        [[1.0000000e+00, 8.0073738e-01, 4.1111228e-01],
+		                         [8.0073738e-01, 1.0000000e+00, 8.0073738e-01],
+		                         [4.1111228e-01, 8.0073738e-01, 1.0000000e+00]]],
+		                       [[[2.0000000e+00, 1.3533528e-01, 3.3546262e-04],
+		                         [1.3533528e-01, 2.0000000e+00, 1.3533528e-01],
+		                         [3.3546262e-04, 1.3533528e-01, 2.0000000e+00]],
+		                        [[2.0000000e+00, 8.0073738e-01, 4.1111228e-01],
+		                         [8.0073738e-01, 2.0000000e+00, 8.0073738e-01],
+		                         [4.1111228e-01, 8.0073738e-01, 2.0000000e+00]]],
+		                       [[[3.0000000e+00, 1.3533528e-01, 3.3546262e-04],
+		                         [1.3533528e-01, 3.0000000e+00, 1.3533528e-01],
+		                         [3.3546262e-04, 1.3533528e-01, 3.0000000e+00]],
+		                        [[3.0000000e+00, 8.0073738e-01, 4.1111228e-01],
+		                         [8.0073738e-01, 3.0000000e+00, 8.0073738e-01],
+		                         [4.1111228e-01, 8.0073738e-01, 3.0000000e+00]]],
+		                       [[[4.0000000e+00, 1.3533528e-01, 3.3546262e-04],
+		                         [1.3533528e-01, 4.0000000e+00, 1.3533528e-01],
+		                         [3.3546262e-04, 1.3533528e-01, 4.0000000e+00]],
+		                        [[4.0000000e+00, 8.0073738e-01, 4.1111228e-01],
+		                         [8.0073738e-01, 4.0000000e+00, 8.0073738e-01],
+		                         [4.1111228e-01, 8.0073738e-01, 4.0000000e+00]]]])
+		assert jnp.allclose(result, expected, rtol=1e-5)
+
+
 class TestBlockKernel:
 	"""Tests for BlockKernel wrapper."""
 
