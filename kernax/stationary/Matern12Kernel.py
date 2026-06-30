@@ -41,7 +41,6 @@ class Matern12Kernel(AbstractStationaryKernel):
 		return jnp.exp(-r / self.length_scale)
 
 	def spectral_density(self, w: Array) -> Array:
-		w = jnp.atleast_1d(w)
 		d = w.shape[-1]
 		sq = jnp.sum(w ** 2, axis=-1)
 		l = self.length_scale
