@@ -54,6 +54,9 @@ class PeriodicKernel(AbstractStationaryKernel):
 		dist = self.distance_function(x1, x2)
 		return jnp.exp(-2 * jnp.sin(jnp.pi * dist / self.period)**2 / self.length_scale**2)
 
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError()
+
 	def replace(self,
 	            length_scale: None | float | Array = None,
 	            period: None | float | Array = None,

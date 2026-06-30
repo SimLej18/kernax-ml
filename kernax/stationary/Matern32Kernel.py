@@ -40,6 +40,14 @@ class Matern32Kernel(AbstractStationaryKernel):
 		sqrt3_r_div_l = (jnp.sqrt(3) * r) / self.length_scale
 		return (1.0 + sqrt3_r_div_l) * jnp.exp(-sqrt3_r_div_l)
 
+	def spectral_density(self, w: Array) -> Array:
+		d = w.shape[-1]
+		sq = jnp.sum(w ** 2, axis=-1)
+		l = self.length_scale
+		const = 6 * jnp.sqrt(3.0) * 2 ** d * jnp.pi ** ((d - 1) / 2) * jnp.exp(
+			gammaln((d + 3) / 2)) / l ** 3
+		return const * (3 / l ** 2 + sq) ** (-(d + 3) / 2)
+
 	def replace(self, length_scale: None | float | Array = None, **kwargs) -> Matern32Kernel:
 		if length_scale is None:
 			return self

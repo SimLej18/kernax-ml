@@ -77,6 +77,9 @@ class FeatureKernel(AbstractStationaryKernel):
 		        / (((2 * jnp.pi)**(len(x1) / 2)) * jnp.sqrt(sigma_det))
 		        * jnp.exp(-0.5 * quadratic_form))
 
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError()
+
 	def replace(self,
 	            length_scale: None | float | Array = None,
 	            length_scale_u: None | float | Array = None,

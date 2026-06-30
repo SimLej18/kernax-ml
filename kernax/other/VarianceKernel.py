@@ -36,6 +36,9 @@ class VarianceKernel(AbstractKernel):
 	def pairwise(self, x1: Array, x2: Array) -> Array:
 		return self.variance
 
+	def spectral_density(self, _):
+		return self.variance
+
 	def replace(self, variance: None | float | Array = None, **kwargs) -> VarianceKernel:
 		if variance is None:
 			return self

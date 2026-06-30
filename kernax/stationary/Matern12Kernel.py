@@ -39,6 +39,13 @@ class Matern12Kernel(AbstractStationaryKernel):
 		r = self.distance_function(x1, x2)
 		return jnp.exp(-r / self.length_scale)
 
+	def spectral_density(self, w: Array) -> Array:
+		d = w.shape[-1]
+		sq = jnp.sum(w ** 2, axis=-1)
+		l = self.length_scale
+		const = 2 ** d * jnp.pi ** ((d - 1) / 2) * jnp.exp(gammaln((d + 1) / 2)) / l
+		return const * (1 / l ** 2 + sq) ** (-(d + 1) / 2)
+
 	def replace(self, length_scale: None | float | Array = None, **kwargs) -> Matern12Kernel:
 		if length_scale is None:
 			return self

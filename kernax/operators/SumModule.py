@@ -15,3 +15,6 @@ class SumModule(AbstractOperatorModule):
 		if self.right.__class__.__name__ == "NegModule":
 			return f"{self.left} - {self.right.inner}"  # type: ignore[attr-defined]
 		return f"{self.left} + {self.right}"
+	
+	def spectral_density(self, w):
+		raise NotImplementedError("spectral_density is not supported for the sum of two kernels.")

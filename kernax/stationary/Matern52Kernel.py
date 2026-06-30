@@ -40,6 +40,14 @@ class Matern52Kernel(AbstractStationaryKernel):
 		sqrt5_r_div_l = (jnp.sqrt(5) * r) / self.length_scale
 		return (1.0 + sqrt5_r_div_l + (5.0 / 3.0) * (r / self.length_scale)**2) * jnp.exp(-sqrt5_r_div_l)
 
+	def spectral_density(self, w: Array) -> Array:
+		d = w.shape[-1]
+		sq = jnp.sum(w ** 2, axis=-1)
+		l = self.length_scale
+		const = (100 * jnp.sqrt(5.0) / 3) * 2 ** d * jnp.pi ** ((d - 1) / 2) * jnp.exp(
+			gammaln((d + 5) / 2)) / l ** 5
+		return const * (5 / l ** 2 + sq) ** (-(d + 5) / 2)
+
 	def replace(self, length_scale: None | float | Array = None, **kwargs) -> Matern52Kernel:
 		if length_scale is None:
 			return self

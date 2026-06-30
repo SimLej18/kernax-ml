@@ -28,6 +28,9 @@ class ActiveDimsModule(AbstractWrapperModule):
 			return self.inner(x1[..., self.active_dims])
 		return self.inner(x1[..., self.active_dims], x2[..., self.active_dims])
 
+	def spectral_density(self, w: Array) -> Array:
+		return self.inner.spectral_density(w[..., self.active_dims])
+
 	def replace(self, active_dims: Iterable[int] | None, **kwargs):
 		if active_dims is not None:
 			raise ValueError(

@@ -54,6 +54,9 @@ class RationalQuadraticKernel(AbstractStationaryKernel):
 		base = 1 + squared_dist / (2 * self.alpha * self.length_scale**2)
 		return jnp.power(base, -self.alpha)
 
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError()
+
 	def replace(self,
 	            length_scale: None | float | Array = None,
 	            alpha: None | float | Array = None,

@@ -40,6 +40,9 @@ class WhiteNoiseKernel(AbstractStationaryKernel):
 	def pairwise(self, x1: Array, x2: Array):
 		return self.distance_function(x1, x2) * self.noise
 
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError()
+
 	def replace(self, noise: None|float|Array = None, **kwargs) -> WhiteNoiseKernel:
 		if noise is None:
 			return self  # No change to make

@@ -106,6 +106,16 @@ class BatchModule(AbstractWrapperModule):
 			axis=0
 		)
 
+	def spectral_density(self, w):
+		hp_batched = not jtu.tree_all(
+			jtu.tree_map(lambda k: k is None, self.batch_in_axes))
+		if hp_batched:
+			return vmap(
+				lambda module: module.spectral_density(w),
+				in_axes=(self.batch_in_axes,)
+			)(self.inner)
+		return self.inner.spectral_density(w)[None, ...]
+
 	def __str__(self):
 		# just str of the inner kernel, as the batch info is in the parameters of the inner kernel
 		return f"{self.inner}"

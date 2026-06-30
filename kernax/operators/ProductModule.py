@@ -15,3 +15,14 @@ class ProductModule(AbstractOperatorModule):
 		if self.right.__class__.__name__ == "NegModule":
 			return f"{self.left} * ({self.right})"
 		return f"{self.left} * {self.right}"
+
+	def spectral_density(self, w):
+		from kernax import VarianceKernel
+
+		# Will only work if either left or right kernel is a VarianceKernel, or a BatchModule of
+		# a VarianceKernel
+		if not (isinstance(self.left, VarianceKernel) or isinstance(self.right, VarianceKernel)):
+			raise NotImplementedError(
+				"spectral_density only supported when one operand is a VarianceKernel."
+			)
+		return self.left.spectral_density(w) * self.right.spectral_density(w)
