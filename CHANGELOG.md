@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.6.2-alpha] - 2026-06-30
+
+### Added
+- `spectral_density(w)` method on `AbstractStationaryKernel` (abstract) and all concrete implementations:
+  - `SEKernel`: Gaussian spectral density `(2π)^(d/2) · l^d · exp(-l² ‖w‖² / 2)`
+  - `Matern12Kernel`, `Matern32Kernel`, `Matern52Kernel`: closed-form Student-t spectral densities using the gamma function
+  - `VarianceKernel`: returns `variance` (constant spectral density)
+  - `ARDKernel`, `ActiveDimsModule`: propagate to inner kernel with appropriate frequency rescaling
+  - `BatchModule`: vmaps over batched hyperparameters when applicable
+  - `ProductModule`: supported when one operand is `VarianceKernel` (scales spectral density by variance)
+  - `SumModule`, `FeatureKernel`, `PeriodicKernel`, `RationalQuadraticKernel`, `WhiteNoiseKernel`: raise `NotImplementedError` (no closed-form or not yet implemented)
+
 ## [0.6.1-alpha] - 2026-04-23
 
 ### Fixed
@@ -183,7 +195,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sum/Product composite kernels; Diag/Exp/Log/Neg wrappers.
 - Automatic dimension handling, NaN-aware computations, JAX PyTree integration, operator overloading.
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.6.1-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.6.2-alpha...HEAD
+[0.6.2-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.1-alpha...v0.6.2-alpha
 [0.6.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.0-alpha...v0.6.1-alpha
 [0.6.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.5-alpha...v0.6.0-alpha
 [0.5.5-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.4-alpha...v0.5.5-alpha
