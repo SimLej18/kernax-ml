@@ -43,6 +43,7 @@ class SEKernel(AbstractStationaryKernel):
 		return jnp.exp(-0.5 * self.distance_function(x1, x2) / self.length_scale**2)
 
 	def spectral_density(self, w: Array) -> Array:
+		w = jnp.atleast_1d(w)
 		d = w.shape[-1]
 		sq = jnp.sum(w ** 2, axis=-1)
 		return (2*jnp.pi)**(d/2) * self.length_scale**d * jnp.exp(-self.length_scale**2 * sq / 2)
