@@ -3,6 +3,7 @@ from typing import Callable
 import equinox as eqx
 from jax import Array
 from jax import numpy as jnp
+from jax.scipy.special import gammaln
 from .StationaryKernel import AbstractStationaryKernel
 from ..distances import euclidean_distance
 from ..engines import AbstractEngine, DenseEngine
