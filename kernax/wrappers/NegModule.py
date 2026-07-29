@@ -14,10 +14,10 @@ class NegModule(AbstractWrapperModule):
 
 		self.inner = inner
 
-	def __call__(self, x1: Array, x2: Array | None = None) -> Array:
+	def __call__(self, x1: Array, x2: Array | None = None, **kwargs) -> Array:
 		if x2 is None:
-			return -self.inner(x1)
-		return -self.inner(x1, x2)
+			return -self.inner(x1, **kwargs)
+		return -self.inner(x1, x2, **kwargs)
 
 	def __str__(self):
 		return f"- {self.inner}"
