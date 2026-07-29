@@ -72,6 +72,13 @@ from .means import (
 	ZeroMean,
 )
 
+# Import multi-output kernels
+from .multioutput import (
+	ConvolutionKernel,
+	ICMKernel,
+	LMCKernel,
+)
+
 __all__ = [
 	# Package metadata
 	"__version__",
@@ -119,4 +126,8 @@ __all__ = [
 	"ConstantMean",
 	"LinearMean",
 	"AffineMean",
+	# Multi-output kernels
+	"ConvolutionKernel",
+	"ICMKernel",
+	"LMCKernel",
 ]
