@@ -5,7 +5,6 @@ over any Equinox module (kernel or mean).
 from __future__ import annotations
 import equinox as eqx
 from jax import Array
-from kernax.parametrisations import AbstractParametrisation, IdentityParametrisation
 
 
 def create_mask(module: eqx.Module, default=None, **kwargs) -> eqx.Module:
