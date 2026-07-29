@@ -91,6 +91,19 @@ class NaNDenseEngine(AbstractEngine):
 		return vmap(NaNDenseEngine.cross_cov_vector_if_not_nan, in_axes=(None, 0, None))(module, x1, x2)
 
 
+class ConvolutionEngine(AbstractEngine):
+	"""
+	Engine for :class:`~kernax.multioutput.ConvolutionKernel.ConvolutionKernel`.
+
+	Vmaps ``pairwise`` over both point axes, carrying each row's output index alongside its
+	coordinates so the two axes can hold points belonging to different outputs.
+	"""
+	@staticmethod
+	def __call__(module: AbstractModule, x1: Array, x2: Array, idx1: Array, idx2: Array) -> Array:
+		gram = vmap(vmap(module.pairwise, in_axes=(None, 0, None, 0)), in_axes=(0, None, 0, None))
+		return gram(x1, x2, idx1, idx2)
+
+
 class MaskedNaNEngine(AbstractEngine):
 	"""
 	Engine that replaces nan rows/cols with:
