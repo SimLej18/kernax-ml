@@ -63,11 +63,14 @@ class AbstractModule(eqx.Module):
 					except Exception:
 						pass
 
-		# 2. Public Array fields not covered by properties
+		# 2. Public Array and Module fields not covered by properties
 		for key, value in self.__dict__.items():
-			if not key.startswith('_') and key not in seen and isinstance(value, Array):
-				parts.append(f'{key}={format_jax_array(value)}')
-				seen.add(key)
+			if not key.startswith('_') and key not in seen:
+				if isinstance(value, Array):
+					parts.append(f'{key}={format_jax_array(value)}')
+					seen.add(key)
+				elif isinstance(value, eqx.Module):
+					parts.append(f'{key}={value}')
 
 		# 3. Public int/float/str fields (e.g. degree in PolynomialKernel)
 		for key, value in self.__dict__.items():

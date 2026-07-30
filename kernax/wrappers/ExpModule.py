@@ -20,6 +20,3 @@ class ExpModule(AbstractWrapperModule):
 		if x2 is None:
 			return jnp.exp(self.inner(x1))
 		return jnp.exp(self.inner(x1, x2))
-
-	def __str__(self):
-		return f"Exp({self.inner})"

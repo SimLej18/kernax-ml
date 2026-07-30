@@ -20,6 +20,3 @@ class LogModule(AbstractWrapperModule):
 		if x2 is None:
 			return jnp.log(self.inner(x1))
 		return jnp.log(self.inner(x1, x2))
-
-	def __str__(self):
-		return f"Log({self.inner})"

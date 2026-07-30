@@ -4,12 +4,12 @@ from typing import Callable
 
 import numpy as np
 import equinox as eqx
-from jax import Array
+from jax import Array, vmap
 from jax import numpy as jnp
 
 from ..AbstractKernel import AbstractKernel
 from ..distances import squared_euclidean_distance
-from ..engines import AbstractEngine, ConvolutionEngine
+from ..engines import AbstractEngine
 from ..parametrisations import AbstractParametrisation, LogExpParametrisation
 
 
@@ -25,6 +25,20 @@ def _feature_index(sizes: tuple[int, ...], n: int, n_outputs: int, name: str) ->
 	if sum(sizes) != n:
 		raise ValueError(f"`{name}` must sum to {n}, got {sum(sizes)}.")
 	return np.repeat(np.arange(n_outputs), sizes)
+
+
+class _ConvolutionEngine(AbstractEngine):
+	"""Vmaps ``pairwise`` over both point axes, carrying each row's output index alongside its
+	coordinates so the two axes can hold points belonging to different outputs.
+
+	Not part of the swappable ``engines`` catalogue: :meth:`ConvolutionKernel.pairwise` takes
+	two extra positional arguments (the output indices), so it is not compatible with
+	``DenseEngine`` and friends. This is the only engine :class:`ConvolutionKernel` can use.
+	"""
+	@staticmethod
+	def __call__(module: ConvolutionKernel, x1: Array, x2: Array, idx1: Array, idx2: Array) -> Array:
+		gram = vmap(vmap(module.pairwise, in_axes=(None, 0, None, 0)), in_axes=(0, None, 0, None))
+		return gram(x1, x2, idx1, idx2)
 
 
 class ConvolutionKernel(AbstractKernel):
@@ -65,7 +79,10 @@ class ConvolutionKernel(AbstractKernel):
 	:param ard: whether every input dimension gets its own bandwidth per output
 	:param distance_function: squared-distance function applied to the bandwidth-rescaled
 	    points; defaults to the Euclidean squared distance, see ``kernax.distances``
-	:param engine: computation engine, see :mod:`kernax.engines`
+
+	There is no ``engine`` parameter: unlike other kernels, ``pairwise`` here takes an extra
+	output index per point, which the shared engines (``DenseEngine`` and friends) don't
+	pass through. Computation always goes through this kernel's own engine.
 
 	Use :meth:`from_paper_parameters` to build a kernel directly from the parametrisation of
 	Alvarez & Lawrence (2011); this class uses an equivalent but better-behaved
@@ -87,8 +104,7 @@ class ConvolutionKernel(AbstractKernel):
 	             ard: bool = False,
 	             variance_parametrisation: AbstractParametrisation = LogExpParametrisation(),
 	             bandwidth_parametrisation: AbstractParametrisation = LogExpParametrisation(),
-	             distance_function: Callable = squared_euclidean_distance,
-	             engine: AbstractEngine = ConvolutionEngine):
+	             distance_function: Callable = squared_euclidean_distance):
 		variance = jnp.atleast_1d(jnp.asarray(variance))
 		bandwidth = jnp.asarray(bandwidth)
 
@@ -111,7 +127,7 @@ class ConvolutionKernel(AbstractKernel):
 		self._variance = variance_parametrisation.wrap(variance)
 		self._bandwidth_parametrisation = bandwidth_parametrisation
 		self._bandwidth = bandwidth_parametrisation.wrap(bandwidth)
-		self.engine = engine
+		self.engine = _ConvolutionEngine
 
 	@property
 	def variance(self) -> Array:
@@ -146,7 +162,7 @@ class ConvolutionKernel(AbstractKernel):
 
 	def __call__(self, x1: Array, x2: Array | None = None, *,
 	             feature_sizes: tuple[int, ...],
-	             feature_sizes2: tuple[int, ...] | None = None, **kwargs) -> Array:
+	             feature_sizes2: tuple[int, ...] | None = None) -> Array:
 		symmetric = x2 is None
 		idx1 = _feature_index(feature_sizes, x1.shape[0], self.n_outputs, "feature_sizes")
 		if symmetric:
