@@ -46,7 +46,6 @@ from .stationary import (
 	RationalQuadraticKernel,
 	RBFKernel,
 	SEKernel,
-	FeatureKernel,
 	WhiteNoiseKernel,
 )
 
@@ -56,8 +55,6 @@ from .wrappers import (
 	ActiveDimsModule,
 	ARDKernel,
 	BatchModule,
-	BlockDiagKernel,
-	BlockKernel,
 	ExpModule,
 	LogModule,
 	NegModule,
@@ -74,6 +71,8 @@ from .means import (
 
 # Import multi-output kernels
 from .multioutput import (
+	BlockDiagKernel,
+	BlockMean,
 	ConvolutionKernel,
 	ICMKernel,
 	LMCKernel,
@@ -101,7 +100,6 @@ __all__ = [
 	"PolynomialKernel",
 	"SigmoidKernel",
 	"VarianceKernel",
-	"FeatureKernel",
 	# Matern family
 	"Matern12Kernel",
 	"Matern32Kernel",
@@ -118,8 +116,6 @@ __all__ = [
 	"ActiveDimsModule",
 	"ARDKernel",
 	"BatchModule",
-	"BlockKernel",
-	"BlockDiagKernel",
 	"InputSpecificParamModule",
 	# Mean functions
 	"ZeroMean",
@@ -127,6 +123,8 @@ __all__ = [
 	"LinearMean",
 	"AffineMean",
 	# Multi-output kernels
+	"BlockDiagKernel",
+	"BlockMean",
 	"ConvolutionKernel",
 	"ICMKernel",
 	"LMCKernel",

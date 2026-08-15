@@ -6,7 +6,6 @@ from .Matern52Kernel import Matern52Kernel
 from .PeriodicKernel import PeriodicKernel
 from .RationalQuadraticKernel import RationalQuadraticKernel
 from .SEKernel import RBFKernel, SEKernel
-from .FeatureKernel import FeatureKernel
 from .WhiteNoiseKernel import WhiteNoiseKernel
 
 __all__ = [
@@ -17,6 +16,5 @@ __all__ = [
 	"Matern12Kernel",
 	"Matern32Kernel",
 	"Matern52Kernel",
-	"FeatureKernel",
 	"WhiteNoiseKernel"
 ]

@@ -55,6 +55,7 @@ docs = [
     "myst-nb",
     "jupytext",
     "sphinx-autodoc-typehints",
+    "matplotlib>=3.5.0",
 ]
 benchmarks = [
     "pandas>=1.5.0",

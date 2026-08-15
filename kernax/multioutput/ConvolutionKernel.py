@@ -53,14 +53,21 @@ class ConvolutionKernel(AbstractKernel):
 	output its own bandwidth per input dimension instead, in which case ``bandwidth`` must
 	have shape ``(n_outputs, n_features)``.
 
-	``x1`` holds points from every output, in any order. ``output_ids`` (and, for
-	cross-covariances between two different sets of points, ``output_ids2``) is therefore a
-	required keyword argument to ``__call__``: an integer array of shape ``(N,)`` giving, for
-	each row of ``x1``, which of the ``n_outputs`` outputs it belongs to. Unlike
-	:class:`~kernax.multioutput.ICMKernel.ICMKernel`, there is no shared-grid shortcut --
-	cross-output correlation here is derived from per-output bandwidth, not a free Kronecker
-	factor, so it is not separable and ``output_ids`` is always required, even when every
-	output shares the same grid (pass ``output_ids = jnp.repeat(jnp.arange(P), (N,) * P)``).
+	Two input regimes, selected by whether ``output_ids`` is passed to ``__call__`` -- this
+	is a property of the data, not of the kernel, so it is not stored on the instance:
+
+	- Omitted: ``x1`` is the grid *shared* by every output, shape ``(N, I)``; ``x2``, if
+	    given, is another such shared grid, shape ``(M, I)``. The result has shape
+	    ``(P*N, P*M)``, output-major, equivalent to tiling ``x1``/``x2`` across every output
+	    and calling with ``output_ids`` explicitly. Unlike
+	    :class:`~kernax.multioutput.ICMKernel.ICMKernel`, this is a convenience, not a
+	    speed-up: cross-output correlation here is derived from per-output bandwidth, not a
+	    free Kronecker factor, so every ``(o, o')`` block still has to be computed
+	    individually.
+	- Given: ``x1`` holds points from every output, in any order, shape ``(N, I)``;
+	    ``output_ids`` (and, for cross-covariances between two different sets of points,
+	    ``output_ids2``) is an integer array of shape ``(N,)`` giving, for each row of
+	    ``x1``, which of the ``n_outputs`` outputs it belongs to.
 
 	:param variance: marginal variance of each output, positive, shape ``(n_outputs,)``
 	:param bandwidth: bandwidth of each output, positive; shape ``(n_outputs,)`` if
@@ -150,8 +157,18 @@ class ConvolutionKernel(AbstractKernel):
 		return sigma[feature1] * sigma[feature2] * jnp.exp(log_rho - 0.5 * quad)
 
 	def __call__(self, x1: Array, x2: Array | None = None, *,
-	             output_ids: Array,
+	             output_ids: Array | None = None,
 	             output_ids2: Array | None = None) -> Array:
+		if output_ids is None:
+			if output_ids2 is not None:
+				raise ValueError("`output_ids2` requires `output_ids`.")
+			x2 = x1 if x2 is None else x2
+			output_ids = jnp.repeat(jnp.arange(self.n_outputs), x1.shape[0])
+			output_ids2 = jnp.repeat(jnp.arange(self.n_outputs), x2.shape[0])
+			x1 = jnp.tile(x1, (self.n_outputs, 1))
+			x2 = jnp.tile(x2, (self.n_outputs, 1))
+			return self.engine.__call__(self, x1, x2, output_ids, output_ids2)
+
 		output_ids = jnp.asarray(output_ids)
 		if output_ids.shape[0] != x1.shape[0]:
 			raise ValueError(
