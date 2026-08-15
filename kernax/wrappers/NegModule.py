@@ -1,8 +1,10 @@
 from __future__ import annotations
+
 from jax import Array
-from .WrapperModule import AbstractWrapperModule
+
 from ..module import AbstractModule
 from ..other.ConstantKernel import ConstantKernel
+from .WrapperModule import AbstractWrapperModule
 
 
 class NegModule(AbstractWrapperModule):

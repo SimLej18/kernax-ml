@@ -6,22 +6,39 @@ Gaussian Process models, with support for automatic differentiation, JIT
 compilation, and composable kernel operations.
 """
 
-__version__ = "0.6.2-alpha"
+__version__ = "0.7.0-alpha"
 __author__ = "S. Lejoly"
 __email__ = "simon.lejoly@unamur.be"
 __license__ = "MIT"
 
 # Import transformation utilities
-from .module import AbstractModule
 from .AbstractKernel import AbstractKernel
 from .AbstractMean import AbstractMean
 
 # Import dot-product kernels
 from .dotproduct import (
-	LinearKernel,
 	AffineKernel,
+	LinearKernel,
 	PolynomialKernel,
 	SigmoidKernel,
+)
+
+# Import mean functions
+from .means import (
+	AffineMean,
+	ConstantMean,
+	LinearMean,
+	ZeroMean,
+)
+from .module import AbstractModule
+
+# Import multi-output kernels
+from .multioutput import (
+	BlockDiagKernel,
+	BlockMean,
+	ConvolutionKernel,
+	ICMKernel,
+	LMCKernel,
 )
 
 # Import operator modules
@@ -56,26 +73,9 @@ from .wrappers import (
 	ARDKernel,
 	BatchModule,
 	ExpModule,
+	InputSpecificParamModule,
 	LogModule,
 	NegModule,
-	InputSpecificParamModule,
-)
-
-# Import mean functions
-from .means import (
-	AffineMean,
-	ConstantMean,
-	LinearMean,
-	ZeroMean,
-)
-
-# Import multi-output kernels
-from .multioutput import (
-	BlockDiagKernel,
-	BlockMean,
-	ConvolutionKernel,
-	ICMKernel,
-	LMCKernel,
 )
 
 __all__ = [

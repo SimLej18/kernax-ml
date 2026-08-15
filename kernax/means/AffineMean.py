@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import equinox as eqx
 import jax.numpy as jnp
 from jax import Array
+
 from ..AbstractMean import AbstractMean
 
 

@@ -4,7 +4,6 @@ Tests for wrapper kernels (BatchModule, ActiveDimsModule, ARDKernel).
 
 import allure
 import jax.numpy as jnp
-
 import pytest
 
 from kernax import (
@@ -16,7 +15,6 @@ from kernax import (
 	WhiteNoiseKernel,
 )
 from kernax.mask import create_mask
-
 from kernax.parametrisations import NonTrainableParametrisation
 
 

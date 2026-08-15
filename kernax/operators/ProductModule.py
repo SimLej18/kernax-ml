@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from jax import Array
+
 from .AbstractOperatorModule import AbstractOperatorModule
 
 

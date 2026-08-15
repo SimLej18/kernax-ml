@@ -1,9 +1,11 @@
 from typing import Iterable
+
 import equinox as eqx
 import jax.numpy as jnp
 from jax import Array
-from ..stationary.StationaryKernel import AbstractStationaryKernel
+
 from ..parametrisations import AbstractParametrisation, LogExpParametrisation
+from ..stationary.StationaryKernel import AbstractStationaryKernel
 from .WrapperModule import AbstractWrapperModule
 
 

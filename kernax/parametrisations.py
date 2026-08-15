@@ -6,13 +6,15 @@ unconstrained spaces, enabling stable optimization of positive-constrained param
 """
 
 from __future__ import annotations
+
 from abc import abstractmethod
 from typing import Iterable
+
+import equinox as eqx
+import jax.lax as jlx
 import jax.nn
 import jax.numpy as jnp
-import jax.lax as jlx
 from jax import Array
-import equinox as eqx
 
 
 class AbstractParametrisation(eqx.Module):

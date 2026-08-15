@@ -6,8 +6,19 @@ import allure
 import jax.numpy as jnp
 import pytest
 
-from kernax import (ActiveDimsModule, BatchModule, ConstantKernel, PeriodicKernel, PolynomialKernel,
-                    SEKernel, SumModule, WhiteNoiseKernel, ExpModule, SigmoidKernel)
+from kernax import (
+	ActiveDimsModule,
+	BatchModule,
+	ConstantKernel,
+	ExpModule,
+	PeriodicKernel,
+	PolynomialKernel,
+	SEKernel,
+	SigmoidKernel,
+	SumModule,
+	WhiteNoiseKernel,
+)
+
 
 class TestReplaceMethod:
 	"""Tests for the functional replace() API."""

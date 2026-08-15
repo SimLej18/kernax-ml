@@ -1,9 +1,12 @@
 from __future__ import annotations
+
 from abc import abstractmethod
+
 import equinox as eqx
 from jax import Array
-from .module import AbstractModule
+
 from .engines import AbstractEngine
+from .module import AbstractModule
 
 
 class AbstractKernel(AbstractModule):

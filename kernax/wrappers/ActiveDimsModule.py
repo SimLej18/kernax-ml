@@ -1,7 +1,10 @@
 from __future__ import annotations
-from typing import Tuple, Iterable
+
+from typing import Iterable, Tuple
+
 import equinox as eqx
 from jax import Array
+
 from ..module import AbstractModule
 from .WrapperModule import AbstractWrapperModule
 

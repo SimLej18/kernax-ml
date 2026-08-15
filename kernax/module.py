@@ -2,7 +2,9 @@
 Superclass for kernels and mean functions, extending Equinox's Module with operators and formatting.
 """
 from __future__ import annotations
+
 from abc import abstractmethod
+
 import equinox as eqx
 from jax import Array
 

@@ -4,12 +4,9 @@ Goal of the script: contain functions about sampling HPs randomly to initialise 
 
 from __future__ import annotations
 
-import jax
-import equinox as eqx
-from jax import Array
 import jax.random as jr
 
-from kernax import AbstractWrapperModule, AbstractModule
+from kernax import AbstractModule, AbstractWrapperModule
 from kernax.operators import AbstractOperatorModule
 
 

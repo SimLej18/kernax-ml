@@ -10,6 +10,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.7.0-alpha] - 2026-08-15
+
+### Added
+- Multi-output Gaussian Process support (`kernax.multioutput`): `ICMKernel`, `LMCKernel`, `ConvolutionKernel`, `BlockDiagKernel`, `BlockMean`.
+  - Common convention: `output_ids` (+ `output_ids2` for cross-covariances) is passed to `__call__`, not stored on the instance — a property of the data, not the model. Two input regimes per class: a shared grid across every output (`output_ids` omitted), or heterotopic data with arbitrary per-output sizes and ordering (`output_ids` given).
+  - `ICMKernel`: Intrinsic Coregionalisation Model, `K(x1, x2) = B ⊗ k(x1, x2)` with `B = W Wᵀ` positive semi-definite by construction; `n_latent < n_outputs` gives a low-rank coregionalisation.
+  - `LMCKernel`: Linear Model of Coregionalisation, a sum of independent `ICMKernel` components with arbitrary rank and kernel class per component.
+  - `ConvolutionKernel`: convolution-process multi-output kernel (Alvarez & Lawrence, 2011), per-output marginal variance and bandwidth (optionally per-dimension via `ard=True`); ships `from_paper_parameters()` to build directly from the paper's own parametrisation. Uses its own engine — not compatible with the shared `engines` catalogue.
+  - `BlockDiagKernel` / `BlockMean`: independent per-output kernel/mean with no cross-output correlation; per-output hyperparameters selected via `output_hps_in_axes` (built with `create_mask`), shared hyperparameters left untouched.
+- `SumModule`/`ProductModule` now propagate `**kwargs` (e.g. `output_ids`) to both operands, so multi-output kernels compose correctly through `+`/`*` (e.g. `ICMKernel(...) + BlockDiagKernel(WhiteNoiseKernel(...), ...)` for correlated signal plus independent per-output noise).
+- Example scripts: `docs/examples/multioutput_icm.py`, `multioutput_lmc.py`, `multioutput_convolution.py`.
+- `tests/test_multioutput.py`: dedicated test suite for `kernax.multioutput`, covering both input regimes, cross-checks between the shared-grid and heterotopic code paths, and PSD/symmetry invariants.
+
+### Changed *(breaking)*
+- `ICMKernel`, `LMCKernel`, `ConvolutionKernel`: `feature_sizes`-based construction replaced by the `output_ids` convention described above.
+- `BlockDiagKernel` moved from `kernax.wrappers` to `kernax.multioutput` and rebuilt on the `output_ids` convention. Old signature (`nb_blocks`, `block_in_axes`, `block_over_inputs`, fixed-size blocks only) is gone; new signature is `BlockDiagKernel(inner, n_outputs, output_hps_in_axes=None)`.
+- `BatchModule` now built on top of the external `eqxbatch.Batched` rather than an in-house implementation; public behavior unchanged.
+
+### Removed
+- `BlockKernel`, `FeatureKernel`: the two-symmetric-hyperparameter-set use case they served is covered natively by `ConvolutionKernel`, with its own engine and the `output_ids` convention. No other code depended on either class.
+
+### Fixed
+- Missing `engine` field on `ConvolutionKernel`.
+- `spectral_density` for `SumModule`.
+- Missing imports in `Matern12Kernel`, `Matern32Kernel`, `Matern52Kernel`.
+
 ## [0.6.2-alpha] - 2026-06-30
 
 ### Added
@@ -195,7 +221,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sum/Product composite kernels; Diag/Exp/Log/Neg wrappers.
 - Automatic dimension handling, NaN-aware computations, JAX PyTree integration, operator overloading.
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.6.2-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.7.0-alpha...HEAD
+[0.7.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.2-alpha...v0.7.0-alpha
 [0.6.2-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.1-alpha...v0.6.2-alpha
 [0.6.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.0-alpha...v0.6.1-alpha
 [0.6.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.5.5-alpha...v0.6.0-alpha

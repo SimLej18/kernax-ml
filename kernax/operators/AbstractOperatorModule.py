@@ -7,7 +7,6 @@ from ..module import AbstractModule
 
 def _to_constant(value, reference_module):
 	"""Convert a non-Module value to the appropriate Constant type based on the other operand."""
-	from ..AbstractKernel import AbstractKernel
 	from ..AbstractMean import AbstractMean
 
 	if isinstance(reference_module, AbstractMean):

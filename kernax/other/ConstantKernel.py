@@ -1,7 +1,9 @@
 from __future__ import annotations
+
 import equinox as eqx
 from jax import Array
 from jax import numpy as jnp
+
 from ..AbstractKernel import AbstractKernel
 from ..engines import AbstractEngine, DenseEngine
 from ..utils import format_jax_array

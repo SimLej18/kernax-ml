@@ -15,6 +15,7 @@ implementations, with the following features:
   - They can **be vectorised-on** with `vmap`
 - **Composable kernels** through operator overloading (`+`, `*`, `-`)
 - **Kernel wrappers** to scale to higher dimensions (batch or block of covariance matrices)
+- **Multi-output kernels** (ICM, LMC, convolution processes) for correlated GP outputs
 - **NaN-aware computations** for working with padded/masked data
 
 > **⚠️ Project Status**: Kernax is in early development. The API may change, and some features are still experimental.
@@ -132,9 +133,19 @@ Transform or modify kernel behavior:
 - **`LogModule`**: Applies logarithm to kernel output
 - **`NegModule`**: Negates kernel output (use `-kernel`)
 - **`BatchModule`**: Adds batch handling with distinct hyperparameters per batch
-- **`BlockKernel`**: Constructs block covariance matrices for grouped data
 - **`ActiveDimsModule`**: Selects specific input dimensions before kernel computation
 - **`ARDKernel`**: Applies Automatic Relevance Determination (different length scale per dimension)
+
+### Multi-output Kernels
+
+For correlated outputs in multi-output GPs (`kernax.multioutput`). `output_ids` (+ `output_ids2`)
+is passed to `__call__`, not stored on the kernel — supports both a grid shared across outputs
+and heterotopic data (arbitrary per-output sizes/order):
+
+- **`ICMKernel`**: Intrinsic Coregionalisation Model, `K = B ⊗ k(x1, x2)`
+- **`LMCKernel`**: Linear Model of Coregionalisation, a sum of independent `ICMKernel`s
+- **`ConvolutionKernel`**: convolution-process kernel with per-output bandwidth/variance
+- **`BlockDiagKernel`** / **`BlockMean`**: independent per-output kernel/mean, no cross-output correlation
 
 ### Computation Engines
 
@@ -142,18 +153,15 @@ Computation engines control how covariance matrices are computed. All kernels ac
 
 - **`DenseEngine`** (default): Computes full covariance matrices
 - **`NaNDenseEngine`**: applies a shortcut to skip computing NaN vectors
-- **`NoJitDenseEngine`**: skips useless sub-function calls to go faster when jit compilation is not available
+- **`MaskedNaNEngine`**: masks NaN entries directly in the kernel matrix computation
 
 Example:
 ```python
 from kernax import SEKernel
-from kernax.engines import NaNDenseEngine, NoJitDenseEngine
+from kernax.engines import NaNDenseEngine
 
-# Diagonal computation
+# Skip NaN vectors when computing the covariance matrix
 diagonal_kernel = SEKernel(length_scale=1.0, engine=NaNDenseEngine)
-
-# Regular grid optimization
-grid_kernel = SEKernel(length_scale=1.0, engine=NoJitDenseEngine)
 ```
 
 ## Architecture
@@ -166,7 +174,7 @@ Each kernel is a single class extending `AbstractKernel` (which extends `eqx.Mod
 
 Kernax maintains high code quality standards:
 
-- **94% test coverage** with 231+ passing tests
+- **338 passing tests**
 - **Allure test reporting** for detailed test analytics
 - **Cross-library validation** against scikit-learn, GPyTorch, and GPJax
 - **Type checking** with mypy for enhanced code safety
@@ -248,12 +256,12 @@ Check the [changelog](CHANGELOG.md) for details.
 - BatchKernel wrapper with distinct/shared hyper-parameters
 - ARDKernel wrapper using input scaling
 - ActiveDimsKernel wrapper for dimension selection
-- BlockKernel for block-matrix covariances
+- Multi-output kernels (ICM, LMC, convolution process) with `BlockDiagKernel`/`BlockMean`
 - StationaryKernel and DotProductKernel base classes with proper inheritance
 - Per-hyperparameter parametrisation system (LogExp, Softplus, Bounded, NonTrainable)
 - Parameter freezing either via `NonTrainableParametrisation` or via masking and using eqx.partition+eqx.combine
-- Computation engines for special cases (diagonal, regular grids)
-- Comprehensive test suite (94% coverage)
+- Computation engines for special cases (NaN-aware)
+- Comprehensive test suite
 - Benchmark architecture
 - PyPI package distribution
 

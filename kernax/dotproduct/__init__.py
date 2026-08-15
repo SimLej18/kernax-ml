@@ -1,7 +1,7 @@
 """Dot-product based kernels."""
 
-from .LinearKernel import LinearKernel
 from .AffineKernel import AffineKernel
+from .LinearKernel import LinearKernel
 from .PolynomialKernel import PolynomialKernel
 from .Sigmoid import SigmoidKernel
 

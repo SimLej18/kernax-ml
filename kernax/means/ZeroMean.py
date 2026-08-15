@@ -1,6 +1,8 @@
 from __future__ import annotations
+
 import jax.numpy as jnp
 from jax import Array
+
 from ..AbstractMean import AbstractMean
 
 

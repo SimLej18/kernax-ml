@@ -4,7 +4,6 @@ Tests for mean function mutation operations (replace method).
 
 import allure
 import jax.numpy as jnp
-
 import pytest
 
 from kernax import (

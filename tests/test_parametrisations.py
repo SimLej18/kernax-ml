@@ -1,7 +1,14 @@
 from __future__ import annotations
-import pytest
+
 import jax.numpy as jnp
-from kernax.parametrisations import LogExpParametrisation, SoftPlusParametrisation, BoundedParametrisation, ParametrisationChain
+import pytest
+
+from kernax.parametrisations import (
+	BoundedParametrisation,
+	LogExpParametrisation,
+	ParametrisationChain,
+	SoftPlusParametrisation,
+)
 
 
 @pytest.mark.parametrize("value", [0.1, 1.0, 5.0])

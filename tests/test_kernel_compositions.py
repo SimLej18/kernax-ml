@@ -11,12 +11,13 @@ from kernax import (
 	ExpModule,
 	LogModule,
 	NegModule,
+	PeriodicKernel,
 	PolynomialKernel,
 	ProductModule,
 	RationalQuadraticKernel,
 	SEKernel,
 	SumModule,
-	VarianceKernel, PeriodicKernel,
+	VarianceKernel,
 )
 from kernax.stationary import WhiteNoiseKernel
 

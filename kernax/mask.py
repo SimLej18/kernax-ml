@@ -3,6 +3,7 @@ Goal of the script: provide `create_mask`, a utility to build pytree-compatible 
 over any Equinox module (kernel or mean).
 """
 from __future__ import annotations
+
 import equinox as eqx
 from jax import Array
 

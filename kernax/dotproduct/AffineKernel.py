@@ -1,12 +1,15 @@
 from __future__ import annotations
+
 from typing import Callable
+
 import equinox as eqx
 from jax import Array
 from jax import numpy as jnp
-from .DotProductKernel import AbstractDotProductKernel
+
+from ..distances import dot_product
 from ..engines import AbstractEngine, DenseEngine
 from ..parametrisations import AbstractParametrisation, LogExpParametrisation
-from ..distances import dot_product
+from .DotProductKernel import AbstractDotProductKernel
 
 
 class AffineKernel(AbstractDotProductKernel):

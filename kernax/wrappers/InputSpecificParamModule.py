@@ -1,7 +1,8 @@
-from jax import Array, vmap
+import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
-import equinox as eqx
+from jax import Array, vmap
+
 from ..module import AbstractModule
 from .WrapperModule import AbstractWrapperModule
 

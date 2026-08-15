@@ -6,8 +6,8 @@ import equinox as eqx
 from jax import Array
 from jax import numpy as jnp
 
-from .ICMKernel import ICMKernel
 from ..module import AbstractModule
+from .ICMKernel import ICMKernel
 
 
 class LMCKernel(AbstractModule):

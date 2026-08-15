@@ -1,9 +1,11 @@
 from __future__ import annotations
+
 from abc import abstractmethod
-import jax.numpy as jnp
-import jax.lax as jlx
-from jax import Array, vmap
+
 import equinox as eqx
+import jax.lax as jlx
+import jax.numpy as jnp
+from jax import Array, vmap
 
 
 class AbstractEngine(eqx.Module):

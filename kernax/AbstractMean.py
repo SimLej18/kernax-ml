@@ -1,7 +1,10 @@
 from __future__ import annotations
+
 from abc import abstractmethod
+
 import jax.numpy as jnp
 from jax import Array, vmap
+
 from .module import AbstractModule
 
 

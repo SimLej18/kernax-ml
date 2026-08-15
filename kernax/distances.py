@@ -1,7 +1,7 @@
 """ Defines distances/comparisons between input vectors, used in different families of kernels. """
 
-import jax.numpy as jnp
 import jax.lax as jlx
+import jax.numpy as jnp
 from jax import Array, jit
 
 

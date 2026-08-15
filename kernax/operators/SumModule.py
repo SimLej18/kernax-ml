@@ -1,5 +1,7 @@
 from __future__ import annotations
+
 from jax import Array
+
 from .AbstractOperatorModule import AbstractOperatorModule
 
 
@@ -15,7 +17,7 @@ class SumModule(AbstractOperatorModule):
 		if self.right.__class__.__name__ == "NegModule":
 			return f"{self.left} - {self.right.inner}"  # type: ignore[attr-defined]
 		return f"{self.left} + {self.right}"
-	
+
 	def spectral_density(self, w):
 		# The Fourier transform is linear, so the spectral density of a sum is the sum of
 		# the spectral densities.
