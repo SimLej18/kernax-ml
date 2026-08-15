@@ -7,7 +7,7 @@ import jax.numpy as jnp
 import pytest
 
 from kernax import (ActiveDimsModule, BatchModule, ConstantKernel, PeriodicKernel, PolynomialKernel,
-                    SEKernel, SumModule, WhiteNoiseKernel, BlockKernel, ExpModule, SigmoidKernel)
+                    SEKernel, SumModule, WhiteNoiseKernel, ExpModule, SigmoidKernel)
 
 class TestReplaceMethod:
 	"""Tests for the functional replace() API."""
@@ -263,46 +263,6 @@ class TestReplaceOperatorKernel:
 		assert jnp.allclose(new_kernel.right.gamma, 2.0)
 
 
-class TestReplaceBlockKernel:
-	"""Tests for replace() on BlockKernel."""
-
-	@allure.title("Replace with scalar broadcasts to block dimension")
-	@allure.description("Test that scalar values are automatically broadcast to nb_blocks.")
-	def test_replace_scalar_broadcasts(self):
-		inner = SEKernel(length_scale=1.0)
-		block_kernel = BlockKernel(inner, nb_blocks=3, block_in_axes=0)
-
-		new_kernel = block_kernel.replace(length_scale=2.0)
-
-		# Should broadcast scalar to (3,)
-		expected = jnp.array([2.0, 2.0, 2.0])
-		assert new_kernel.inner._length_scale.shape[0] == 3
-		assert jnp.allclose(new_kernel.inner.length_scale, expected)
-
-	@allure.title("Replace with correct block dimensions")
-	@allure.description("Test that values with correct block dimensions are used directly.")
-	def test_replace_correct_dimensions(self):
-		inner = SEKernel(length_scale=1.0)
-		block_kernel = BlockKernel(inner, nb_blocks=3, block_in_axes=0)
-
-		new_values = jnp.array([1.0, 2.0, 3.0])
-		new_kernel = block_kernel.replace(length_scale=new_values)
-
-		assert jnp.allclose(new_kernel.inner.length_scale, new_values)
-
-	@allure.title("Replace shared parameters in BlockKernel")
-	@allure.description("Test replace() when block_in_axes=None (shared parameters).")
-	def test_replace_shared_parameters(self):
-		inner = SEKernel(length_scale=1.0)
-		block_kernel = BlockKernel(inner, nb_blocks=3, block_in_axes=None)
-
-		new_kernel = block_kernel.replace(length_scale=2.0)
-
-		# Shared parameter should remain scalar
-		assert new_kernel.inner.length_scale.shape == ()
-		assert jnp.allclose(new_kernel.inner.length_scale, 2.0)
-
-
 class TestReplaceImmutableFields:
 	"""Tests for immutability of structural parameters."""
 
@@ -323,22 +283,6 @@ class TestReplaceImmutableFields:
 
 		with pytest.raises(ValueError, match="batch_in_axes"):
 			batch_kernel.replace(batch_in_axes=0)
-
-	@allure.title("BlockKernel nb_blocks is immutable")
-	@allure.description("Test that attempting to modify nb_blocks raises a ValueError.")
-	def test_nb_blocks_immutable(self):
-		block_kernel = BlockKernel(SEKernel(length_scale=1.0), nb_blocks=3, block_in_axes=0)
-
-		with pytest.raises(ValueError, match="nb_blocks"):
-			block_kernel.replace(nb_blocks=5)
-
-	@allure.title("BlockKernel block_in_axes is immutable")
-	@allure.description("Test that attempting to modify block_in_axes raises a ValueError.")
-	def test_block_in_axes_immutable(self):
-		block_kernel = BlockKernel(SEKernel(length_scale=1.0), nb_blocks=3, block_in_axes=0)
-
-		with pytest.raises(ValueError, match="block_in_axes"):
-			block_kernel.replace(block_in_axes=None)
 
 	@allure.title("ActiveDimsModule active_dims is immutable")
 	@allure.description("Test that attempting to modify active_dims raises a ValueError.")

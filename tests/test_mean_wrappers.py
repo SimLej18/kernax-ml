@@ -1,7 +1,8 @@
 """
 Tests for wrapper modules applied to mean functions (ExpModule, LogModule, ActiveDimsModule, BatchModule).
 
-Note: BlockKernel, BlockDiagKernel, and ARDKernel are kernel-specific and are not tested here.
+Note: BlockDiagKernel and ARDKernel are kernel-specific and are not tested here; BlockMean is
+covered in test_multioutput.py alongside the rest of kernax.multioutput.
 """
 
 import allure
