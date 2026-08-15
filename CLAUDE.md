@@ -6,6 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Kernax is a JAX-based kernel library for Gaussian Processes, implementing various covariance functions with automatic differentiation and JIT compilation support. The library is built on Equinox and follows a single-class abstract-final pattern, with per-hyperparameter customizable parametrisation.
 
+## Writing Style: No Process Narration
+
+Treat this codebase — including `.md` design/planning docs, docstrings, and code comments —
+as final production content, not a record of how we got here.
+
+- Never write comments or doc prose that reference the history of the discussion: no "unlike
+  what I wrote before", "contrary to the earlier plan", "corrected from v1", "we used to do X
+  but now Y", changelog-style narration inside a design doc, etc. If something changed during
+  drafting, just present the current, correct version — don't narrate the correction.
+- Don't use code comments or doc text to show your work or prove you understood a correction.
+  That belongs in the conversation turn, not in a file a future maintainer will read.
+- Explain *why* only when it encodes a non-obvious constraint that will still matter to a
+  future reader (a hidden invariant, a real tradeoff, a workaround for an external bug) — not
+  "why we don't do it the other way we once considered."
+- This applies to design/planning `.md` files too: write them as the current state of the
+  plan, not as a diff against previous drafts of themselves.
+
 ## Architecture
 
 ### Single-Class Pattern

@@ -21,10 +21,8 @@ class LMCKernel(AbstractModule):
 	"""
 
 	components: tuple[ICMKernel, ...]
-	isotopic_features: bool = eqx.field(static=True)
 
-	def __init__(self, kernels: Sequence[AbstractModule], coregionalization_matrices: Sequence[float | Array],
-	             isotopic_features: bool = False):
+	def __init__(self, kernels: Sequence[AbstractModule], coregionalization_matrices: Sequence[float | Array]):
 		if len(kernels) < 1:
 			raise ValueError("`kernels` must contain at least one kernel.")
 		if len(kernels) != len(coregionalization_matrices):
@@ -38,7 +36,7 @@ class LMCKernel(AbstractModule):
 			W = jnp.asarray(W)
 			if W.ndim != 2:
 				raise ValueError("each coregionalisation matrix must be a (P, R) matrix.")
-			icm = ICMKernel(kernel, W.shape[0], W.shape[1], isotopic_features=isotopic_features)
+			icm = ICMKernel(kernel, W.shape[0], W.shape[1])
 			components.append(icm.replace(W=W))
 
 		n_outputs = components[0].n_outputs
@@ -46,7 +44,6 @@ class LMCKernel(AbstractModule):
 			raise ValueError("all coregionalisation matrices must share the same number of outputs P.")
 
 		self.components = tuple(components)
-		self.isotopic_features = isotopic_features
 
 	@property
 	def n_components(self) -> int:
@@ -56,12 +53,10 @@ class LMCKernel(AbstractModule):
 		return sum(c(x1, x2, **kwargs) for c in self.components)
 
 	def factors(self, x1: Array, x2: Array | None = None, **kwargs) -> tuple[tuple[Array, Array], ...]:
-		"""Kronecker terms ``((B_1, K_1), ...)``, following the sum/product operator convention."""
-		if not self.isotopic_features:
-			raise ValueError(
-				"`factors` is only defined for isotopic features: the heterotopic block "
-				"weighting is not a Kronecker product."
-			)
+		"""Kronecker terms ``((B_1, K_1), ...)``, following the sum/product operator convention.
+
+		Only meaningful for the shared-grid case: call without ``output_ids``.
+		"""
 		return tuple(c.factors(x1, x2, **kwargs)[0] for c in self.components)
 
 	def replace(self, **kwargs) -> LMCKernel:

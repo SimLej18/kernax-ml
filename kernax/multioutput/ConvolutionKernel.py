@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import Callable
 
-import numpy as np
 import equinox as eqx
 from jax import Array, vmap
 from jax import numpy as jnp
@@ -11,20 +10,6 @@ from ..AbstractKernel import AbstractKernel
 from ..distances import squared_euclidean_distance
 from ..engines import AbstractEngine
 from ..parametrisations import AbstractParametrisation, LogExpParametrisation
-
-
-def _feature_index(sizes: tuple[int, ...], n: int, n_outputs: int, name: str) -> np.ndarray:
-	"""Map each row of a feature-padded input to the output it belongs to.
-
-	Built with ``numpy``, not ``jax.numpy``: ``sizes`` is static metadata, so this resolves
-	at trace time and bakes a constant into the jaxpr. An output observed nowhere simply
-	gets size ``0`` and disappears on its own.
-	"""
-	if len(sizes) != n_outputs:
-		raise ValueError(f"`{name}` must have length {n_outputs}, got {len(sizes)}.")
-	if sum(sizes) != n:
-		raise ValueError(f"`{name}` must sum to {n}, got {sum(sizes)}.")
-	return np.repeat(np.arange(n_outputs), sizes)
 
 
 class _ConvolutionEngine(AbstractEngine):
@@ -68,10 +53,14 @@ class ConvolutionKernel(AbstractKernel):
 	output its own bandwidth per input dimension instead, in which case ``bandwidth`` must
 	have shape ``(n_outputs, n_features)``.
 
-	Inputs are feature-padded: the per-output grids concatenated output-major into a single
-	array. ``feature_sizes`` (and, for cross-covariances between two different sets of
-	points, ``feature_sizes2``) is therefore a required keyword argument to ``__call__``,
-	giving the number of rows belonging to each output.
+	``x1`` holds points from every output, in any order. ``output_ids`` (and, for
+	cross-covariances between two different sets of points, ``output_ids2``) is therefore a
+	required keyword argument to ``__call__``: an integer array of shape ``(N,)`` giving, for
+	each row of ``x1``, which of the ``n_outputs`` outputs it belongs to. Unlike
+	:class:`~kernax.multioutput.ICMKernel.ICMKernel`, there is no shared-grid shortcut --
+	cross-output correlation here is derived from per-output bandwidth, not a free Kronecker
+	factor, so it is not separable and ``output_ids`` is always required, even when every
+	output shares the same grid (pass ``output_ids = jnp.repeat(jnp.arange(P), (N,) * P)``).
 
 	:param variance: marginal variance of each output, positive, shape ``(n_outputs,)``
 	:param bandwidth: bandwidth of each output, positive; shape ``(n_outputs,)`` if
@@ -161,18 +150,25 @@ class ConvolutionKernel(AbstractKernel):
 		return sigma[feature1] * sigma[feature2] * jnp.exp(log_rho - 0.5 * quad)
 
 	def __call__(self, x1: Array, x2: Array | None = None, *,
-	             feature_sizes: tuple[int, ...],
-	             feature_sizes2: tuple[int, ...] | None = None) -> Array:
-		symmetric = x2 is None
-		idx1 = _feature_index(feature_sizes, x1.shape[0], self.n_outputs, "feature_sizes")
-		if symmetric:
-			x2, idx2 = x1, idx1
-		elif feature_sizes2 is None:
-			raise ValueError("`feature_sizes2` is required when `x2` is given.")
-		else:
-			idx2 = _feature_index(feature_sizes2, x2.shape[0], self.n_outputs, "feature_sizes2")
+	             output_ids: Array,
+	             output_ids2: Array | None = None) -> Array:
+		output_ids = jnp.asarray(output_ids)
+		if output_ids.shape[0] != x1.shape[0]:
+			raise ValueError(
+				f"`output_ids` must have length {x1.shape[0]} (= len(x1)), got {output_ids.shape[0]}.")
 
-		return self.engine.__call__(self, x1, x2, idx1, idx2)
+		symmetric = x2 is None
+		if symmetric:
+			x2, output_ids2 = x1, output_ids
+		elif output_ids2 is None:
+			raise ValueError("`output_ids2` is required when `x2` is given.")
+		else:
+			output_ids2 = jnp.asarray(output_ids2)
+			if output_ids2.shape[0] != x2.shape[0]:
+				raise ValueError(
+					f"`output_ids2` must have length {x2.shape[0]} (= len(x2)), got {output_ids2.shape[0]}.")
+
+		return self.engine.__call__(self, x1, x2, output_ids, output_ids2)
 
 	@classmethod
 	def from_paper_parameters(cls, S: float | Array, P_inv: Array, lambda_inv: float | Array,
