@@ -1,13 +1,15 @@
+from typing import Generic
+
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from jax import Array, vmap
 
-from ..module import AbstractModule
+from ..module import ModuleT
 from .WrapperModule import AbstractWrapperModule
 
 
-class InputSpecificParamModule(AbstractWrapperModule):
+class InputSpecificParamModule(AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 	"""
 	Wrapper module to add input-specific parameters to an inner module
 
@@ -23,11 +25,11 @@ class InputSpecificParamModule(AbstractWrapperModule):
 	If x1 doesn't math the input_size provided at init, we throw an error, as inner parameters
 	won't have an appropriate shape for vmap.
 	"""
-	inner: AbstractModule
+	inner: ModuleT
 	input_size: int = eqx.field(static=True)
 	vmap_in_axes: bool = eqx.field(static=True)
 
-	def __init__(self, inner, input_size, vmap_in_axes=0):
+	def __init__(self, inner: ModuleT, input_size, vmap_in_axes=0):
 		"""
 		:param inner: the kernel to wrap, must be an instance of AbstractKernel
 		:param input_size: the size of the expected inputs (int)
@@ -76,7 +78,7 @@ class InputSpecificParamModule(AbstractWrapperModule):
 		return f"{self.inner}"
 
 	def replace(self,
-	            inner: AbstractModule | None = None,
+	            inner: ModuleT | None = None,
 				input_size: int | None = None,
 				vmap_in_axes: bool | None = None,
 				**kwargs):

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
+from typing import Generic
+
 from jax import Array
 
-from ..module import AbstractModule
+from ..module import AbstractModule, ModuleT
 from ..other.ConstantKernel import ConstantKernel
 from .WrapperModule import AbstractWrapperModule
 
 
-class NegModule(AbstractWrapperModule):
-	inner: AbstractModule
+class NegModule(AbstractWrapperModule[ModuleT], Generic[ModuleT]):
+	inner: ModuleT
 
 	def __init__(self, inner=None):
 		if not isinstance(inner, AbstractModule):

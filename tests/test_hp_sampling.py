@@ -9,7 +9,9 @@ import pytest
 
 from kernax import (
 	AffineMean,
+	ARDKernel,
 	BatchModule,
+	ICMKernel,
 	Matern32Kernel,
 	SEKernel,
 	VarianceKernel,
@@ -178,6 +180,44 @@ class TestSampleHpsFromUniformPriors:
 		sampled = sample_hps_from_uniform_priors(KEY, batched, {"length_scale": (1.0, 10.0)})
 		ls = sampled.inner.length_scale  # type: ignore[attr-defined]
 		assert not jnp.all(ls == ls[0]), "Batch elements should differ"
+
+	# ── Wrapper-owned HPs (ICMKernel.W, ARDKernel.length_scales) ────────────
+
+	@allure.title("ICMKernel's own W is sampled")
+	@allure.description(
+		"W is a field of the ICMKernel wrapper itself, not of `inner`. It must be sampled "
+		"within bounds, not silently left unchanged."
+	)
+	def test_icm_kernel_W_is_sampled(self):
+		icm = ICMKernel(SEKernel(length_scale=1.0), n_outputs=3, n_latent=2)
+		sampled = sample_hps_from_uniform_priors(KEY, icm, {"W": (-1.0, 1.0)})
+		assert sampled.W.shape == icm.W.shape
+		assert jnp.all(sampled.W >= -1.0) and jnp.all(sampled.W <= 1.0)
+		assert not jnp.allclose(sampled.W, icm.W)
+
+	@allure.title("ICMKernel's own W and inner kernel's HP are both sampled")
+	@allure.description(
+		"Regression test: the wrapper branch used to only recurse into `inner` and never "
+		"looked at fields the wrapper itself owns, so W was silently dropped from priors."
+	)
+	def test_icm_kernel_W_and_inner_hp_both_sampled(self):
+		icm = ICMKernel(SEKernel(length_scale=1.0), n_outputs=3, n_latent=2)
+		priors = {"W": (-1.0, 1.0), "length_scale": (2.0, 8.0)}
+		sampled = sample_hps_from_uniform_priors(KEY, icm, priors)
+		assert not jnp.allclose(sampled.W, icm.W)
+		assert 2.0 <= float(sampled.inner.length_scale) <= 8.0
+
+	@allure.title("ARDKernel's own length_scales is sampled")
+	@allure.description(
+		"length_scales is a field of the ARDKernel wrapper itself, not of `inner`. It must "
+		"be sampled within bounds, not silently left unchanged."
+	)
+	def test_ard_kernel_length_scales_is_sampled(self):
+		ard = ARDKernel(SEKernel(length_scale=1.0), length_scales=jnp.array([1.0, 1.0]))
+		sampled = sample_hps_from_uniform_priors(KEY, ard, {"length_scales": (0.1, 5.0)})
+		assert sampled.length_scales.shape == ard.length_scales.shape
+		assert jnp.all(sampled.length_scales >= 0.1) and jnp.all(sampled.length_scales <= 5.0)
+		assert not jnp.allclose(sampled.length_scales, ard.length_scales)
 
 	# ── Determinism ──────────────────────────────────────────────────────────
 

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from typing import Generic
+
 import equinox as eqx
 
-from ..module import AbstractModule
+from ..module import AbstractModule, ModuleT
 
 
 def _to_constant(value, reference_module):
@@ -17,11 +19,11 @@ def _to_constant(value, reference_module):
 		return ConstantKernel(value=value)
 
 
-class AbstractOperatorModule(AbstractModule):
+class AbstractOperatorModule(AbstractModule, Generic[ModuleT]):
 	"""Base class for modules that apply an operation on the outputs of two sub-modules."""
 
-	left: AbstractModule = eqx.field()
-	right: AbstractModule = eqx.field()
+	left: ModuleT = eqx.field()
+	right: ModuleT = eqx.field()
 
 	def __init__(self, left, right, **kwargs):
 		if not isinstance(left, AbstractModule):
@@ -34,9 +36,9 @@ class AbstractOperatorModule(AbstractModule):
 		self.right = right
 
 	def replace(self,
-	            left: AbstractModule | None = None,
-	            right: AbstractModule | None = None,
-	            **kwargs):
+	            left: ModuleT | None = None,
+	            right: ModuleT | None = None,
+	            **kwargs) -> AbstractOperatorModule[ModuleT]:
 		new_module = self
 
 		if left is not None:

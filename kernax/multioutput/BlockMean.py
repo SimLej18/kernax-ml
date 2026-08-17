@@ -5,11 +5,12 @@ from eqxbatch import Batched
 from jax import Array
 
 from ..AbstractMean import AbstractMean
+from ..types import MeanLike
 from ..wrappers.BatchModule import BatchModule
 from ._gather import gather_by_output
 
 
-class BlockMean(BatchModule):
+class BlockMean(BatchModule[MeanLike]):
 	"""Block multi-output mean: independent mean function per output.
 
 	Same two input regimes as :class:`~kernax.multioutput.BlockDiagKernel.BlockDiagKernel`,

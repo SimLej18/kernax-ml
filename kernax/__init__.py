@@ -65,6 +65,7 @@ from .stationary import (
 	SEKernel,
 	WhiteNoiseKernel,
 )
+from .types import KernelLike, MeanLike
 
 # Import wrapper modules/kernels
 from .wrappers import (
@@ -88,6 +89,9 @@ __all__ = [
 	"AbstractModule",
 	"AbstractKernel",
 	"AbstractMean",
+	# Structural type aliases
+	"KernelLike",
+	"MeanLike",
 	# Base kernels
 	"SEKernel",
 	"RBFKernel",

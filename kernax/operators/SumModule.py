@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from typing import Generic
+
 from jax import Array
 
+from ..module import ModuleT
 from .AbstractOperatorModule import AbstractOperatorModule
 
 
-class SumModule(AbstractOperatorModule):
+class SumModule(AbstractOperatorModule[ModuleT], Generic[ModuleT]):
 	"""Operator module that sums the outputs of two sub-modules."""
 
 	def __call__(self, x1: Array, x2: Array | None = None, **kwargs) -> Array:

@@ -4,18 +4,18 @@ Batching wrapper: evaluate a module for several hyperparameter sets and/or input
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Generic
 
 import equinox as eqx
 import jax.numpy as jnp
 import jax.tree_util as jtu
 from eqxbatch import Batched, broadcast
 
-from ..module import AbstractModule
+from ..module import ModuleT
 from .WrapperModule import AbstractWrapperModule
 
 
-class BatchModule(Batched, AbstractWrapperModule):
+class BatchModule(Batched, AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 	"""
 	Wrapper module to add batch handling to any module.
 
@@ -66,7 +66,7 @@ class BatchModule(Batched, AbstractWrapperModule):
 	"""
 
 	def __init__(self,
-	             inner: AbstractModule,
+	             inner: ModuleT,
 	             batch_size: int,
 	             batch_in_axes: Any = None,
 	             batch_over_inputs: bool = True):
@@ -114,7 +114,7 @@ class BatchModule(Batched, AbstractWrapperModule):
 		return f"{self.inner}"
 
 	def replace(self,
-	            inner: AbstractModule | None = None,
+	            inner: ModuleT | None = None,
 	            batch_size: int | None = None,
 	            batch_in_axes: Any = None,
 	            batch_over_inputs: bool | None = None,

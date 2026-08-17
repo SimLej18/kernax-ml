@@ -5,12 +5,12 @@ import jax.scipy as jsp
 from eqxbatch import Batched
 from jax import Array
 
-from ..module import AbstractModule
+from ..types import KernelLike
 from ..wrappers.BatchModule import BatchModule
 from ._gather import gather_by_output
 
 
-class BlockDiagKernel(BatchModule):
+class BlockDiagKernel(BatchModule[KernelLike]):
 	"""Block-diagonal multi-output kernel: independent kernel per output, no cross-output
 	correlation -- the off-diagonal blocks are exactly zero.
 
@@ -36,7 +36,7 @@ class BlockDiagKernel(BatchModule):
 	    :func:`kernax.mask.create_mask`
 	"""
 
-	def __init__(self, inner: AbstractModule, n_outputs: int, output_hps_in_axes=None):
+	def __init__(self, inner: KernelLike, n_outputs: int, output_hps_in_axes=None):
 		super().__init__(inner, n_outputs, output_hps_in_axes, batch_over_inputs=False)
 
 	@property

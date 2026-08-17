@@ -4,11 +4,11 @@ import equinox as eqx
 from jax import Array
 from jax import numpy as jnp
 
-from ..module import AbstractModule
+from ..types import KernelLike
 from ..wrappers.WrapperModule import AbstractWrapperModule
 
 
-class ICMKernel(AbstractWrapperModule):
+class ICMKernel(AbstractWrapperModule[KernelLike]):
 	"""Intrinsic Coregionalisation Model: ``K(x1, x2) = B (x) k(x1, x2)``.
 
 	``B = W Wt`` is positive semi-definite by construction, so ``W`` is unconstrained.
@@ -36,10 +36,10 @@ class ICMKernel(AbstractWrapperModule):
 	to the N/M structure this class builds on top of it.
 	"""
 
-	inner: AbstractModule
+	inner: KernelLike
 	W: Array = eqx.field(converter=jnp.asarray)
 
-	def __init__(self, inner: AbstractModule, n_outputs: int, n_latent: int):
+	def __init__(self, inner: KernelLike, n_outputs: int, n_latent: int):
 		if n_outputs < 1:
 			raise ValueError(f"`n_outputs` must be positive, got {n_outputs}.")
 		if n_latent < 1:

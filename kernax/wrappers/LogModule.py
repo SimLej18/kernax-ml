@@ -1,16 +1,18 @@
 from __future__ import annotations
 
+from typing import Generic
+
 import jax.numpy as jnp
 from jax import Array
 
-from ..module import AbstractModule
+from ..module import AbstractModule, ModuleT
 from ..other.ConstantKernel import ConstantKernel
 from .WrapperModule import AbstractWrapperModule
 
 
-class LogModule(AbstractWrapperModule):
+class LogModule(AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 	"""Module that applies the logarithm function to the output of another module."""
-	inner: AbstractModule
+	inner: ModuleT
 
 	def __init__(self, inner=None):
 		if not isinstance(inner, AbstractModule):

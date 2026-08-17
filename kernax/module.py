@@ -4,9 +4,15 @@ Superclass for kernels and mean functions, extending Equinox's Module with opera
 from __future__ import annotations
 
 from abc import abstractmethod
+from typing import TypeVar
 
 import equinox as eqx
 from jax import Array
+
+ModuleT = TypeVar("ModuleT", bound="AbstractModule", covariant=True)
+"""Type of the module(s) held by a wrapper/operator module (``inner``, ``left``/``right``).
+Covariant so that, e.g., ``AbstractWrapperModule[SEKernel]`` counts as an
+``AbstractWrapperModule[KernelLike]`` -- see :mod:`kernax.types`."""
 
 
 class AbstractModule(eqx.Module):

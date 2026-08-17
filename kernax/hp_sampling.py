@@ -4,10 +4,26 @@ Goal of the script: contain functions about sampling HPs randomly to initialise 
 
 from __future__ import annotations
 
+import dataclasses
+
 import jax.random as jr
 
 from kernax import AbstractModule, AbstractWrapperModule
 from kernax.operators import AbstractOperatorModule
+
+
+def _has_own_hp(module, param: str) -> bool:
+	"""True if `param` is a field or property `type(module)` itself declares.
+
+	Plain `hasattr` is too permissive for wrappers like `BatchModule`, which forward any
+	attribute of their (possibly nested) `inner` through `__getattr__` -- `hasattr` would
+	then report every one of `inner`'s hyperparameters as the wrapper's own, causing them to
+	be sampled a second time (with a fresh, inconsistent draw) on top of the recursive
+	sampling already done into `inner`.
+	"""
+	if param in {f.name for f in dataclasses.fields(type(module))}:
+		return True
+	return any(isinstance(vars(klass).get(param), property) for klass in type(module).__mro__)
 
 
 def sample_hps_from_uniform_priors(key, module, priors):
@@ -55,31 +71,41 @@ def sample_hps_from_uniform_priors(key, module, priors):
 	```
 	"""
 	if isinstance(module, AbstractWrapperModule):
-		return module.replace(inner=sample_hps_from_uniform_priors(key, module.inner, priors))
+		key, subkey = jr.split(key)
+		new_module = module.replace(inner=sample_hps_from_uniform_priors(subkey, module.inner, priors))
+		return _sample_own_hps_uniform(key, new_module, priors)
 
 	if isinstance(module, AbstractOperatorModule):
-		subkey1, subkey2 = jr.split(key)
-		return module.replace(
+		key, subkey1, subkey2 = jr.split(key, 3)
+		new_operator_module = module.replace(
 			left=sample_hps_from_uniform_priors(subkey1, module.left, priors),
 			right=sample_hps_from_uniform_priors(subkey2, module.right, priors),
 		)
+		return _sample_own_hps_uniform(key, new_operator_module, priors)
 
 	if isinstance(module, AbstractModule):
-		new_module = module
-		for param in priors.keys():
-			key, subkey = jr.split(key)
-			if hasattr(module, param):
-				new_module = new_module.replace(**{param: jr.uniform(
-					subkey,
-					shape=new_module.__getattribute__(param).shape,
-					dtype=new_module.__getattribute__(param).dtype,
-					minval=priors[param][0],
-					maxval=priors[param][1],
-				)})
-
-		return new_module
+		return _sample_own_hps_uniform(key, module, priors)
 
 	raise ValueError("Module must be an instance of AbstractModule, AbstractWrapperModule, or AbstractOperatorModule.")
+
+
+def _sample_own_hps_uniform(key, module, priors):
+	"""Sample the hyperparameters `module` itself carries (as opposed to ones nested in
+	`inner`/`left`/`right`), for every `param` in `priors` the module has."""
+	new_module = module
+	for param in priors.keys():
+		key, subkey = jr.split(key)
+		if _has_own_hp(module, param):
+			current = getattr(new_module, param)
+			new_module = new_module.replace(**{param: jr.uniform(
+				subkey,
+				shape=current.shape,
+				dtype=current.dtype,
+				minval=priors[param][0],
+				maxval=priors[param][1],
+			)})
+
+	return new_module
 
 
 def sample_hps_from_normal_priors(key, module, priors):
@@ -127,27 +153,37 @@ def sample_hps_from_normal_priors(key, module, priors):
 	```
 	"""
 	if isinstance(module, AbstractWrapperModule):
-		return module.replace(inner=sample_hps_from_normal_priors(key, module.inner, priors))
+		key, subkey = jr.split(key)
+		new_module = module.replace(inner=sample_hps_from_normal_priors(subkey, module.inner, priors))
+		return _sample_own_hps_normal(key, new_module, priors)
 
 	if isinstance(module, AbstractOperatorModule):
-		subkey1, subkey2 = jr.split(key)
-		return module.replace(
+		key, subkey1, subkey2 = jr.split(key, 3)
+		new_operator_module = module.replace(
 			left=sample_hps_from_normal_priors(subkey1, module.left, priors),
 			right=sample_hps_from_normal_priors(subkey2, module.right, priors),
 		)
+		return _sample_own_hps_normal(key, new_operator_module, priors)
 
 	if isinstance(module, AbstractModule):
-		new_module = module
-		for param in priors.keys():
-			key, subkey = jr.split(key)
-			if hasattr(module, param):
-				new_module = new_module.replace(**{param: jr.normal(
-					subkey,
-					shape=new_module.__getattribute__(param).shape,
-					dtype=new_module.__getattribute__(param).dtype,
-				) * priors[param][1] + priors[param][0]})
-
-		return new_module
+		return _sample_own_hps_normal(key, module, priors)
 
 	raise ValueError(
 		"Module must be an instance of AbstractModule, AbstractWrapperModule, or AbstractOperatorModule.")
+
+
+def _sample_own_hps_normal(key, module, priors):
+	"""Sample the hyperparameters `module` itself carries (as opposed to ones nested in
+	`inner`/`left`/`right`), for every `param` in `priors` the module has."""
+	new_module = module
+	for param in priors.keys():
+		key, subkey = jr.split(key)
+		if _has_own_hp(module, param):
+			current = getattr(new_module, param)
+			new_module = new_module.replace(**{param: jr.normal(
+				subkey,
+				shape=current.shape,
+				dtype=current.dtype,
+			) * priors[param][1] + priors[param][0]})
+
+	return new_module

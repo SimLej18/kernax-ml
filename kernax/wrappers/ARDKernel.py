@@ -9,7 +9,7 @@ from ..stationary.StationaryKernel import AbstractStationaryKernel
 from .WrapperModule import AbstractWrapperModule
 
 
-class ARDKernel(AbstractWrapperModule):
+class ARDKernel(AbstractWrapperModule[AbstractStationaryKernel]):
 	"""
 	Wrapper kernel to apply Automatic Relevance Determination (ARD) to the inputs before passing them to the inner kernel.
 	Each input dimension is scaled by a separate length scale hyperparameter.

@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-from typing import Iterable, Tuple
+from typing import Generic, Iterable, Tuple
 
 import equinox as eqx
 from jax import Array
 
-from ..module import AbstractModule
+from ..module import ModuleT
 from .WrapperModule import AbstractWrapperModule
 
 
-class ActiveDimsModule(AbstractWrapperModule):
+class ActiveDimsModule(AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 	"""
 	Wrapper module to select active dimensions from the inputs before passing them to the inner module.
 
@@ -20,7 +20,7 @@ class ActiveDimsModule(AbstractWrapperModule):
 
 	active_dims: Tuple[int, ...] = eqx.field(static=True)
 
-	def __init__(self, inner: AbstractModule, active_dims: Iterable[int]):
+	def __init__(self, inner: ModuleT, active_dims: Iterable[int]):
 		self.inner = inner
 		self.active_dims = tuple(int(dim) for dim in active_dims)
 

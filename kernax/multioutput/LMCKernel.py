@@ -7,6 +7,7 @@ from jax import Array
 from jax import numpy as jnp
 
 from ..module import AbstractModule
+from ..types import KernelLike
 from .ICMKernel import ICMKernel
 
 
@@ -22,7 +23,7 @@ class LMCKernel(AbstractModule):
 
 	components: tuple[ICMKernel, ...]
 
-	def __init__(self, kernels: Sequence[AbstractModule], coregionalization_matrices: Sequence[float | Array]):
+	def __init__(self, kernels: Sequence[KernelLike], coregionalization_matrices: Sequence[float | Array]):
 		if len(kernels) < 1:
 			raise ValueError("`kernels` must contain at least one kernel.")
 		if len(kernels) != len(coregionalization_matrices):
