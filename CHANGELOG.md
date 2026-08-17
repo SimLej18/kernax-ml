@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.7.1-alpha] - 2026-08-17
+
+### Fixed
+- `sample_hps_from_uniform_priors`/`sample_hps_from_normal_priors` (`kernax.hp_sampling`) silently dropped hyperparameters owned by a wrapper module itself (as opposed to its `inner`) -- most notably `ICMKernel.W` and `ARDKernel.length_scales`. The wrapper branch recursed into `inner` only and never sampled the wrapper's own fields.
+  - Own-field detection now checks the module's actual dataclass fields/properties (`_has_own_hp`) instead of `hasattr`, which was also true for any attribute a `BatchModule` forwards from its (possibly nested) `inner` via `__getattr__` -- using `hasattr` there would have re-sampled already-batched hyperparameters a second time with an inconsistent draw.
+
+### Added
+- `kernax.types.KernelLike` / `kernax.types.MeanLike`: structural type aliases covering a base kernel/mean plus any wrapper (`AbstractWrapperModule[...]`), operator (`AbstractOperatorModule[...]`), or `LMCKernel` composition of one. Exported from the top-level `kernax` namespace.
+- `AbstractWrapperModule` and `AbstractOperatorModule` are now generic (`AbstractWrapperModule[T]`, `AbstractOperatorModule[T]`), parametrised by the type of module they wrap/combine. Concrete classes now declare what they actually hold: `ARDKernel(AbstractWrapperModule[AbstractStationaryKernel])`, `ICMKernel(AbstractWrapperModule[KernelLike])`, `BlockMean(BatchModule[MeanLike])`, `BlockDiagKernel(BatchModule[KernelLike])`. Passthrough wrappers/operators (`BatchModule`, `ExpModule`, `LogModule`, `NegModule`, `ActiveDimsModule`, `InputSpecificParamModule`, `SumModule`, `ProductModule`) stay generic over either family.
+  - This lets a function typed `x: KernelLike` accept `ICMKernel`/`ARDKernel`/`BlockDiagKernel` while correctly rejecting `BlockMean` (and vice versa for `MeanLike`) -- previously, the only type available for such signatures was `AbstractWrapperModule`/`AbstractModule`, which didn't distinguish kernel-shaped wrappers from mean-shaped ones.
+- Tests for the wrapper-owned-HP sampling fix (`ICMKernel.W`, `ARDKernel.length_scales`) in `tests/test_hp_sampling.py`.
+
 ## [0.7.0-alpha] - 2026-08-15
 
 ### Added
@@ -221,7 +233,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sum/Product composite kernels; Diag/Exp/Log/Neg wrappers.
 - Automatic dimension handling, NaN-aware computations, JAX PyTree integration, operator overloading.
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.7.0-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.7.1-alpha...HEAD
+[0.7.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.0-alpha...v0.7.1-alpha
 [0.7.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.2-alpha...v0.7.0-alpha
 [0.6.2-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.1-alpha...v0.6.2-alpha
 [0.6.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.0-alpha...v0.6.1-alpha
