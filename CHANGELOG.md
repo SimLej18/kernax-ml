@@ -10,6 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Planned
 - Additional kernel types (more Matern variants, spectral kernels)
 
+## [0.7.3-alpha] - 2026-08-19
+
+### Added
+- `BatchModule` gains `batch_over_kwargs` (defaults to `batch_over_inputs`): keyword arguments passed to `__call__` -- e.g. `output_ids`/`output_ids2` for multi-output kernels like `ICMKernel` -- are now sliced per batch element when batched, instead of being silently shared across every batch element (which previously either raised a shape-mismatch `ValueError` or, when shapes happened to coincide, silently reused the same kwarg for every batch element). Pass `batch_over_kwargs=False` to keep a kwarg shared across the batch regardless of `batch_over_inputs`.
+  - Requires `eqxbatch>=0.2.0` (bumped from `>=0.1.0`), which introduces `Batched.kwarg_axes` -- the counterpart to `arg_axes` for keyword arguments.
+
+### Changed
+- CI: removed the separate lint GitHub Actions workflow and fixed the tests workflow to match the current project structure.
+
 ## [0.7.1-alpha] - 2026-08-17
 
 ### Fixed
@@ -233,7 +242,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sum/Product composite kernels; Diag/Exp/Log/Neg wrappers.
 - Automatic dimension handling, NaN-aware computations, JAX PyTree integration, operator overloading.
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.7.1-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.7.3-alpha...HEAD
+[0.7.3-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.2-alpha...v0.7.3-alpha
 [0.7.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.0-alpha...v0.7.1-alpha
 [0.7.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.2-alpha...v0.7.0-alpha
 [0.6.2-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.1-alpha...v0.6.2-alpha
