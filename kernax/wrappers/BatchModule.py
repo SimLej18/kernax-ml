@@ -63,13 +63,20 @@ class BatchModule(Batched, AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 	                      (shared).
 	:param batch_over_inputs: whether ``__call__`` expects inputs of shape ``(B, N, I)``
 	                          (``True``) or ``(N, I)`` (``False``)
+	:param batch_over_kwargs: whether keyword arguments passed to ``__call__`` (e.g.
+	                          ``output_ids``) carry a leading batch axis and should be
+	                          sliced per batch element (``True``), or are shared across the
+	                          batch (``False``). Defaults to ``batch_over_inputs``.
 	"""
 
 	def __init__(self,
 	             inner: ModuleT,
 	             batch_size: int,
 	             batch_in_axes: Any = None,
-	             batch_over_inputs: bool = True):
+	             batch_over_inputs: bool = True,
+	             batch_over_kwargs: bool | None = None):
+		if batch_over_kwargs is None:
+			batch_over_kwargs = batch_over_inputs
 		if batch_in_axes is None:
 			# All hyperparameters are shared
 			in_axes = None
@@ -94,6 +101,7 @@ class BatchModule(Batched, AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 			inner,
 			in_axes=in_axes,
 			arg_axes=eqx.if_array(0) if batch_over_inputs else None,
+			kwarg_axes=eqx.if_array(0) if batch_over_kwargs else None,
 			axis_size=batch_size,
 		)
 
@@ -109,6 +117,10 @@ class BatchModule(Batched, AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 	def batch_over_inputs(self) -> int | None:
 		return None if self.arg_axes is None else 0
 
+	@property
+	def batch_over_kwargs(self) -> int | None:
+		return None if self.kwarg_axes is None else 0
+
 	def __str__(self):
 		# just str of the inner kernel, as the batch info is in the parameters of the inner kernel
 		return f"{self.inner}"
@@ -118,6 +130,7 @@ class BatchModule(Batched, AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 	            batch_size: int | None = None,
 	            batch_in_axes: Any = None,
 	            batch_over_inputs: bool | None = None,
+	            batch_over_kwargs: bool | None = None,
 	            **kwargs):
 		# NOTE: replacing batch_in_axes to None wouldn't throw an exception, as `replace()`
 		# interprets None not as a new value but as the info that the parameter doesn't have to change
@@ -133,6 +146,10 @@ class BatchModule(Batched, AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 		if batch_over_inputs is not None:
 			raise ValueError(
 				"`batch_over_inputs` is a static field and cannot be mutated for BatchModule. "
+				"Initialise a new module instance instead.")
+		if batch_over_kwargs is not None:
+			raise ValueError(
+				"`batch_over_kwargs` is a static field and cannot be mutated for BatchModule. "
 				"Initialise a new module instance instead.")
 
 		return super().replace(inner=inner, **kwargs)
