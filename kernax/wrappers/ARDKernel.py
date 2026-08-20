@@ -51,7 +51,7 @@ class ARDKernel(AbstractWrapperModule[AbstractStationaryKernel]):
 		return self.inner(x1 / self.length_scales, x2 / self.length_scales)
 
 	def spectral_density(self, w: Array) -> Array:
-		return jnp.prod(self.lengthscales) * self.inner.spectral_density(w * self.lengthscales)
+		return jnp.prod(self.length_scales) * self.inner.spectral_density(w * self.length_scales)
 
 	def replace(self,
 	            length_scales: Iterable[float] | Array = None,

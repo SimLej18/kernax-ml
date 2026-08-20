@@ -49,6 +49,10 @@ class BatchModule(Batched, AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 	    batched.length_scale            # (4,)    -- property, evaluated per batch element
 	    batched.spectral_density(w)     # (4, M)  -- method, called per batch element
 
+	Unlike the other wrappers, this one forwards *methods* as well as hyperparameters: it
+	does not transform what ``inner`` computes, it only evaluates it once per batch element,
+	so the inner module's answer stays the right answer.
+
 	See :meth:`eqxbatch.Batched.map` for computations spanning several attributes at once,
 	and ``batched[i]`` to recover one batch element as an ordinary kernel.
 

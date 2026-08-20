@@ -4,26 +4,11 @@ Goal of the script: contain functions about sampling HPs randomly to initialise 
 
 from __future__ import annotations
 
-import dataclasses
-
 import jax.random as jr
 
 from kernax import AbstractModule, AbstractWrapperModule
+from kernax.module import has_own_attr
 from kernax.operators import AbstractOperatorModule
-
-
-def _has_own_hp(module, param: str) -> bool:
-	"""True if `param` is a field or property `type(module)` itself declares.
-
-	Plain `hasattr` is too permissive for wrappers like `BatchModule`, which forward any
-	attribute of their (possibly nested) `inner` through `__getattr__` -- `hasattr` would
-	then report every one of `inner`'s hyperparameters as the wrapper's own, causing them to
-	be sampled a second time (with a fresh, inconsistent draw) on top of the recursive
-	sampling already done into `inner`.
-	"""
-	if param in {f.name for f in dataclasses.fields(type(module))}:
-		return True
-	return any(isinstance(vars(klass).get(param), property) for klass in type(module).__mro__)
 
 
 def sample_hps_from_uniform_priors(key, module, priors):
@@ -95,7 +80,7 @@ def _sample_own_hps_uniform(key, module, priors):
 	new_module = module
 	for param in priors.keys():
 		key, subkey = jr.split(key)
-		if _has_own_hp(module, param):
+		if has_own_attr(module, param):
 			current = getattr(new_module, param)
 			new_module = new_module.replace(**{param: jr.uniform(
 				subkey,
@@ -178,7 +163,7 @@ def _sample_own_hps_normal(key, module, priors):
 	new_module = module
 	for param in priors.keys():
 		key, subkey = jr.split(key)
-		if _has_own_hp(module, param):
+		if has_own_attr(module, param):
 			current = getattr(new_module, param)
 			new_module = new_module.replace(**{param: jr.normal(
 				subkey,

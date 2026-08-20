@@ -10,7 +10,13 @@ from kernax import (
 	ActiveDimsModule,
 	ARDKernel,
 	BatchModule,
+	BlockDiagKernel,
+	ExpModule,
+	ICMKernel,
 	InputSpecificParamModule,
+	LMCKernel,
+	LogModule,
+	NegModule,
 	SEKernel,
 	WhiteNoiseKernel,
 )
@@ -443,3 +449,150 @@ class TestInputSpecificParamModule:
 		assert jnp.allclose(result, expected), (
 			f"Expected diagonal {noise_values}, got {jnp.diag(result)}"
 		)
+
+
+class TestHyperparameterForwarding:
+	"""Tests for transparent hyperparameter access through wrapper modules."""
+
+	@allure.title("Wrapper forwards its inner module's hyperparameters")
+	@allure.description("Test that a stored hyperparameter is readable from the wrapper.")
+	def test_single_wrapper_forwards(self):
+		kernel = ActiveDimsModule(SEKernel(length_scale=2.0), active_dims=[0])
+		assert jnp.allclose(kernel.length_scale, 2.0)
+		assert jnp.allclose(kernel.length_scale, kernel.inner.length_scale)
+
+	@allure.title("Forwarding reaches through several nesting levels")
+	@allure.description(
+		"Test that a hyperparameter stored at the bottom of a wrapper stack is readable "
+		"from every level above it."
+	)
+	def test_nested_wrappers_forward(self):
+		kernel = ICMKernel(
+			ActiveDimsModule(SEKernel(length_scale=2.0), active_dims=[0]),
+			n_outputs=3, n_latent=3,
+		)
+		assert jnp.allclose(kernel.length_scale, 2.0)
+		assert jnp.allclose(kernel.inner.length_scale, 2.0)
+		assert jnp.allclose(kernel.inner.inner.length_scale, 2.0)
+
+	@allure.title("A wrapper's own field wins over its inner module's")
+	@allure.description("Test that forwarding never shadows an attribute the wrapper declares.")
+	def test_own_field_wins(self):
+		kernel = ICMKernel(SEKernel(length_scale=1.0), n_outputs=3, n_latent=2)
+		assert kernel.W.shape == (3, 2)
+		assert kernel.n_outputs == 3
+
+	@allure.title("Forwarding survives a BatchModule")
+	@allure.description(
+		"Test that a hyperparameter stored under a wrapper stack is still readable through "
+		"an outer BatchModule, and comes back with the batch axis."
+	)
+	def test_forwarding_through_batch_module(self):
+		batch_size = 4
+		kernel = BatchModule(
+			ICMKernel(SEKernel(length_scale=2.0), n_outputs=3, n_latent=3),
+			batch_size=batch_size, batch_in_axes=0,
+		)
+		assert kernel.length_scale.shape == (batch_size,)
+		assert jnp.allclose(kernel.length_scale, 2.0)
+		assert kernel.W.shape == (batch_size, 3, 3)
+
+	@allure.title("Computed quantities are not forwarded")
+	@allure.description(
+		"Test that a property an inner module computes from its fields is not answered for "
+		"by an outer wrapper, which would change what that computation means."
+	)
+	def test_computed_property_not_forwarded(self):
+		kernel = ActiveDimsModule(
+			ICMKernel(SEKernel(length_scale=1.0), n_outputs=3, n_latent=3),
+			active_dims=[0],
+		)
+		assert kernel.W.shape == (3, 3)  # stored: forwarded
+		with pytest.raises(AttributeError, match="coregionalisation"):
+			_ = kernel.coregionalisation
+
+	@allure.title("Unknown attributes raise AttributeError")
+	@allure.description("Test that forwarding does not make every name resolvable.")
+	def test_unknown_attribute_raises(self):
+		kernel = ActiveDimsModule(SEKernel(length_scale=1.0), active_dims=[0])
+		with pytest.raises(AttributeError, match="not_a_hyperparameter"):
+			_ = kernel.not_a_hyperparameter
+		assert not hasattr(kernel, "not_a_hyperparameter")
+
+	@allure.title("Private names are never forwarded")
+	@allure.description(
+		"Test that wrapped fields keep their private status, so the wrapper's own raw "
+		"storage is never confused with its inner module's."
+	)
+	def test_private_names_not_forwarded(self):
+		kernel = ActiveDimsModule(SEKernel(length_scale=1.0), active_dims=[0])
+		with pytest.raises(AttributeError):
+			_ = kernel._length_scale
+
+	@allure.title("Forwarding does not disturb string representation")
+	@allure.description("Test that __str__ still reports each module's own parameters.")
+	def test_str_representation_unaffected(self):
+		kernel = ICMKernel(SEKernel(length_scale=2.0), n_outputs=2, n_latent=2)
+		text = str(kernel)
+		assert "ICMKernel" in text
+		assert "SEKernel" in text
+
+
+class TestSpectralDensityAvailability:
+	"""Tests for which modules expose a spectral density, and which explicitly refuse to."""
+
+	@allure.title("Wrappers that transform the spectral density define it")
+	@allure.description(
+		"Test that ARDKernel and ActiveDimsModule compute their own spectral density "
+		"instead of relaying their inner kernel's."
+	)
+	def test_transforming_wrappers_define_it(self):
+		w = jnp.ones((5, 2))
+		ard = ARDKernel(SEKernel(length_scale=1.0), length_scales=[1.0, 2.0])
+		assert ard.spectral_density(w).shape == (5,)
+
+		active = ActiveDimsModule(SEKernel(length_scale=1.0), active_dims=[0])
+		assert active.spectral_density(w).shape == (5,)
+
+	@allure.title("Modules without a scalar spectral density raise NotImplementedError")
+	@allure.description(
+		"Test that a module whose spectral density is matrix-valued or undefined refuses "
+		"explicitly, instead of silently answering with its inner kernel's."
+	)
+	@pytest.mark.parametrize("kernel", [
+		ExpModule(SEKernel(length_scale=1.0)),
+		LogModule(SEKernel(length_scale=1.0)),
+		NegModule(SEKernel(length_scale=1.0)),
+		InputSpecificParamModule(WhiteNoiseKernel(1.0), input_size=3, vmap_in_axes=0),
+		ICMKernel(SEKernel(length_scale=1.0), n_outputs=3, n_latent=3),
+		LMCKernel([SEKernel(length_scale=1.0)], [jnp.eye(3)]),
+		BlockDiagKernel(SEKernel(length_scale=1.0), n_outputs=3),
+	], ids=lambda k: type(k).__name__)
+	def test_undefined_spectral_density_raises(self, kernel):
+		with pytest.raises(NotImplementedError):
+			kernel.spectral_density(jnp.ones((5, 1)))
+
+	@allure.title("A refusal propagates through an outer wrapper")
+	@allure.description(
+		"Test that wrapping a module that has no spectral density does not resurrect one."
+	)
+	def test_refusal_propagates(self):
+		kernel = ActiveDimsModule(
+			ICMKernel(SEKernel(length_scale=1.0), n_outputs=3, n_latent=3),
+			active_dims=[0],
+		)
+		with pytest.raises(NotImplementedError):
+			kernel.spectral_density(jnp.ones((5, 1)))
+
+	@allure.title("A refusal propagates through a BatchModule")
+	@allure.description(
+		"Test that a batched module without a spectral density raises NotImplementedError "
+		"rather than returning a method that escaped the batching vmap."
+	)
+	def test_refusal_propagates_through_batch_module(self):
+		kernel = BatchModule(
+			ICMKernel(SEKernel(length_scale=1.0), n_outputs=3, n_latent=3),
+			batch_size=4, batch_in_axes=0,
+		)
+		with pytest.raises(NotImplementedError):
+			kernel.spectral_density(jnp.ones((5, 1)), arg_axes=None)

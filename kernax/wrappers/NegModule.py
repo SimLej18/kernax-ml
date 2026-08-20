@@ -25,3 +25,10 @@ class NegModule(AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 
 	def __str__(self):
 		return f"- {self.inner}"
+
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError(
+			"`NegModule` exposes no spectral density: `-k` is not a valid covariance "
+			"function, so it has no spectral density in Bochner's sense. Reach into "
+			"`inner` explicitly for the wrapped kernel's own spectral density."
+		)

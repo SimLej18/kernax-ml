@@ -24,3 +24,10 @@ class LogModule(AbstractWrapperModule[ModuleT], Generic[ModuleT]):
 		if x2 is None:
 			return jnp.log(self.inner(x1))
 		return jnp.log(self.inner(x1, x2))
+
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError(
+			"`LogModule` has no spectral density in closed form: the Fourier transform of "
+			"`log(k)` is not a function of the transform of `k`. Reach into `inner` "
+			"explicitly for the wrapped kernel's own spectral density."
+		)

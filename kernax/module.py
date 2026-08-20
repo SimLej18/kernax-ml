@@ -3,6 +3,7 @@ Superclass for kernels and mean functions, extending Equinox's Module with opera
 """
 from __future__ import annotations
 
+import dataclasses
 from abc import abstractmethod
 from typing import TypeVar
 
@@ -86,3 +87,38 @@ class AbstractModule(eqx.Module):
 				parts.append(f'{key}={value}')
 
 		return f"{self.__class__.__name__}({', '.join(parts)})"
+
+
+def has_own_attr(module: eqx.Module, name: str) -> bool:
+	"""True if `name` is a field or property that `type(module)` itself declares.
+
+	Plain `hasattr` is too permissive for wrappers, which forward any hyperparameter of
+	their (possibly nested) `inner` -- `hasattr` would then report every one of `inner`'s
+	hyperparameters as the wrapper's own.
+	"""
+	if name in {f.name for f in dataclasses.fields(type(module))}:
+		return True
+	return any(isinstance(vars(klass).get(name), property) for klass in type(module).__mro__)
+
+
+def has_stored_hp(module: eqx.Module, name: str) -> bool:
+	"""True if `name` designates a hyperparameter *stored* somewhere in `module`'s tree.
+
+	A name is stored when a module along the `inner` chain declares it as a dataclass field,
+	either directly (`ICMKernel.W`) or as the private field behind a parametrised property
+	(`_length_scale`, exposed as `length_scale`).
+
+	Quantities a module *computes* from its fields are not stored, whether they are written
+	as methods (`spectral_density`) or as properties (`ICMKernel.coregionalisation`). The
+	distinction is what wrapper forwarding hinges on: a wrapper does not change what a
+	stored hyperparameter *is*, but it does change what its inner module *computes*, so it
+	must never answer for the inner module's version of a computed quantity.
+	"""
+	while isinstance(module, eqx.Module):
+		fields = {f.name for f in dataclasses.fields(type(module))}
+		if name in fields or f"_{name}" in fields:
+			return True
+		if "inner" not in fields:
+			return False
+		module = module.inner  # type: ignore[attr-defined]
+	return False

@@ -94,6 +94,13 @@ class ICMKernel(AbstractWrapperModule[KernelLike]):
 		B = self.coregionalisation
 		return B[output_ids[:, None], output_ids2[None, :]] * K
 
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError(
+			"`ICMKernel` has no scalar spectral density: coregionalisation makes it the "
+			"matrix-valued `B * S(w)`, which this class does not expose. Use "
+			"`self.coregionalisation` and `self.inner.spectral_density(w)` to build it."
+		)
+
 	def replace(self, W: None | float | Array = None, **kwargs) -> ICMKernel:
 		out = super().replace(**kwargs)
 		if W is None:

@@ -77,6 +77,14 @@ class InputSpecificParamModule(AbstractWrapperModule[ModuleT], Generic[ModuleT])
 		# just str of the inner kernel, as the batch info is in the parameters of the inner kernel
 		return f"{self.inner}"
 
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError(
+			"`InputSpecificParamModule` has no spectral density: giving each input point "
+			"its own hyperparameters makes the kernel non-stationary, so Bochner's theorem "
+			"does not apply. Reach into `inner` explicitly for the wrapped kernel's own "
+			"spectral density."
+		)
+
 	def replace(self,
 	            inner: ModuleT | None = None,
 				input_size: int | None = None,

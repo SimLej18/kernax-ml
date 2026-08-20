@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Hyperparameter access is now transparent through wrapper modules, at any nesting depth: `ICMKernel(ActiveDimsModule(SEKernel(2.0), [0]), 3, 3).length_scale` returns `2.0`, and so does the same access on `.inner` and `.inner.inner`. Previously only `BatchModule` forwarded (through `eqxbatch.Batched`), so any other wrapper in the stack broke the chain. Forwarding also composes with `BatchModule`, which returns the hyperparameter with its batch axis.
+  - Only *stored* hyperparameters are forwarded -- a dataclass field (`ICMKernel.W`) or the private field behind a parametrised property (`_length_scale`, exposed as `length_scale`). Quantities a module *computes* are never forwarded, whether written as a method (`spectral_density`) or as a property (`ICMKernel.coregionalisation`): a wrapper exists to change what its inner module computes, so relaying the inner module's answer would be wrong. Wrappers that can transform such a quantity define it themselves (`ARDKernel.spectral_density`, `ActiveDimsModule.spectral_density`).
+  - Operators (`SumModule`, `ProductModule`) do not forward: with two operands, a name carried by both has no unambiguous owner. Reach into `left`/`right` explicitly.
+  - `kernax.module.has_stored_hp` implements the rule and is public, alongside `kernax.module.has_own_attr` (previously `kernax.hp_sampling._has_own_hp`). Use `has_own_attr`, never `hasattr`, to ask whether a wrapper owns an attribute itself.
+- `spectral_density` now raises `NotImplementedError` with an explanatory message on every module that has no scalar spectral density, instead of being simply absent: `ExpModule`, `LogModule`, `NegModule`, `InputSpecificParamModule`, `ICMKernel`, `LMCKernel`, `BlockDiagKernel`.
+  - This also fixes the batched case. `BatchModule(ICMKernel(...)).spectral_density` previously resolved to a bound method that had escaped the batching `vmap`, carrying batched hyperparameters into an unbatched computation -- a shape error at best, a silently wrong result when the shapes happened to broadcast. The explicit definition makes the method visible to `eqxbatch`, which now routes the call through the `vmap` and surfaces the `NotImplementedError`.
+
+### Fixed
+- `ARDKernel.spectral_density` referenced `self.lengthscales`, which does not exist (the property is `length_scales`), so every call raised `AttributeError`. Now covered by a test.
+
 ### Planned
 - Additional kernel types (more Matern variants, spectral kernels)
 

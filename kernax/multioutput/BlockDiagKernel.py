@@ -76,6 +76,13 @@ class BlockDiagKernel(BatchModule[KernelLike]):
 		K = per_point.map(lambda k, xi: k(xi, x2), x1, arg_axes=0)
 		return jnp.where(output_ids[:, None] == output_ids2[None, :], K, 0.0)
 
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError(
+			"`BlockDiagKernel` has no scalar spectral density: it is the matrix-valued "
+			"`diag(S_1(w), ..., S_P(w))`, which this class does not expose. Use "
+			"`self.map(lambda k: k.spectral_density(w))` for the per-output densities."
+		)
+
 	def replace(self, **kwargs) -> BlockDiagKernel:
 		if "n_outputs" in kwargs:
 			raise ValueError(

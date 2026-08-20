@@ -60,6 +60,13 @@ class LMCKernel(AbstractModule):
 		"""
 		return tuple(c.factors(x1, x2, **kwargs)[0] for c in self.components)
 
+	def spectral_density(self, w: Array) -> Array:
+		raise NotImplementedError(
+			"`LMCKernel` has no scalar spectral density: it is the matrix-valued "
+			"`sum_q B_q * S_q(w)`, which this class does not expose. Build it from "
+			"`self.components`."
+		)
+
 	def replace(self, **kwargs) -> LMCKernel:
 		"""Broadcast ``kwargs`` to every component via ``ICMKernel.replace``."""
 		return eqx.tree_at(
