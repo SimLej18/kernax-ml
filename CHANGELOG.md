@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+- Additional kernel types (more Matern variants, spectral kernels)
+
+## [0.7.4-alpha] - 2026-08-20
+
 ### Added
 - Hyperparameter access is now transparent through wrapper modules, at any nesting depth: `ICMKernel(ActiveDimsModule(SEKernel(2.0), [0]), 3, 3).length_scale` returns `2.0`, and so does the same access on `.inner` and `.inner.inner`. Previously only `BatchModule` forwarded (through `eqxbatch.Batched`), so any other wrapper in the stack broke the chain. Forwarding also composes with `BatchModule`, which returns the hyperparameter with its batch axis.
   - Only *stored* hyperparameters are forwarded -- a dataclass field (`ICMKernel.W`) or the private field behind a parametrised property (`_length_scale`, exposed as `length_scale`). Quantities a module *computes* are never forwarded, whether written as a method (`spectral_density`) or as a property (`ICMKernel.coregionalisation`): a wrapper exists to change what its inner module computes, so relaying the inner module's answer would be wrong. Wrappers that can transform such a quantity define it themselves (`ARDKernel.spectral_density`, `ActiveDimsModule.spectral_density`).
@@ -17,9 +22,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `ARDKernel.spectral_density` referenced `self.lengthscales`, which does not exist (the property is `length_scales`), so every call raised `AttributeError`. Now covered by a test.
-
-### Planned
-- Additional kernel types (more Matern variants, spectral kernels)
 
 ## [0.7.3-alpha] - 2026-08-19
 
@@ -253,7 +255,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sum/Product composite kernels; Diag/Exp/Log/Neg wrappers.
 - Automatic dimension handling, NaN-aware computations, JAX PyTree integration, operator overloading.
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.7.3-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.7.4-alpha...HEAD
+[0.7.4-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.3-alpha...v0.7.4-alpha
 [0.7.3-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.2-alpha...v0.7.3-alpha
 [0.7.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.0-alpha...v0.7.1-alpha
 [0.7.0-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.6.2-alpha...v0.7.0-alpha
