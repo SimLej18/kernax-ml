@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Planned
+- Additional kernel types (more Matern variants, spectral kernels)
+
+## [0.7.5-alpha] - 2026-08-22
+
 ### Added
 - `ICMKernel` gains the `kappa` term of the coregionalisation matrix: `B = W Wt + diag(kappa)`, with `kappa` a strictly positive `(P,)` vector (a scalar is broadcast). It gives each output a private signal variance on top of what the latents explain, and makes `B` positive *definite* even when `n_latent < n_outputs`, where `W Wt` alone is singular. `kappa` scales the whole within-output block of `K`, not just its diagonal -- it is signal variance, not observation noise (that remains a `BlockDiagKernel` over a `WhiteNoiseKernel`, added alongside).
   - `ICMKernel(inner, n_outputs, n_latent, kappa=1.0, kappa_parametrisation=LogExpParametrisation())`. Like `W = eye(n_outputs, n_latent)`, the default is deterministic; randomise with `.replace(kappa=...)` or `kernax.hp_sampling`. Hold it fixed with `kappa_parametrisation=NonTrainableParametrisation()`.
@@ -17,8 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breaking**: `LMCKernel` is renamed `LCMKernel` (Linear Coregionalisation Model), aligning with GPyTorch and GPJax. The module moves from `kernax/multioutput/LMCKernel.py` to `kernax/multioutput/LCMKernel.py`, and `docs/examples/multioutput_lmc.py` to `multioutput_lcm.py`. Behaviour is unchanged.
 - **Breaking**: `ICMKernel`'s default coregionalisation matrix is now `W Wt + I` instead of `W Wt`, since `kappa` defaults to `1.0`. Pass a small `kappa` (or freeze it) to recover a near-`W Wt` matrix.
 
-### Planned
-- Additional kernel types (more Matern variants, spectral kernels)
+### Technical Details
+- `kappa` is stored wrapped like any other positive hyperparameter (private `_kappa` field behind the `kappa` property, `_kappa_parametrisation` controlling the transform), so it is picked up unchanged by `kernax.hp_sampling`, `create_mask(icm, kappa=0)` for `BatchModule`, and `eqx.partition`-based freezing.
+- The whole term enters through the single `ICMKernel.coregionalisation` property: `factors`, both `__call__` routes (shared grid and heterotopic `output_ids`) and the Kronecker construction are untouched.
+- Test coverage for `kernax/multioutput/ICMKernel.py` and `LCMKernel.py` covers the scalar/vector `kappa` broadcast, the equality with the manual Kronecker product, positive definiteness at `n_latent < n_outputs`, the `replace(kappa=...)` round-trip through the parametrisation, the absence of gradient under `NonTrainableParametrisation`, per-component `kappas` in `LCMKernel`, and the validation errors. Suite: 364 tests, 86% coverage.
 
 ## [0.7.4-alpha] - 2026-08-20
 
@@ -265,7 +272,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sum/Product composite kernels; Diag/Exp/Log/Neg wrappers.
 - Automatic dimension handling, NaN-aware computations, JAX PyTree integration, operator overloading.
 
-[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.7.4-alpha...HEAD
+[Unreleased]: https://github.com/SimLej18/kernax-ml/compare/v0.7.5-alpha...HEAD
+[0.7.5-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.4-alpha...v0.7.5-alpha
 [0.7.4-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.3-alpha...v0.7.4-alpha
 [0.7.3-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.2-alpha...v0.7.3-alpha
 [0.7.1-alpha]: https://github.com/SimLej18/kernax-ml/compare/v0.7.0-alpha...v0.7.1-alpha
