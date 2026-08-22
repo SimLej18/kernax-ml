@@ -4,18 +4,34 @@ import equinox as eqx
 from jax import Array
 from jax import numpy as jnp
 
+from ..parametrisations import AbstractParametrisation, LogExpParametrisation
 from ..types import KernelLike
 from ..wrappers.WrapperModule import AbstractWrapperModule
+
+
+def _check_kappa(kappa: float | Array, n_outputs: int) -> Array:
+	kappa = jnp.broadcast_to(jnp.asarray(kappa, dtype=float), (n_outputs,))
+	if jnp.any(kappa <= 0):
+		raise ValueError("`kappa` must be strictly positive.")
+	return kappa
 
 
 class ICMKernel(AbstractWrapperModule[KernelLike]):
 	"""Intrinsic Coregionalisation Model: ``K(x1, x2) = B (x) k(x1, x2)``.
 
-	``B = W Wt`` is positive semi-definite by construction, so ``W`` is unconstrained.
-	``W`` has shape ``(n_outputs, n_latent)``: ``n_latent = n_outputs`` gives a full-rank
-	coregionalisation, ``n_latent < n_outputs`` a low-rank one. ``W`` is deterministically
-	initialised to ``eye(n_outputs, n_latent)``; use ``.replace(W=...)`` or
-	``kernax.hp_sampling.sample_hps_from_uniform_priors`` to randomise it.
+	``B = W Wt + diag(kappa)`` is positive semi-definite by construction, so ``W`` is
+	unconstrained. ``W`` has shape ``(n_outputs, n_latent)``: ``n_latent = n_outputs`` gives
+	a full-rank ``W Wt``, ``n_latent < n_outputs`` a low-rank one. ``kappa`` is a ``(P,)``
+	vector of strictly positive per-output variances, which makes ``B`` positive *definite*
+	even at low rank. Both are deterministically initialised (``W = eye(n_outputs,
+	n_latent)``, ``kappa = 1``); use ``.replace(W=..., kappa=...)`` or
+	``kernax.hp_sampling.sample_hps_from_uniform_priors`` to randomise them.
+
+	``kappa`` scales the whole within-output block of ``K``, not just its diagonal: it is
+	output-specific *signal* variance, not observation noise -- the latter is a
+	:class:`~kernax.multioutput.BlockDiagKernel.BlockDiagKernel` over a ``WhiteNoiseKernel``,
+	added alongside. Pass ``kappa_parametrisation=NonTrainableParametrisation()`` to hold it
+	fixed during optimisation.
 
 	Two input regimes, selected by whether ``output_ids`` is passed to ``__call__`` --
 	this is a property of the data, not of the kernel, so it is not stored on the instance:
@@ -38,14 +54,20 @@ class ICMKernel(AbstractWrapperModule[KernelLike]):
 
 	inner: KernelLike
 	W: Array = eqx.field(converter=jnp.asarray)
+	_kappa_parametrisation: AbstractParametrisation = eqx.field()
+	_kappa: Array = eqx.field(converter=jnp.asarray)
 
-	def __init__(self, inner: KernelLike, n_outputs: int, n_latent: int):
+	def __init__(self, inner: KernelLike, n_outputs: int, n_latent: int,
+	             kappa: float | Array = 1.0,
+	             kappa_parametrisation: AbstractParametrisation = LogExpParametrisation()):
 		if n_outputs < 1:
 			raise ValueError(f"`n_outputs` must be positive, got {n_outputs}.")
 		if n_latent < 1:
 			raise ValueError(f"`n_latent` must be positive, got {n_latent}.")
 		self.inner = inner
 		self.W = jnp.eye(n_outputs, n_latent)
+		self._kappa_parametrisation = kappa_parametrisation
+		self._kappa = kappa_parametrisation.wrap(_check_kappa(kappa, n_outputs))
 
 	@property
 	def n_outputs(self) -> int:
@@ -56,9 +78,13 @@ class ICMKernel(AbstractWrapperModule[KernelLike]):
 		return self.W.shape[1]
 
 	@property
+	def kappa(self) -> Array:
+		return self._kappa_parametrisation.unwrap(self._kappa)
+
+	@property
 	def coregionalisation(self) -> Array:
-		"""The (P, P) matrix B. Note this property *reduces*: (P, R) -> (P, P)."""
-		return self.W @ self.W.T
+		"""The (P, P) matrix B = W Wt + diag(kappa). Note this property *reduces*: (P, R) -> (P, P)."""
+		return self.W @ self.W.T + jnp.diag(self.kappa)
 
 	def factors(self, x1: Array, x2: Array | None = None, **kwargs) -> tuple[tuple[Array, Array], ...]:
 		"""Kronecker terms ``((B, K),)``, following the convention of the sum/product operators.
@@ -101,8 +127,15 @@ class ICMKernel(AbstractWrapperModule[KernelLike]):
 			"`self.coregionalisation` and `self.inner.spectral_density(w)` to build it."
 		)
 
-	def replace(self, W: None | float | Array = None, **kwargs) -> ICMKernel:
+	def replace(self, W: None | float | Array = None, kappa: None | float | Array = None,
+	            **kwargs) -> ICMKernel:
 		out = super().replace(**kwargs)
-		if W is None:
-			return out
-		return eqx.tree_at(lambda k: k.W, out, jnp.asarray(W))
+		if W is not None:
+			out = eqx.tree_at(lambda k: k.W, out, jnp.asarray(W))
+		if kappa is not None:
+			out = eqx.tree_at(
+				lambda k: k._kappa,
+				out,
+				out._kappa_parametrisation.wrap(_check_kappa(kappa, out.n_outputs))
+			)
+		return out

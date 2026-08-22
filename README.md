@@ -15,7 +15,7 @@ implementations, with the following features:
   - They can **be vectorised-on** with `vmap`
 - **Composable kernels** through operator overloading (`+`, `*`, `-`)
 - **Kernel wrappers** to scale to higher dimensions (batch or block of covariance matrices)
-- **Multi-output kernels** (ICM, LMC, convolution processes) for correlated GP outputs
+- **Multi-output kernels** (ICM, LCM, convolution processes) for correlated GP outputs
 - **NaN-aware computations** for working with padded/masked data
 
 > **⚠️ Project Status**: Kernax is in early development. The API may change, and some features are still experimental.
@@ -142,8 +142,8 @@ For correlated outputs in multi-output GPs (`kernax.multioutput`). `output_ids` 
 is passed to `__call__`, not stored on the kernel — supports both a grid shared across outputs
 and heterotopic data (arbitrary per-output sizes/order):
 
-- **`ICMKernel`**: Intrinsic Coregionalisation Model, `K = B ⊗ k(x1, x2)`
-- **`LMCKernel`**: Linear Model of Coregionalisation, a sum of independent `ICMKernel`s
+- **`ICMKernel`**: Intrinsic Coregionalisation Model, `K = B ⊗ k(x1, x2)` with `B = W Wᵀ + diag(κ)`
+- **`LCMKernel`**: Linear Coregionalisation Model, a sum of independent `ICMKernel`s
 - **`ConvolutionKernel`**: convolution-process kernel with per-output bandwidth/variance
 - **`BlockDiagKernel`** / **`BlockMean`**: independent per-output kernel/mean, no cross-output correlation
 
@@ -256,7 +256,7 @@ Check the [changelog](CHANGELOG.md) for details.
 - BatchKernel wrapper with distinct/shared hyper-parameters
 - ARDKernel wrapper using input scaling
 - ActiveDimsKernel wrapper for dimension selection
-- Multi-output kernels (ICM, LMC, convolution process) with `BlockDiagKernel`/`BlockMean`
+- Multi-output kernels (ICM, LCM, convolution process) with `BlockDiagKernel`/`BlockMean`
 - StationaryKernel and DotProductKernel base classes with proper inheritance
 - Per-hyperparameter parametrisation system (LogExp, Softplus, Bounded, NonTrainable)
 - Parameter freezing either via `NonTrainableParametrisation` or via masking and using eqx.partition+eqx.combine

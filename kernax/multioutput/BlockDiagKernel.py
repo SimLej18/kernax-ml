@@ -17,7 +17,7 @@ class BlockDiagKernel(BatchModule[KernelLike]):
 	Composes with :class:`~kernax.multioutput.ICMKernel.ICMKernel` and friends via ``+``,
 	e.g. to add independent per-output noise on top of a correlated signal.
 
-	Same two input regimes as ``ICMKernel``/``LMCKernel``, selected by whether
+	Same two input regimes as ``ICMKernel``/``LCMKernel``, selected by whether
 	``output_ids`` is passed to ``__call__`` -- a property of the data, not of the kernel:
 
 	- Omitted: ``x1`` is the grid *shared* by every output, shape ``(N, I)``. The result is

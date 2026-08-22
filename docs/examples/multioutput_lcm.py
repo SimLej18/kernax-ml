@@ -1,10 +1,11 @@
 # %% [markdown]
-# # Multi-output GP -- Linear Model of Coregionalisation (LMC)
+# # Multi-output GP -- Linear Coregionalisation Model (LCM)
 #
 # A full multi-output GP built from three `kernax.multioutput` pieces:
 #
-# - `LMCKernel` correlates the `P` outputs through `Q` independent latent kernels, each
-#   paired with its own free `(P, P)` coregionalisation matrix `B_q = W_q W_qᵀ`, summed:
+# - `LCMKernel` correlates the `P` outputs through `Q` independent latent kernels, each
+#   paired with its own free `(P, P)` coregionalisation matrix `B_q = W_q W_qᵀ + diag(κ_q)`,
+#   summed:
 #   `K(x1, x2) = Σ_q B_q ⊗ k_q(x1, x2)`. Unlike ICM, each component can have a different
 #   kernel class/hyperparameters -- e.g. a short and a long length-scale, mixed per output.
 # - `BlockDiagKernel` adds independent per-output observation noise on top (`+`, like any
@@ -23,7 +24,7 @@ import matplotlib.pyplot as plt
 from kernax import SEKernel, WhiteNoiseKernel
 from kernax.mask import create_mask
 from kernax.means import ConstantMean
-from kernax.multioutput import BlockDiagKernel, BlockMean, LMCKernel
+from kernax.multioutput import BlockDiagKernel, BlockMean, LCMKernel
 
 # %% [markdown]
 # ## Config
@@ -40,7 +41,7 @@ NOISE = 0.01
 SEED = 0
 
 # %% [markdown]
-# ## Build the GP: `LMCKernel + BlockDiagKernel` for the kernel, `BlockMean` for the mean
+# ## Build the GP: `LCMKernel + BlockDiagKernel` for the kernel, `BlockMean` for the mean
 
 # %%
 key = jr.PRNGKey(SEED)
@@ -49,14 +50,17 @@ key, *w_keys = jr.split(key, len(COMPONENT_KERNELS) + 1)
 # Non-trivial W_q per component, same reasoning as the ICM notebook: eye(P, rank) would
 # leave some outputs uncorrelated whenever rank < P, which defeats the coregionalisation demo.
 Ws = [jr.normal(k, (N_OUTPUTS, r)) * 0.7 for k, r in zip(w_keys, COMPONENT_RANKS, strict=True)]
-lmc = LMCKernel(kernels=COMPONENT_KERNELS, coregionalization_matrices=Ws)
+# κ_q gives each output a private signal variance inside component q, on top of what the
+# latents explain -- and keeps every B_q positive definite even at rank < P.
+lcm = LCMKernel(kernels=COMPONENT_KERNELS, coregionalization_matrices=Ws,
+                kappas=[0.2] * len(COMPONENT_KERNELS))
 
 noise_axes = None if SHARED_OUTPUT_HPS else create_mask(WhiteNoiseKernel(1.0), noise=0)
 noise = BlockDiagKernel(WhiteNoiseKernel(NOISE), n_outputs=N_OUTPUTS, output_hps_in_axes=noise_axes)
 if not SHARED_OUTPUT_HPS:
 	noise = noise.replace(noise=NOISE * jnp.array([0.5, 1.0, 2.0]))
 
-kernel = lmc + noise
+kernel = lcm + noise
 
 mean_axes = None if SHARED_OUTPUT_HPS else create_mask(ConstantMean(0.0), constant=0)
 mean = BlockMean(INNER_MEAN, n_outputs=N_OUTPUTS, output_hps_in_axes=mean_axes)
@@ -175,7 +179,7 @@ for o, ax in enumerate(axes):
 axes[0].set_ylabel("y")
 axes[0].legend(loc="upper left", fontsize=8)
 fig.suptitle(
-	f"LMC multi-output GP -- ISOTOPIC={ISOTOPIC}, SHARED_OUTPUT_HPS={SHARED_OUTPUT_HPS}"
+	f"LCM multi-output GP -- ISOTOPIC={ISOTOPIC}, SHARED_OUTPUT_HPS={SHARED_OUTPUT_HPS}"
 )
 fig.tight_layout()
 fig.show()

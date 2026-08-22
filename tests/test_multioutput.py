@@ -1,5 +1,5 @@
 """
-Tests for kernax.multioutput: BlockDiagKernel, BlockMean, ICMKernel, LMCKernel,
+Tests for kernax.multioutput: BlockDiagKernel, BlockMean, ICMKernel, LCMKernel,
 ConvolutionKernel, and the shared `gather_by_output` helper.
 
 Focus is on invariants that are easy to get wrong across the two input regimes these
@@ -7,6 +7,7 @@ classes share (shared-grid vs heterotopic `output_ids`), not exhaustive shape ch
 """
 
 import allure
+import equinox as eqx
 import jax.numpy as jnp
 import jax.random as jr
 import pytest
@@ -17,13 +18,14 @@ from kernax import (
 	ConstantMean,
 	ConvolutionKernel,
 	ICMKernel,
-	LMCKernel,
+	LCMKernel,
 	Matern32Kernel,
 	SEKernel,
 	WhiteNoiseKernel,
 )
 from kernax.mask import create_mask
 from kernax.multioutput._gather import gather_by_output
+from kernax.parametrisations import NonTrainableParametrisation
 
 
 def _min_eigval(K):
@@ -220,16 +222,22 @@ class TestICMKernel:
 		x = jr.uniform(jr.fold_in(random_key, 1), (4, 1))
 
 		K = kernel(x)
-		B = W @ W.T
+		B = W @ W.T + jnp.eye(3)  # default kappa = 1
 		expected = jnp.kron(B, SEKernel(length_scale=1.0)(x, x))
 
 		assert jnp.allclose(K, expected)
 
-	@allure.title("ICMKernel: coregionalisation matrix is PSD by construction")
-	def test_coregionalisation_is_psd(self, random_key):
+	@allure.title("ICMKernel: coregionalisation matrix is positive definite by construction")
+	@allure.description(
+		"W Wt alone is singular whenever n_latent < n_outputs; diag(kappa) with kappa > 0 "
+		"makes B positive definite at any rank."
+	)
+	def test_coregionalisation_is_positive_definite(self, random_key):
 		W = jr.normal(random_key, (5, 3))
 		kernel = ICMKernel(SEKernel(length_scale=1.0), n_outputs=5, n_latent=3).replace(W=W)
-		assert _min_eigval(kernel.coregionalisation) >= -1e-6
+
+		assert _min_eigval(W @ W.T) < 1e-6  # low rank: singular without kappa
+		assert _min_eigval(kernel.coregionalisation) > 1e-6
 
 	@allure.title("ICMKernel: shared-grid route matches heterotopic route on the same data")
 	def test_shared_grid_matches_heterotopic_equivalent(self, random_key):
@@ -249,7 +257,7 @@ class TestICMKernel:
 		W = jr.normal(random_key, (2, 2))
 		base = SEKernel(length_scale=1.0)
 		kernel = ICMKernel(base, n_outputs=2, n_latent=2).replace(W=W)
-		B = W @ W.T
+		B = W @ W.T + jnp.eye(2)  # default kappa = 1
 		x = jnp.array([[0.1], [1.3], [0.4]])
 		output_ids = jnp.array([1, 0, 1])
 
@@ -271,7 +279,17 @@ class TestICMKernel:
 		with pytest.raises(ValueError):
 			ICMKernel(SEKernel(length_scale=1.0), n_outputs=2, n_latent=0)
 
+		with pytest.raises(ValueError):
+			ICMKernel(SEKernel(length_scale=1.0), n_outputs=2, n_latent=2, kappa=0.0)
+		with pytest.raises(ValueError):
+			ICMKernel(SEKernel(length_scale=1.0), n_outputs=2, n_latent=2, kappa=jnp.array([1.0, -1.0]))
+		with pytest.raises(ValueError):
+			ICMKernel(SEKernel(length_scale=1.0), n_outputs=2, n_latent=2, kappa=jnp.ones(3))
+
 		kernel = ICMKernel(SEKernel(length_scale=1.0), n_outputs=2, n_latent=2)
+		with pytest.raises(ValueError):
+			kernel.replace(kappa=-1.0)
+
 		x1 = jnp.array([[0.0], [1.0]])
 		x2 = jnp.array([[0.5]])
 		with pytest.raises(ValueError):
@@ -284,34 +302,104 @@ class TestICMKernel:
 		after = kernel.replace(W=jnp.array([[1.0, 0.0], [0.0, 2.0]])).coregionalisation
 		assert not jnp.allclose(before, after)
 
+	@allure.title("ICMKernel: kappa adds a per-output diagonal to B")
+	@allure.description(
+		"A scalar kappa is broadcast to (P,); a vector one gives each output its own value. "
+		"kappa only ever touches B, so the whole within-output block of K is scaled by it, "
+		"not just the diagonal of K."
+	)
+	@pytest.mark.parametrize("kappa", [2.0, jnp.array([0.5, 1.0, 4.0])])
+	def test_kappa_adds_diagonal(self, random_key, kappa):
+		W = jr.normal(random_key, (3, 2))
+		base = SEKernel(length_scale=1.0)
+		kernel = ICMKernel(base, n_outputs=3, n_latent=2, kappa=kappa).replace(W=W)
 
-class TestLMCKernel:
-	"""Tests for LMCKernel (kernax/multioutput/LMCKernel.py)."""
+		assert kernel.kappa.shape == (3,)
+		assert jnp.allclose(kernel.kappa, jnp.broadcast_to(jnp.asarray(kappa, dtype=float), (3,)))
+		assert jnp.allclose(kernel.coregionalisation, W @ W.T + jnp.diag(kernel.kappa))
 
-	@allure.title("LMCKernel with one component equals a plain ICMKernel")
+		x = jr.uniform(jr.fold_in(random_key, 1), (4, 1))
+		assert jnp.allclose(kernel(x), jnp.kron(kernel.coregionalisation, base(x, x)))
+
+	@allure.title("ICMKernel: replace(kappa=...) round-trips through the parametrisation")
+	def test_replace_kappa_round_trip(self):
+		kernel = ICMKernel(SEKernel(length_scale=1.0), n_outputs=3, n_latent=3)
+		assert jnp.allclose(kernel.kappa, jnp.ones(3))
+
+		kernel = kernel.replace(kappa=jnp.array([1.0, 2.0, 3.0]))
+		assert jnp.allclose(kernel.kappa, jnp.array([1.0, 2.0, 3.0]))
+		assert jnp.allclose(jnp.diag(kernel.coregionalisation - kernel.W @ kernel.W.T),
+		                    jnp.array([1.0, 2.0, 3.0]))
+
+	@allure.title("ICMKernel: a non-trainable kappa gets no gradient")
+	@allure.description(
+		"Holding kappa fixed during optimisation is what replaces an opt-out: the term stays "
+		"in B, but stop_gradient keeps the optimiser from moving it."
+	)
+	def test_non_trainable_kappa_has_no_gradient(self):
+		base = SEKernel(length_scale=1.0)
+		x = jnp.linspace(0.0, 1.0, 4).reshape(-1, 1)
+
+		def loss(kernel):
+			return jnp.sum(kernel(x))
+
+		trainable = ICMKernel(base, n_outputs=2, n_latent=2, kappa=2.0)
+		frozen = ICMKernel(base, n_outputs=2, n_latent=2, kappa=2.0,
+		                   kappa_parametrisation=NonTrainableParametrisation())
+
+		assert not jnp.allclose(eqx.filter_grad(loss)(trainable)._kappa, 0.0)
+		assert jnp.allclose(eqx.filter_grad(loss)(frozen)._kappa, 0.0)
+		assert jnp.allclose(trainable.coregionalisation, frozen.coregionalisation)
+
+
+class TestLCMKernel:
+	"""Tests for LCMKernel (kernax/multioutput/LCMKernel.py)."""
+
+	@allure.title("LCMKernel with one component equals a plain ICMKernel")
 	def test_single_component_equals_icm(self, random_key):
 		W = jr.normal(random_key, (3, 2))
 		base = SEKernel(length_scale=1.0)
-		lmc = LMCKernel([base], [W])
+		lcm = LCMKernel([base], [W])
 		icm = ICMKernel(base, n_outputs=3, n_latent=2).replace(W=W)
 
 		x = jr.uniform(jr.fold_in(random_key, 1), (4, 1))
-		assert jnp.allclose(lmc(x), icm(x))
+		assert jnp.allclose(lcm(x), icm(x))
 
-	@allure.title("LMCKernel with two heterogeneous components equals their ICM sum")
+	@allure.title("LCMKernel with two heterogeneous components equals their ICM sum")
 	def test_two_components_equals_icm_sum(self, random_key):
 		k1, k2 = SEKernel(length_scale=1.0), Matern32Kernel(length_scale=2.0)
 		key1, key2 = jr.split(random_key)
 		W1, W2 = jr.normal(key1, (3, 2)), jr.normal(key2, (3, 1))
-		lmc = LMCKernel([k1, k2], [W1, W2])
+		lcm = LCMKernel([k1, k2], [W1, W2])
 
 		icm1 = ICMKernel(k1, n_outputs=3, n_latent=2).replace(W=W1)
 		icm2 = ICMKernel(k2, n_outputs=3, n_latent=1).replace(W=W2)
 
 		x = jr.uniform(jr.fold_in(random_key, 2), (4, 1))
-		assert jnp.allclose(lmc(x), icm1(x) + icm2(x))
+		assert jnp.allclose(lcm(x), icm1(x) + icm2(x))
 
-	@allure.title("LMCKernel: validation errors")
+	@allure.title("LCMKernel: per-component kappas")
+	@allure.description(
+		"Each component carries its own kappa; omitting `kappas` gives every component the "
+		"ICMKernel default of 1."
+	)
+	def test_per_component_kappas(self, random_key):
+		k1, k2 = SEKernel(length_scale=1.0), Matern32Kernel(length_scale=2.0)
+		W1, W2 = jnp.eye(2), jnp.ones((2, 1))
+		lcm = LCMKernel([k1, k2], [W1, W2], kappas=[jnp.array([0.5, 1.5]), 3.0])
+
+		assert jnp.allclose(lcm.components[0].kappa, jnp.array([0.5, 1.5]))
+		assert jnp.allclose(lcm.components[1].kappa, jnp.full((2,), 3.0))
+
+		icm1 = ICMKernel(k1, 2, 2, kappa=jnp.array([0.5, 1.5])).replace(W=W1)
+		icm2 = ICMKernel(k2, 2, 1, kappa=3.0).replace(W=W2)
+		x = jr.uniform(random_key, (4, 1))
+		assert jnp.allclose(lcm(x), icm1(x) + icm2(x))
+
+		default = LCMKernel([k1, k2], [W1, W2])
+		assert all(jnp.allclose(c.kappa, jnp.ones(2)) for c in default.components)
+
+	@allure.title("LCMKernel: validation errors")
 	@allure.description(
 		"kernels/matrices length mismatch, wrong W ndim, inconsistent n_outputs across "
 		"components, empty kernel list."
@@ -319,21 +407,23 @@ class TestLMCKernel:
 	def test_validation_errors(self):
 		k = SEKernel(length_scale=1.0)
 		with pytest.raises(ValueError):
-			LMCKernel([], [])
+			LCMKernel([], [])
 		with pytest.raises(ValueError):
-			LMCKernel([k], [jnp.eye(2), jnp.eye(2)])
+			LCMKernel([k], [jnp.eye(2), jnp.eye(2)])
 		with pytest.raises(ValueError):
-			LMCKernel([k], [jnp.ones(3)])
+			LCMKernel([k], [jnp.ones(3)])
 		with pytest.raises(ValueError):
-			LMCKernel([k, k], [jnp.eye(2), jnp.eye(3)])
+			LCMKernel([k, k], [jnp.eye(2), jnp.eye(3)])
+		with pytest.raises(ValueError):
+			LCMKernel([k, k], [jnp.eye(2), jnp.eye(2)], kappas=[1.0])
 
-	@allure.title("LMCKernel: replace() broadcasts to every component")
+	@allure.title("LCMKernel: replace() broadcasts to every component")
 	def test_replace_broadcasts_to_components(self):
 		k = SEKernel(length_scale=1.0)
-		lmc = LMCKernel([k, k], [jnp.eye(2), jnp.eye(2)])
-		lmc = lmc.replace(length_scale=2.0)
-		assert lmc.components[0].inner.length_scale == 2.0
-		assert lmc.components[1].inner.length_scale == 2.0
+		lcm = LCMKernel([k, k], [jnp.eye(2), jnp.eye(2)])
+		lcm = lcm.replace(length_scale=2.0)
+		assert lcm.components[0].inner.length_scale == 2.0
+		assert lcm.components[1].inner.length_scale == 2.0
 
 
 class TestConvolutionKernel:

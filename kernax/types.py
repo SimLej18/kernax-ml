@@ -17,17 +17,17 @@ from typing import TYPE_CHECKING, TypeAlias, Union
 if TYPE_CHECKING:
 	from .AbstractKernel import AbstractKernel  # noqa: F401
 	from .AbstractMean import AbstractMean  # noqa: F401
-	from .multioutput.LMCKernel import LMCKernel  # noqa: F401
+	from .multioutput.LCMKernel import LCMKernel  # noqa: F401
 	from .operators.AbstractOperatorModule import AbstractOperatorModule  # noqa: F401
 	from .wrappers.WrapperModule import AbstractWrapperModule  # noqa: F401
 
 KernelLike: TypeAlias = Union[
 	"AbstractKernel",
-	"LMCKernel",
+	"LCMKernel",
 	"AbstractWrapperModule[KernelLike]",
 	"AbstractOperatorModule[KernelLike]",
 ]
-"""A kernel, or any wrapper/operator/LMC composition of kernels."""
+"""A kernel, or any wrapper/operator/LCM composition of kernels."""
 
 MeanLike: TypeAlias = Union[
 	"AbstractMean",

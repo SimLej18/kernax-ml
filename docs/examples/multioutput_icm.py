@@ -4,7 +4,7 @@
 # A full multi-output GP built from three `kernax.multioutput` pieces:
 #
 # - `ICMKernel` correlates the `P` outputs through one shared latent kernel and a free
-#   `(P, P)` coregionalisation matrix `B = W Wᵀ`.
+#   `(P, P)` coregionalisation matrix `B = W Wᵀ + diag(κ)`.
 # - `BlockDiagKernel` adds independent per-output observation noise on top (`+`, like any
 #   other kernax kernel).
 # - `BlockMean` gives every output its own mean function.
@@ -47,7 +47,10 @@ key, w_key = jr.split(key)
 # A non-trivial W: eye(P, N_LATENT) would leave output P-1 uncorrelated with everything
 # whenever N_LATENT < P, which defeats the point of a coregionalisation demo.
 W = jr.normal(w_key, (N_OUTPUTS, N_LATENT)) * 0.7
-icm = ICMKernel(INNER_KERNEL, n_outputs=N_OUTPUTS, n_latent=N_LATENT).replace(W=W)
+# κ gives each output a private signal variance on top of what the latents explain, and
+# keeps B positive definite even when N_LATENT < N_OUTPUTS. It scales the whole
+# within-output block of K -- it is not observation noise, that is the BlockDiagKernel below.
+icm = ICMKernel(INNER_KERNEL, n_outputs=N_OUTPUTS, n_latent=N_LATENT, kappa=0.2).replace(W=W)
 
 noise_axes = None if SHARED_OUTPUT_HPS else create_mask(WhiteNoiseKernel(1.0), noise=0)
 noise = BlockDiagKernel(WhiteNoiseKernel(NOISE), n_outputs=N_OUTPUTS, output_hps_in_axes=noise_axes)

@@ -14,7 +14,7 @@ from kernax import (
 	ExpModule,
 	ICMKernel,
 	InputSpecificParamModule,
-	LMCKernel,
+	LCMKernel,
 	LogModule,
 	NegModule,
 	SEKernel,
@@ -565,7 +565,7 @@ class TestSpectralDensityAvailability:
 		NegModule(SEKernel(length_scale=1.0)),
 		InputSpecificParamModule(WhiteNoiseKernel(1.0), input_size=3, vmap_in_axes=0),
 		ICMKernel(SEKernel(length_scale=1.0), n_outputs=3, n_latent=3),
-		LMCKernel([SEKernel(length_scale=1.0)], [jnp.eye(3)]),
+		LCMKernel([SEKernel(length_scale=1.0)], [jnp.eye(3)]),
 		BlockDiagKernel(SEKernel(length_scale=1.0), n_outputs=3),
 	], ids=lambda k: type(k).__name__)
 	def test_undefined_spectral_density_raises(self, kernel):

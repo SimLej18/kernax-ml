@@ -38,7 +38,7 @@ from .multioutput import (
 	BlockMean,
 	ConvolutionKernel,
 	ICMKernel,
-	LMCKernel,
+	LCMKernel,
 )
 
 # Import operator modules
@@ -131,5 +131,5 @@ __all__ = [
 	"BlockMean",
 	"ConvolutionKernel",
 	"ICMKernel",
-	"LMCKernel",
+	"LCMKernel",
 ]
